@@ -15,6 +15,13 @@
 - 专注专项复核未发现新增实现缺陷：实际经过时间、后台/睡眠、暂停恢复、失败重试、卸载和多 root 隔离均有夹具证据（focus lifecycle 29 项、teardown、adapter 全部通过）。
 - 完整回归：`pnpm test`、`pnpm run test:ui`、`pnpm run test:mobile`、`pnpm run test:ecosystem`、`pnpm run test:extended`、`pnpm run test:perf`、`node tests/width-walkthrough.cjs`、`node tests/visual-qa.cjs` 均通过。`pnpm run check:release` 按发布资产漂移保护拒绝通过：本地复核源码重建包 SHA 为 `09ffb270…`，已发布 v18.17.0 说明固定 SHA 为 `4f82233a…`；未改写既有发布摘要或版本资产。
 
+# 2026-10-09 全插件功能与 UI 复核第五轮
+
+- 来源异步生命周期：思阅/思播段写、健康/笔记查询/叶归扫描游标及各来源 mutation 增加当前配置身份与卸载守门；微信读书时长/完读/笔记每段异步返回和配置状态回写前再校验，提醒状态读取与通知失败回滚阻止卸载后的迟到写入。
+- 多 root 焦点：Today 局部卡片刷新成功只清除同一 `itemId` 的 pending focus，其他表面等待中的焦点继续保留；AST 行为夹具覆盖 active 镜像与另一 root。
+- 隐私反馈：初始化失败 toast 不再把宿主异常原文（可能带绝对路径或请求参数）显示给用户，只显示双语 load/save 阶段标签，结构化诊断仍保留。
+- 定向证据：check、scan-cursor、source-lifecycle-matrix、diagnostics、checkin-toast、cross-page-consistency 全通过；随后 `pnpm test`、`test:ui`、`test:mobile`、`test:ecosystem`、`test:extended`、`test:perf`、width walkthrough、visual QA、build 全部通过。T-1808 的可执行重试仍待生命周期设计，T-1783 全字段脱敏和 T-1784/T-1804 完整矩阵继续开放；`check:release` 仍受已发布 v18.17.0 固定 SHA 与本地重建包差异保护。
+
 # 2026-10-09 全插件功能与 UI 复核第二轮
 
 - 任务：全量复核功能、按钮、设置、表述、显示、逻辑、反馈、点击反应和响应式体验；继续沿用真实宿主/真机证据边界，不把模拟通过写成现场通过。

@@ -84,6 +84,8 @@ assert.match(indexSource, /recordDiagnostic\(phase === "persist" \? "save-failed
 assert.match(indexSource, /recordDiagnostic\("lock-contended", "teardown final flush deferred"\)/, "lock contention must record lock-contended");
 assert.match(indexSource, /let initializationFailurePhase: string = "load"/, "startup initialization must classify load and persist failures");
 assert.match(indexSource, /if \(initializationFailurePhase !== "persist"\) this\.recordDiagnostic\("load-failed", "startup-load-failed"\)/, "startup load failures must enter bounded diagnostics without duplicating persist diagnostics");
+assert.match(indexSource, /const failureLabel = initializationFailurePhase === "persist" \? t\("diag\.saveFailed"\) : t\("diag\.loadFailed"\);\s*showMessage\(t\("msg\.dataLoadFail", \{error: failureLabel\}\)\)/, "startup failure toast must use a localized phase label instead of leaking raw host exception text");
+assert.doesNotMatch(indexSource, /showMessage\(t\("msg\.dataLoadFail", \{error: String\(error\)\}\)\)/, "startup failure toast must not expose raw host exception text");
 assert.match(indexSource, /getDiagnostics\(\): readonly CheckinDiagnostic\[\]/, "host must expose diagnostics to the API facade");
 assert.match(apiSource, /getDiagnostics: \(\) => Object\.freeze\(host\.getDiagnostics\(\)/, "facade must return defensive copies");
 assert.match(indexSource, /private latestDiagnosticText\(\): string[\s\S]*机器细节只在诊断预览\/API 中保留[\s\S]*return `\$\{t\(info\.labelKey\)\} · \$\{t\(info\.recoveryKey\)\}`/, "settings diagnostics summary must hide internal detail codes");

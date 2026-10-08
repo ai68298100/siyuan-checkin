@@ -17,6 +17,7 @@
 - 后台来源刷新按注册 root 读取页面；输入中的 Today 只延后自己的 root，editor root 不参与来源刷新，避免跨 surface 丢草稿或漏更新。
 - 洞察教练建议、编辑器图标导入错误、事项农历提示和完成来源摘要改为双语 i18n，英文界面不再混入硬编码中文。
 - Review/洞察/报告页面级偏好（折叠、项目、报告区块、来源筛选）已统一接入快照、失败回滚和失败提示；事项关联项目编辑入口已携带发起 root，避免 dock/tab/quick 同屏时串到最后活跃表面；年度热力图 SVG 的 aria/title、月份、星期、日期和周文案已接入双语 i18n 并统一转义。
+- 第五轮补充：来源和提醒异步响应在换绑/停用/卸载后不会再写入旧事实、游标或通知状态；Today 多 root 局部刷新按事项保留其他表面的焦点请求；初始化失败提示不再泄露宿主原始异常。
 
 ## 页面与能力
 
@@ -47,4 +48,6 @@
 - `node tests/calendar-projection.test.cjs`、`node tests/settings-navigation.test.cjs`：通过；分别覆盖数值戒除/修订单位投影和设置导航竞态守门。
 - 本轮新增定向守门：`preference-rollback`、`cross-page-consistency`、`coaching`、`i18n-parity`，覆盖偏好失败回滚、root 隔离和双语输出。
 - 第四轮定向守门：`occasion-linked`、`v7-insights`、`review-presentation`、`i18n-hygiene`、`insight-a11y`；专注专项另有 lifecycle 29 项、teardown 和 adapter 证据。
+- 第五轮定向守门：`scan-cursor`、`source-lifecycle-matrix`、`diagnostics`、`checkin-toast`、`cross-page-consistency`；类型检查和 diff hygiene 通过。
+- 第五轮合并前完整证据：`pnpm test`、`test:ui`、`test:mobile`、`test:ecosystem`、`test:extended`、`test:perf`、`width-walkthrough`、`visual-qa`、`build` 均通过；`check:release` 的固定发布 SHA 差异继续按发布边界记录。
 - CSS 软线、T-1778/T-1788 视觉状态矩阵及 T-1813～T-1829 视觉系统治理继续保留；本地视觉通过不能替代真实思源宿主、Android/TalkBack、第三方来源和缩放现场验收。

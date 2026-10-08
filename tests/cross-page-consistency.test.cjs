@@ -270,6 +270,8 @@ try {
         assert.match(indexSrc, /this\.showInsights\(item, root\)/, "局部 Today 刷新后的洞察入口保留所属 root");
         assert.match(indexSrc, /context\.renderedPage/, "渲染页标记归 root context");
         assert.match(indexSrc, /public setPendingFocusItem\(root: HTMLElement, itemId: string\)/, "焦点恢复登记要求显式 root");
+        assert.match(indexSrc, /private renderBackgroundUpdate\(\)[\s\S]*?clearPendingFocusItems\(localItemId\)/, "局部 Today 刷新只消费当前事项的焦点请求");
+        assert.match(indexSrc, /public clearPendingFocusItems\(itemId\?: string\)/, "焦点清理支持按事项隔离多 root 请求");
         assert.doesNotMatch(todayBind, /host\.pendingFocusItemId\s*=/, "今日绑定器不得再写全局焦点字段");
         assert.match(todayBind, /host\.setPendingFocusItem\(root, item\.id\)/, "今日记录动作写入所属 root");
         assert.match(navigation, /host\.setPageForRoot\(page, root\)/, "导航按 root 写入当前页");

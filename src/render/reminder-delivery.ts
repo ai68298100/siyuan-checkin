@@ -204,6 +204,8 @@ export async function refreshReminderDeliveryStateFor(host: ReminderDeliveryHost
     try {
         const previous = shouldAnnouncePriorityRemindersFor(host, now);
         const state = await readReminderDeliveryState(host, now);
+        /* 读取可能跨过切页/卸载；迟到状态不能复活 runtime、关闭新提示或触发 detached render。 */
+        if (host.disposed || host.disposing || !host.storageReady) return;
         if (state.mutedDates.includes(dateKey(now)) || !host.dailyReminder.enabled) closeReminderNotice(host);
         if (previous !== shouldAnnouncePriorityRemindersFor(host, now) && !host.disposed && !host.disposing) host.render();
         syncPriorityReminderAnnouncementFor(host, undefined, now);
@@ -313,6 +315,7 @@ export async function maybeSendDailyReminderFor(host: ReminderDeliveryHost, trig
         await host.withStorageLock(async () => {
             if (host.disposed || host.disposing || !host.dailyReminder.enabled) return;
             const state = await readReminderDeliveryState(host, now);
+            if (host.disposed || host.disposing || !host.storageReady) return;
             if (state.mutedDates.includes(dateKey(now))) { closeReminderNotice(host); return; }
             const today = dateKey(now);
             const slots = dueReminderDeliverySlots(state, today, now.getHours() * 60 + now.getMinutes(), host.dailyReminder);
@@ -348,6 +351,8 @@ export async function maybeSendDailyReminderFor(host: ReminderDeliveryHost, trig
                 runtime.failures = 0;
                 runtime.retryAt = 0;
             } catch (error) {
+                /* 身份已先写入；挂载失败时必须回滚，否则下一次启动会误以为提醒已经展示。即使宿主刚卸载，也保留这次持久化修复。 */
+                if (!host.storageReady) return;
                 await host.saveData(REMINDER_DELIVERY_STORAGE_NAME, JSON.stringify(state));
                 runtime.state = state;
                 throw error;

@@ -1207,7 +1207,11 @@ export default class CheckinPlugin extends Plugin {
                 || this.store.eventTombstones.some((tombstone) => tombstone.itemId === governance.itemId && tombstone.source === "siplayer" && tombstone.externalRef === externalRef)) continue;
             const fingerprint = this.revisionFingerprint(item, calendarDateFromKey(segment.localDate));
             const moment = {occurredAt: new Date(sampledAtMs).toISOString(), localDate: segment.localDate};
-            const recorded = await this.enqueueMutation(() => this.recordExternalEvent({itemId: governance.itemId, value: segment.minutes, source: "siplayer", externalRef}, moment, fingerprint));
+            const recorded = await this.enqueueMutation(() => {
+                /* 配置可能在采样/排队期间被停用或换绑；旧会话不得把迟到片段写入新配置。 */
+                if (this.siplayerIntegration !== governance || !governance.enabled || governance.itemId !== expectedItemId) return Promise.resolve(undefined);
+                return this.recordExternalEvent({itemId: governance.itemId, value: segment.minutes, source: "siplayer", externalRef}, moment, fingerprint);
+            });
             if (recorded) {
                 this.invalidateSummary();
                 this.renderBackgroundUpdate();
@@ -1269,7 +1273,10 @@ export default class CheckinPlugin extends Plugin {
                 || this.store.eventTombstones.some((tombstone) => tombstone.itemId === governance.itemId && tombstone.source === "sireader" && tombstone.externalRef === externalRef)) continue;
             const fingerprint = this.revisionFingerprint(item, calendarDateFromKey(segment.localDate));
             const moment = {occurredAt: new Date(endedAt).toISOString(), localDate: segment.localDate};
-            const recorded = await this.enqueueMutation(() => this.recordExternalEvent({itemId: governance.itemId, value: segment.minutes, source: "sireader", externalRef}, moment, fingerprint));
+            const recorded = await this.enqueueMutation(() => {
+                if (this.sireaderIntegration !== governance || !governance.enabled || governance.itemId !== expectedItemId) return Promise.resolve(undefined);
+                return this.recordExternalEvent({itemId: governance.itemId, value: segment.minutes, source: "sireader", externalRef}, moment, fingerprint);
+            });
             if (recorded) {
                 this.invalidateSummary();
                 this.renderBackgroundUpdate();
@@ -1286,6 +1293,7 @@ export default class CheckinPlugin extends Plugin {
         if (!preview && typeof document !== "undefined" && document.hidden) return;
         const report = createSourceIngestReport(preview ? "preview" : "ingest");
         this.sourceIngestReports.health = report;
+        const isCurrent = () => this.healthInbox === governance && !this.disposed && !this.disposing && this.acceptingOperations;
         if (!governance.metricBindings.length) { report.outcome = "not-configured"; return; }
         try {
         /* T-1629：有界分页扫描——整页读满推进游标续读，短页收尾复位；多页行累积后一次解析。 */
@@ -1299,6 +1307,7 @@ export default class CheckinPlugin extends Plugin {
             }),
             rowId: (row) => (typeof row?.id === "string" ? row.id : undefined),
         });
+        if (!isCurrent()) return;
         this.healthScanCursor = scan.cursor;
         const rows = scan.rows;
         report.scanned = rows.length;
@@ -1330,7 +1339,11 @@ export default class CheckinPlugin extends Plugin {
                 const fingerprint = this.revisionFingerprint(item, calendarDateFromKey(entry.localDate));
                 const moment = {occurredAt: new Date().toISOString(), localDate: entry.localDate};
                 const writeOutcome: ExternalWriteOutcome = {};
-                const recorded = await this.enqueueMutation(() => this.recordExternalEvent({itemId, value: entry.value, source: "api", externalRef}, moment, fingerprint, writeOutcome));
+                const recorded = await this.enqueueMutation(() => {
+                    if (!isCurrent()) return Promise.resolve(undefined);
+                    return this.recordExternalEvent({itemId, value: entry.value, source: "api", externalRef}, moment, fingerprint, writeOutcome);
+                });
+                if (!isCurrent()) return;
                 if (recorded) {
                     report.written += 1;
                     this.invalidateSummary();
@@ -1345,11 +1358,13 @@ export default class CheckinPlugin extends Plugin {
     /* T-1500 笔记推导打卡：只执行内置 SELECT，解析显式 frontmatter/tag 完成信号。
        查询结果不写回笔记；同日手动事件优先，notequery externalRef 负责重放幂等。 */
     private async ingestNoteQuery(preview = false): Promise<void> {
-        const governance = normalizeNoteQueryPreference(this.noteQuery);
+        const governanceRef = this.noteQuery;
+        const governance = normalizeNoteQueryPreference(governanceRef);
         if ((!governance.enabled && !preview) || this.disposed || this.disposing || !this.acceptingOperations || !this.storageReady) return;
         if (!preview && typeof document !== "undefined" && document.hidden) return;
         const report = createSourceIngestReport(preview ? "preview" : "ingest");
         this.sourceIngestReports.notequery = report;
+        const isCurrent = () => this.noteQuery === governanceRef && !this.disposed && !this.disposing && this.acceptingOperations;
         const statement = buildNoteQuerySql(governance);
         if (!statement) { report.outcome = "not-configured"; return; }
         /* T-1629：有界分页扫描——buildNoteQuerySql 原生游标参数（afterBlockId）首次接线。 */
@@ -1364,6 +1379,7 @@ export default class CheckinPlugin extends Plugin {
             rowId: (row) => (typeof row?.id === "string" ? row.id : undefined),
         }).catch(() => undefined);
         if (!scan) { report.outcome = "read-failed"; return; }
+        if (!isCurrent()) return;
         this.noteQueryScanCursor = scan.cursor;
         const scanRows = scan.rows;
         report.scanned = scanRows.length;
@@ -1385,7 +1401,11 @@ export default class CheckinPlugin extends Plugin {
             const fingerprint = this.revisionFingerprint(item, calendarDateFromKey(entry.localDate));
             const moment = {occurredAt: new Date().toISOString(), localDate: entry.localDate};
             const writeOutcome: ExternalWriteOutcome = {};
-            const recorded = await this.enqueueMutation(() => this.recordExternalEvent({itemId: governance.itemId, value: entry.value, source: "api", externalRef: entry.externalRef, note: entry.note}, moment, fingerprint, writeOutcome)).catch(() => { report.outcome = "write-failed"; return undefined; });
+            const recorded = await this.enqueueMutation(() => {
+                if (!isCurrent()) return Promise.resolve(undefined);
+                return this.recordExternalEvent({itemId: governance.itemId, value: entry.value, source: "api", externalRef: entry.externalRef, note: entry.note}, moment, fingerprint, writeOutcome);
+            }).catch(() => { report.outcome = "write-failed"; return undefined; });
+            if (!isCurrent()) return;
             if (recorded) {
                 report.written += 1;
                 this.invalidateSummary();
@@ -1422,12 +1442,14 @@ export default class CheckinPlugin extends Plugin {
     private async ingestWeread(): Promise<number> {
         const governance = this.wereadIntegration;
         if (!governance.enabled || !governance.itemId || !isWereadApiKey(governance.apiKey) || this.disposed || this.disposing || !this.acceptingOperations || !this.storageReady) return 0;
+        const isCurrent = () => this.wereadIntegration === governance && !this.disposed && !this.disposing && this.acceptingOperations;
         /* 文档不可见（后台页签/锁屏）时跳过本轮，回前台由焦点补拉——省移动端电量与流量。 */
         if (typeof document !== "undefined" && document.hidden) return 0;
         /* 时长目标失效时仍继续拉取完读/笔记目标；三条链路绑定相互独立。 */
         const item = getActiveItemById(this.store, governance.itemId);
         const durationItem = item && this.hasMinuteTarget(governance.itemId) ? item : undefined;
         const gateway = await this.wereadGateway(buildWereadReadDetailRequest());
+        if (!isCurrent()) return 0;
         const outcome = ingestWereadReadDetail(gateway.payload, {
             today: dateKey(currentCalendarDate()),
             /* 官方 readdata.md：readTimes/dailyReadTimes 的 key 均为分桶起始 unix 秒。 */
@@ -1456,7 +1478,11 @@ export default class CheckinPlugin extends Plugin {
                 const fingerprint = this.revisionFingerprint(durationItem, calendarDateFromKey(day.localDate));
                 const moment = {occurredAt: new Date().toISOString(), localDate: day.localDate};
                 const writeOutcome: ExternalWriteOutcome = {};
-                const recorded = await this.enqueueMutation(() => this.recordExternalEvent({itemId: governance.itemId, value: day.countedValue, source: "weread", externalRef}, moment, fingerprint, writeOutcome));
+                const recorded = await this.enqueueMutation(() => {
+                    if (!isCurrent() || !governance.enabled) return Promise.resolve(undefined);
+                    return this.recordExternalEvent({itemId: governance.itemId, value: day.countedValue, source: "weread", externalRef}, moment, fingerprint, writeOutcome);
+                });
+                if (!isCurrent()) return written;
                 if (recorded) {
                     written += 1;
                     this.invalidateSummary();
@@ -1479,6 +1505,8 @@ export default class CheckinPlugin extends Plugin {
         if (governance.finishItemId) finished = await this.ingestWereadFinished();
         const yesterday = addDays(todayKey, -1);
         if (governance.notesItemId && yesterday) notes = await this.ingestWereadNotes(yesterday);
+        /* 配置在完读/笔记链路期间可能被换绑；不得把旧配置的摘要写回设置状态。 */
+        if (!isCurrent()) return written;
         /* 三链路聚合（additive）：整体 ok 仍仅反映时长链路（来源卡状态行契约不变），
            完读/笔记各自状态随结果携带，不再把局部成功说成全成功。 */
         if (outcome.ok) {
@@ -1500,6 +1528,7 @@ export default class CheckinPlugin extends Plugin {
         if (!item) return {written: 0, pending: 0};
         const toLocalDateFromUnix = (seconds: number) => dateKey(new Date(seconds * 1000));
         const shelf = await this.wereadGateway(buildWereadShelfRequest());
+        if (this.wereadIntegration !== governance) return {written: 0, pending: 0};
         const finishedBooks = parseWereadFinishedBooks(shelf.payload).filter((book) => {
             const prefix = wereadFinishRefPrefix(governance.finishItemId, book.bookId);
             if (!prefix) return false;
@@ -1513,6 +1542,7 @@ export default class CheckinPlugin extends Plugin {
         let pending = Math.max(0, finishedBooks.length - 10);
         for (const book of finishedBooks.slice(0, 10)) {
             const progress = await this.wereadGateway(buildWereadBookProgressRequest(book.bookId));
+            if (this.wereadIntegration !== governance) return {written, pending};
             const outcome = parseWereadBookProgress(progress.payload, {toLocalDateFromUnix, today: dateKey(currentCalendarDate())});
             if (!progress.payload) { pending += 1; continue; }
             if (!outcome.finished || !outcome.localDate) continue;
@@ -1520,7 +1550,10 @@ export default class CheckinPlugin extends Plugin {
             if (!externalRef) continue;
             const fingerprint = this.revisionFingerprint(item, calendarDateFromKey(outcome.localDate));
             const moment = {occurredAt: new Date().toISOString(), localDate: outcome.localDate};
-            const recorded = await this.enqueueMutation(() => this.recordExternalEvent({itemId: governance.finishItemId, value: 1, source: "weread", externalRef, note: book.title}, moment, fingerprint));
+            const recorded = await this.enqueueMutation(() => {
+                if (this.wereadIntegration !== governance || !governance.enabled) return Promise.resolve(undefined);
+                return this.recordExternalEvent({itemId: governance.finishItemId, value: 1, source: "weread", externalRef, note: book.title}, moment, fingerprint);
+            });
             if (recorded) {
                 written += 1;
                 this.invalidateSummary();
@@ -1541,6 +1574,7 @@ export default class CheckinPlugin extends Plugin {
     private async ingestWereadNotes(yesterdayLocalDate: string): Promise<{status: "settled" | "empty" | "incomplete" | "skipped"; tally: number}> {
         const governance = this.wereadIntegration;
         if (!governance.enabled || !governance.notesItemId || this.disposed || this.disposing || !this.acceptingOperations || !this.storageReady) return {status: "skipped", tally: 0};
+        const isCurrent = () => this.wereadIntegration === governance && !this.disposed && !this.disposing && this.acceptingOperations;
         const item = getActiveItemById(this.store, governance.notesItemId);
         if (!item) return {status: "skipped", tally: 0};
         const notesRef = buildWereadNotesRef(governance.notesItemId, yesterdayLocalDate);
@@ -1554,6 +1588,7 @@ export default class CheckinPlugin extends Plugin {
         let complete = true;
         for (let page = 0; page < 5; page += 1) {
             const pageResult = await this.wereadGateway(buildWereadNotebooksRequest(100, lastSort));
+            if (!isCurrent()) return {status: "skipped", tally: 0};
             /* 网关失败（payload 缺失）≠空数据——标记未完整，tally 不可信。 */
             if (!pageResult.payload) { complete = false; break; }
             const parsed = parseWereadNotebookPage(pageResult.payload);
@@ -1571,6 +1606,7 @@ export default class CheckinPlugin extends Plugin {
             /* 划线（bookmarklist 服务端已滤书签）+ 想法/点评（review/list/mine，官方
                synckey 游标，至多 3 页），同书同日合并计入。 */
             const bookmarkList = await this.wereadGateway(buildWereadBookmarkListRequest(bookId));
+            if (!isCurrent()) return {status: "skipped", tally: 0};
             if (!bookmarkList.payload) { complete = false; break; }
             const counts = parseWereadHighlightTally(bookmarkList.payload, {toLocalDateFromUnix, today: todayKey});
             tally += counts.byDate.get(yesterdayLocalDate) || 0;
@@ -1578,6 +1614,7 @@ export default class CheckinPlugin extends Plugin {
             let reviewSettled = false;
             for (let page = 0; page < 3; page += 1) {
                 const reviewPage = await this.wereadGateway(buildWereadReviewListRequest(bookId, reviewSynckey, 50));
+                if (!isCurrent()) return {status: "skipped", tally: 0};
                 if (!reviewPage.payload) { complete = false; break; }
                 const reviews = parseWereadReviewTally(reviewPage.payload, {toLocalDateFromUnix, today: todayKey});
                 tally += reviews.byDate.get(yesterdayLocalDate) || 0;
@@ -1592,23 +1629,31 @@ export default class CheckinPlugin extends Plugin {
         if (decision.action !== "write") return {status: decision.action === "retry" ? "incomplete" : "empty", tally: decision.action === "retry" ? 0 : tally};
         const fingerprint = this.revisionFingerprint(item, calendarDateFromKey(yesterdayLocalDate));
         const moment = {occurredAt: new Date().toISOString(), localDate: yesterdayLocalDate};
-        await this.enqueueMutation(() => this.recordExternalEvent({itemId: governance.notesItemId, value: decision.value, source: "weread", externalRef: notesRef}, moment, fingerprint));
-        this.invalidateSummary();
-        this.renderBackgroundUpdate();
+        const recorded = await this.enqueueMutation(() => {
+            if (this.wereadIntegration !== governance || !governance.enabled) return Promise.resolve(undefined);
+            return this.recordExternalEvent({itemId: governance.notesItemId, value: decision.value, source: "weread", externalRef: notesRef}, moment, fingerprint);
+        });
+        if (!isCurrent()) return {status: "skipped", tally: 0};
+        if (recorded) {
+            this.invalidateSummary();
+            this.renderBackgroundUpdate();
+        }
         return {status: "settled", tally: decision.value};
     }
 
     /* 设置页「立即拉取」：同通道摄取并反馈结果；升级提示按官方 skill 文档要求见到即转达。 */
     private async pullWereadNow(): Promise<void> {
-        if (!this.wereadIntegration.itemId || !isWereadApiKey(this.wereadIntegration.apiKey)) {
+        const governance = this.wereadIntegration;
+        if (!governance.itemId || !isWereadApiKey(governance.apiKey)) {
             showMessage(t("msg.wereadNeedConfig"));
             return;
         }
-        if (!this.wereadIntegration.enabled) {
+        if (!governance.enabled) {
             showMessage(t("msg.wereadPullNeedEnable"));
             return;
         }
         const written = await this.ingestWeread();
+        if (this.wereadIntegration !== governance || this.disposed || this.disposing) return;
         const last = this.wereadLastPull;
         if (last && !last.ok) showMessage(t("msg.wereadPullFail", {message: `${last.error || ""}${last.upgrade ? ` · ${last.upgrade}` : ""}`}), 4200);
         else showMessage(t("msg.wereadPullDone", {n: written}));
@@ -1624,6 +1669,7 @@ export default class CheckinPlugin extends Plugin {
         if (!preview && typeof document !== "undefined" && document.hidden) return;
         const report = createSourceIngestReport(preview ? "preview" : "ingest");
         this.sourceIngestReports.yeguif = report;
+        const isCurrent = () => this.yeguifIntegration === governance && !this.disposed && !this.disposing && this.acceptingOperations;
         const today = dateKey(currentCalendarDate());
         const hasTargets = governance.mappings?.length
             ? governance.mappings.some(mapping => getActiveItemById(this.store, mapping.itemId) && this.hasMinuteTargetOnDate(mapping.itemId, today))
@@ -1643,6 +1689,7 @@ export default class CheckinPlugin extends Plugin {
             rowId: (row) => (typeof row?.id === "string" ? row.id : undefined),
         }).catch(() => undefined);
         if (!scan) { report.outcome = "read-failed"; return; }
+        if (!isCurrent()) return;
         this.yeguifScanCursor = scan.cursor;
         const rows = scan.rows;
         report.scanned = rows.length;
@@ -1675,7 +1722,11 @@ export default class CheckinPlugin extends Plugin {
                 const moment = buildYeguifActionMoment(entry.localDate, entry.startMinutes, entry.startSecond);
                 if (!moment) { report.invalid += 1; continue; }
                 const writeOutcome: ExternalWriteOutcome = {};
-                const recorded = await this.enqueueMutation(() => this.recordExternalEvent({itemId, value: entry.minutes, source: "yeguif", externalRef, note: buildYeguifEventNote(entry.type, entry.text)}, moment, fingerprint, writeOutcome)).catch(() => { report.outcome = "write-failed"; return undefined; });
+                const recorded = await this.enqueueMutation(() => {
+                    if (!isCurrent()) return Promise.resolve(undefined);
+                    return this.recordExternalEvent({itemId, value: entry.minutes, source: "yeguif", externalRef, note: buildYeguifEventNote(entry.type, entry.text)}, moment, fingerprint, writeOutcome);
+                }).catch(() => { report.outcome = "write-failed"; return undefined; });
+                if (!isCurrent()) return;
                 if (recorded) {
                     report.written += 1;
                     this.invalidateSummary();
@@ -2429,7 +2480,11 @@ private reviewCompatibilitySnapshot?: {
             this.settleReady(false);
             /* persist() 自身已经记录 save-failed；启动层只补充尚未覆盖的批量读取失败，避免重复诊断。 */
             if (initializationFailurePhase !== "persist") this.recordDiagnostic("load-failed", "startup-load-failed");
-            showMessage(t("msg.dataLoadFail", {error: String(error)}));
+            /* T-1783：宿主异常可能包含工作区绝对路径、请求参数或凭据片段。
+               诊断导出保留同一故障的结构化原因码；启动提示只给出本地化阶段
+               说明，避免把原始异常文本直接写入固定提示层或读屏缓冲区。 */
+            const failureLabel = initializationFailurePhase === "persist" ? t("diag.saveFailed") : t("diag.loadFailed");
+            showMessage(t("msg.dataLoadFail", {error: failureLabel}));
         }
         if (this.disposed || this.disposing) return;
         /* 智能体能力注册与存储读取结果解耦：处理器读的是实时状态、写入另有 canRecord 守卫，
@@ -3541,7 +3596,11 @@ this.scheduleMidnightRefresh();
         if (localItemId && this.currentPage === "today" && this.renderTodayItemLocally(localItemId, localItemDate)) {
             /* The original control stays connected, so no focus restoration is needed;
                clear the deferred full-render target to avoid stealing focus later. */
-            this.clearPendingFocusItems();
+            /* A local refresh may be produced by one root while another root
+               has a separate record queued.  Consume only focus requests for
+               this item; clearing the whole registry would make the other
+               surface lose its post-record focus restoration. */
+            this.clearPendingFocusItems(localItemId);
             return;
         }
         renderBackgroundUpdateFor(this as unknown as PluginOpsHost);
@@ -4322,8 +4381,16 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
         if (this.activeRoot === root) this.pendingFocusItemId = itemId;
     }
 
-    /** T-1621：局部 patch 成功时清理所有 root 的一次性焦点恢复请求。 */
-    public clearPendingFocusItems(): void {
+    /** T-1621：局部 patch 成功时只消费已完成事项的一次性焦点恢复请求。
+     * 省略 itemId 保留旧的显式“全部清理”兼容入口。 */
+    public clearPendingFocusItems(itemId?: string): void {
+        if (itemId) {
+            if (this.pendingFocusItemId === itemId) this.pendingFocusItemId = undefined;
+            for (const context of this.rootContexts.values()) {
+                if (context.pendingFocusItemId === itemId) context.pendingFocusItemId = undefined;
+            }
+            return;
+        }
         this.pendingFocusItemId = undefined;
         for (const context of this.rootContexts.values()) context.pendingFocusItemId = undefined;
     }

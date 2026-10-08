@@ -1,12 +1,35 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const ts = require("typescript");
 
 const root = path.join(__dirname, "..");
 const indexSource = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
 const fragments = fs.readFileSync(path.join(root, "src", "render", "fragments.ts"), "utf8");
 const components = fs.readFileSync(path.join(root, "src", "ui", "components.scss"), "utf8");
 const todayBindings = fs.readFileSync(path.join(root, "src", "render", "bind-today.ts"), "utf8");
+
+/* T-1804: local Today refreshes must not clear a pending focus request queued
+   by another root. Execute the production method from the class AST so this
+   guard exercises the actual item-filtering behavior rather than a duplicate
+   test implementation. */
+const indexAst = ts.createSourceFile("index.ts", indexSource, ts.ScriptTarget.Latest, true);
+const indexClass = indexAst.statements.find((node) => ts.isClassDeclaration(node));
+const clearFocusMethod = indexClass?.members.find((node) => node.name?.getText(indexAst) === "clearPendingFocusItems");
+assert.ok(clearFocusMethod, "clearPendingFocusItems implementation must remain available");
+const focusClassCode = ts.transpileModule(`class FocusHost { ${clearFocusMethod.getText(indexAst)} }`, {
+    compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS},
+}).outputText;
+const FocusHost = new Function(`${focusClassCode}\nreturn FocusHost;`)();
+const focusHost = new FocusHost();
+const dockContext = {pendingFocusItemId: "item-dock"};
+const tabContext = {pendingFocusItemId: "item-tab"};
+focusHost.rootContexts = new Map([[{}, dockContext], [{}, tabContext]]);
+focusHost.pendingFocusItemId = "item-tab";
+focusHost.clearPendingFocusItems("item-dock");
+assert.equal(dockContext.pendingFocusItemId, undefined, "completed item focus is consumed");
+assert.equal(tabContext.pendingFocusItemId, "item-tab", "another root focus request survives local refresh");
+assert.equal(focusHost.pendingFocusItemId, "item-tab", "active compatibility focus survives for another item");
 
 assert.doesNotMatch(fragments, /state === "saving"[\s\S]{0,180}lc-checkin__save-status is-saving/, "saving must not insert a layout-shifting block");
 assert.match(fragments, /state === "error"[\s\S]{0,180}role="alert"/, "save errors remain visible and retryable");
@@ -22,6 +45,8 @@ assert.match(indexSource, /if \(this\.pendingOnly && complete\) return false/, "
 assert.match(indexSource, /if \(currentComplete !== complete \|\| currentInCompleted !== nextInCompleted\) return false/, "completion section transitions must use an atomic full render");
 assert.match(indexSource, /structuralSelectors\.some\(\(selector\) => has\(card, selector\) !== has\(next, selector\)\)/, "structural card changes must not use a stale local patch");
 assert.match(indexSource, /pendingLocalItemId = current\.id[\s\S]*?renderBackgroundUpdate\(\)/, "successful records should request a local card refresh");
+assert.match(indexSource, /renderTodayItemLocally\(localItemId, localItemDate\)[\s\S]*?clearPendingFocusItems\(localItemId\)/, "a local Today refresh must consume only the completed item focus request");
+assert.match(indexSource, /public clearPendingFocusItems\(itemId\?: string\)[\s\S]*?if \(context\.pendingFocusItemId === itemId\)/, "root focus requests must be filtered by item when parallel surfaces refresh");
 assert.match(indexSource, /broadcast\(\{type: "analytics-updated"/);
 assert.match(indexSource, /renderTodayItemLocally\(localItemId, localItemDate\)[\s\S]*?renderBackgroundUpdateFor/, "local refresh should fall back to the full render when unsafe");
 assert.match(indexSource, /card\.className = next\.className/, "same-shape state classes should update the existing card in place");
