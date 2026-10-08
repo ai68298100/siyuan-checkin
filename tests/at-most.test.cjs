@@ -11,7 +11,7 @@ const read = (...parts) => fs.readFileSync(path.join(sourceRoot, ...parts), "utf
 /* 结构守门：模型反转、编辑器开关、模板方向、卡片按钮与切换分支。 */
 const catalogSource = read("catalog.ts");
 assert.match(read("types.ts"), /direction\?: "atMost"/, "CheckinItem carries the at-most direction");
-assert.match(read("model.ts"), /item\.direction === "atMost"/, "model branches on at-most direction");
+assert.match(read("model.ts"), /getItemDirectionForDate\(item/, "model branches on the per-day at-most direction (T-1766)");
 assert.match(read("render", "bind-today.ts"), /item\.direction === "atMost"/, "record toggle inverts for at-most");
 assert.match(read("render", "fragments.ts"), /item\.recordLapse/, "card button uses lapse labels");
 assert.match(read("render", "save-form.ts"), /scheduleType === "daily"/, "save form restricts at-most to daily schedules");

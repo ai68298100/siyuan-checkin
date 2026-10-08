@@ -11,6 +11,8 @@ export function cloneStoreValue(store: CheckinStore): CheckinStore {
         items: store.items.map((item) => cloneItemValue(item)),
         events: store.events.map((event) => ({...event})),
         eventTombstones: store.eventTombstones.map((tombstone) => ({...tombstone})),
+        /* T-1765：克隆必须携带项目删除墓碑，否则写后校验按 JSON 指纹会把丢墓碑判为差异。 */
+        itemTombstones: (store.itemTombstones || []).map((tombstone) => ({...tombstone})),
     };
 }
 

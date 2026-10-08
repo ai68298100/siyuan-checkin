@@ -10,7 +10,7 @@ export interface OccasionsRootContext {
     occasionSearchQuery: string;
     occasionStatusFilter: "all" | "enabled" | "disabled";
     occasionKindFilter: "all" | OccasionKind;
-    occasionTimeFilter: "all" | "today" | "upcoming" | "ended";
+    occasionTimeFilter: "all" | "today" | "missed" | "upcoming" | "ended";
     occasionTemplatesOpen: boolean;
     occasionTemplateCategory: "recommended" | OccasionTemplateCategory;
     formOpen?: boolean;

@@ -7,6 +7,10 @@ import type {CheckinAppearance, CheckinPalette, DialogSizeMode, FocusTimerProvid
 import type {CheckinItemSortMode, CheckinStore} from "../types";
 import type {DockTomatoCompletionIssue, DockTomatoCompletionIssueReason, DockTomatoProviderDiagnostics, DockTomatoProviderState} from "../dock-tomato";
 import {dockTomatoCompletionValue, type DockTomatoInboxEntryView} from "../features/docktomato-inbox";
+import {wereadCandidates} from "../features/weread-candidates";
+import {healthCandidates} from "../features/health-candidates";
+import {recommendWereadDuration, recommendWereadThreshold} from "../features/recommendation-engine";
+import {renderWereadRecommendations} from "../features/recommendation-render";
 import type {ExternalPendingEntryView} from "../features/external-pending";
 import type {HealthInboxPreference, HealthInboxMetric} from "../features/health-inbox";
 import type {NoteQueryPreference} from "../features/note-query";
@@ -224,12 +228,13 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
             return `<option value="${escapeHtml(item.id)}"${item.id === selectedId ? " selected" : ""}>${escapeHtml(item.name)}${marker}</option>`;
         }).join("");
     };
-    const sireaderItemOptions = projectOptions(sireader.itemId);
+    /* T-1744（D-368）：思阅/思播只写入分钟目标——候选按分钟单位过滤（与写入校验同纪律）。 */
+    const sireaderItemOptions = wereadOptionsFor(sireader.itemId, "minutes");
     /* T-1385：思播联动缺省值，同上。 */
     const siplayer = ctx.siplayerIntegration || {enabled: false, itemId: "", thresholdMinutes: 30};
     const siplayerTodayMinutes = ctx.siplayerTodayMinutes ?? 0;
     const sireaderTodayMinutes = ctx.sireaderTodayMinutes ?? 0;
-    const siplayerItemOptions = projectOptions(siplayer.itemId);
+    const siplayerItemOptions = wereadOptionsFor(siplayer.itemId, "minutes");
     const siplayerHostState = ctx.siplayerControllerAvailable === true
         ? "available"
         : ctx.siplayerControllerAvailable === false ? "missing" : "unknown";
@@ -240,10 +245,29 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
     const healthInbox = ctx.healthInbox || {enabled: false, docId: "", metricBindings: [], stepsItemId: "", weightItemId: ""};
     const noteQuery = ctx.noteQuery || {enabled: false, template: "frontmatter" as const, scope: "notebook" as const, targetId: "", itemId: "", field: "checkin", value: "done", tag: "checkin"};
     /* T-1402：微信读书联动缺省值，同上；Key 只呈现「已保存」状态。 */
-    const weread = ctx.wereadIntegration || {enabled: false, itemId: "", thresholdMinutes: 30, finishItemId: "", notesItemId: ""};
+    const weread = ctx.wereadIntegration || {enabled: false, itemId: "", thresholdMinutes: 30, apiKey: "", finishItemId: "", notesItemId: ""};
     const wereadKeySet = ctx.wereadKeySet ?? false;
     const wereadTodayMinutes = ctx.wereadTodayMinutes ?? 0;
-    const wereadItemOptions = (selectedId: string): string => projectOptions(selectedId);
+    /* T-1742（D-366）：三种映射的候选按指标过滤——阅读时长只候选"分钟"单位项目
+       （与写入校验同纪律），完读候选二值、笔记候选数值；当前绑定项永远保留。
+       候选为空时显示占位（disabled），不静默让用户以为可选。 */
+    /* 函数声明（提升）：思阅/思播在定义点之前使用。 */
+    function wereadOptionsFor(selectedId: string, metric: "minutes" | "binary" | "numeric"): string {
+        const {items, retained} = wereadCandidates(ctx.store.items, selectedId, metric);
+        const selectedItem = selectedId ? ctx.store.items.find((item) => item.id === selectedId) : undefined;
+        const missing = selectedId && !selectedItem
+            ? `<option value="${escapeHtml(selectedId)}" selected>${escapeHtml(selectedId)} · ${t("set.itemMissing")}</option>`
+            : "";
+        const options = items.map((item) => {
+            const marker = retained && item.id === selectedId ? ` · ${t("set.itemRetained")}` : "";
+            return `<option value="${escapeHtml(item.id)}"${item.id === selectedId ? " selected" : ""}>${escapeHtml(item.name)}${escapeHtml(item.unit)}${marker}</option>`;
+        }).join("");
+        const empty = items.length ? "" : `<option value="" disabled>${escapeHtml(t("set.wereadNoMatching"))}</option>`;
+        return missing + empty + options;
+    };
+    const wereadItemOptions = (selectedId: string): string => wereadOptionsFor(selectedId, "minutes");
+    const wereadFinishOptions = (selectedId: string): string => wereadOptionsFor(selectedId, "binary");
+    const wereadNotesOptions = (selectedId: string): string => wereadOptionsFor(selectedId, "numeric");
     const wereadPullStatus = ctx.wereadLastPull
         ? (ctx.wereadLastPull.ok
             ? t("set.wereadPullOk", {days: ctx.wereadLastPull.days, written: ctx.wereadLastPull.written})
@@ -377,7 +401,22 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
         return `<details class="lc-checkin__sandbox" data-sandbox-details="${source}"><summary><span>${t("today.sandboxTitle")}</span><small>${t("today.sandboxHint")}</small></summary><div class="lc-checkin__sandbox-body"><textarea class="lc-checkin__sandbox-text" data-sandbox-text="${source}" rows="4" placeholder="${t(placeholderKey)}">${escapeHtml(ctx.sourceSandboxTexts?.[source] || "")}</textarea><div class="lc-checkin__share-actions"><button class="lc-checkin__text-button" type="button" data-sandbox-run="${source}">${t("today.sandboxRun")}</button></div>${result}</div></details>`;
     };
     const sourcePanelOpen = (source: string) => ctx.openSourcePanels?.includes(source) ? " open" : "";
-    const healthItemOptions = (selectedId: string) => projectOptions(selectedId);
+    /* T-1745（D-369）：健康映射候选按指标过滤——steps 只候选"步/步数"单位、weight
+       只候选"公斤/千克/kg"单位（与写入校验 hasHealthTarget 同纪律，失败提前到候选层）；
+       当前绑定项永远保留（retained）；同项目多指标语义保持（metric 参数逐绑定传入）。 */
+    const healthItemOptions = (selectedId: string, metric: "steps" | "weight" = "steps"): string => {
+        const {items, retained} = healthCandidates(ctx.store.items, selectedId, metric);
+        const selectedItem = selectedId ? ctx.store.items.find((item) => item.id === selectedId) : undefined;
+        const missing = selectedId && !selectedItem
+            ? `<option value="${escapeHtml(selectedId)}" selected>${escapeHtml(selectedId)} · ${t("set.itemMissing")}</option>`
+            : "";
+        const options = items.map((item) => {
+            const marker = retained && item.id === selectedId ? ` · ${t("set.itemRetained")}` : "";
+            return `<option value="${escapeHtml(item.id)}"${item.id === selectedId ? " selected" : ""}>${escapeHtml(item.name)} · ${escapeHtml(item.unit)}${marker}</option>`;
+        }).join("");
+        const empty = items.length ? "" : `<option value="" disabled>${escapeHtml(t("set.healthNoMatching"))}</option>`;
+        return missing + empty + options;
+    };
     const yeguifNotebookOption = yeguif.notebookId
         ? `<option value="${escapeHtml(yeguif.notebookId)}" selected>${escapeHtml(yeguif.notebookId)} · ${t("set.yeguifNotebookSaved")}</option>`
         : `<option value="">${t("set.yeguifNotebookLoading")}</option>`;
@@ -616,6 +655,7 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                     <summary class="lc-checkin__source-panel-head"><strong>${t("set.sireaderIntegration")}</strong><span class="lc-checkin__source-panel-meta">${(ctx.sourceTodayCounts?.sireader ?? 0) > 0 ? `<span class="lc-checkin__source-today">${t("set.sourceToday", {n: ctx.sourceTodayCounts!.sireader})}</span>` : ""}${sourceBadge(sireaderState)}</span></summary>
                     ${statusLine(integrationStatus(sireaderState, ctx.sourceTodayCounts?.sireader ?? 0))}
                     ${sourceFactsBlock("sireader", [sireader.itemId])}
+                    <small class="lc-checkin__source-boundary" data-sireader-probe-wait>${t("set.sireaderProbeWait")}</small>
                     <details class="lc-checkin__settings-fold" data-source-advanced><summary>${t("set.sourceAdvanced")}<span class="lc-checkin__fold-chevron" aria-hidden="true">⌄</span></summary><ol class="lc-checkin__source-steps"><li>${t("set.stepsSireader1")}</li><li>${t("set.stepsSireader2")}</li><li>${t("set.stepsSireader3")}</li><li>${t("set.stepsSireader4")}</li></ol>
                     <small class="lc-checkin__source-boundary">${t("set.sireaderBoundary")}</small></details>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.sireaderItem")}</span><small>${t("set.sireaderItemHint")}</small></span><span class="lc-checkin__settings-inline"><select data-sireader-item aria-label="${t("set.sireaderItem")}"><option value="">${t("set.sireaderItemChoose")}</option>${sireaderItemOptions}</select></span></div>
@@ -635,13 +675,15 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                     <summary class="lc-checkin__source-panel-head"><strong>${t("set.wereadIntegration")}</strong><span class="lc-checkin__source-panel-meta">${(ctx.sourceTodayCounts?.weread ?? 0) > 0 ? `<span class="lc-checkin__source-today">${t("set.sourceToday", {n: ctx.sourceTodayCounts!.weread})}</span>` : ""}${sourceBadge(wereadState)}</span></summary>
                     ${statusLine(integrationStatus(wereadState, ctx.sourceTodayCounts?.weread ?? 0, undefined, ctx.wereadLastPull?.ok))}
                     ${sourceFactsBlock("weread", [weread.itemId, weread.finishItemId, weread.notesItemId])}
+                    ${renderWereadRecommendations(ctx.store.items, weread, recommendWereadDuration({wereadIntegration: {...weread, apiKey: wereadKeySet ? "configured" : ""}, items: ctx.store.items}), recommendWereadThreshold(), {t, escapeHtml})}
                     <details class="lc-checkin__settings-fold" data-source-advanced><summary>${t("set.sourceAdvanced")}<span class="lc-checkin__fold-chevron" aria-hidden="true">⌄</span></summary><ol class="lc-checkin__source-steps"><li>${t("set.stepsWeread1")}</li><li>${t("set.stepsWeread2")}</li><li>${t("set.stepsWeread3")}</li><li>${t("set.stepsWeread4")}</li></ol>
                     <small class="lc-checkin__source-boundary">${t("set.wereadBoundary")}</small></details>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.wereadItem")}</span><small>${t("set.wereadItemHint")}</small></span><span class="lc-checkin__settings-inline"><select data-weread-item aria-label="${t("set.wereadItem")}"><option value="">${t("set.wereadItemChoose")}</option>${wereadItemOptions(weread.itemId)}</select></span></div>
-                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.wereadFinishItem")}</span><small>${t("set.wereadFinishItemHint")}</small></span><span class="lc-checkin__settings-inline"><select data-weread-finish-item aria-label="${t("set.wereadFinishItem")}"><option value="">${t("set.wereadFinishItemChoose")}</option>${wereadItemOptions(weread.finishItemId)}</select></span></div>
-                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.wereadNotesItem")}</span><small>${t("set.wereadNotesItemHint")}</small></span><span class="lc-checkin__settings-inline"><select data-weread-notes-item aria-label="${t("set.wereadNotesItem")}"><option value="">${t("set.wereadNotesItemChoose")}</option>${wereadItemOptions(weread.notesItemId)}</select></span></div>
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.wereadFinishItem")}</span><small>${t("set.wereadFinishItemHint")}</small></span><span class="lc-checkin__settings-inline"><select data-weread-finish-item aria-label="${t("set.wereadFinishItem")}"><option value="">${t("set.wereadFinishItemChoose")}</option>${wereadFinishOptions(weread.finishItemId)}</select></span></div>
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.wereadNotesItem")}</span><small>${t("set.wereadNotesItemHint")}</small></span><span class="lc-checkin__settings-inline"><select data-weread-notes-item aria-label="${t("set.wereadNotesItem")}"><option value="">${t("set.wereadNotesItemChoose")}</option>${wereadNotesOptions(weread.notesItemId)}</select></span></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.wereadKey")}</span><small>${t("set.wereadKeyHint")}${wereadKeySet ? ` · ${t("set.wereadKeySaved")}` : ""}</small></span><span class="lc-checkin__settings-inline"><input type="password" data-weread-key autocomplete="off" placeholder="${wereadKeySet ? "••••••••" : "wrk-…"}" aria-label="${t("set.wereadKey")}" /><button class="lc-checkin__text-button" type="button" data-action="clear-weread-key" ${wereadKeySet ? "" : "disabled"}>${t("set.wereadClearKey")}</button></span></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.wereadThreshold")}</span><small>${t("set.wereadThresholdHint")}</small></span><span class="lc-checkin__settings-inline"><input type="number" min="1" max="1440" step="1" data-weread-threshold value="${weread.thresholdMinutes}" aria-label="${t("set.wereadThreshold")}" /><button class="lc-checkin__text-button" type="button" data-action="save-weread">${t("set.wereadSave")}</button></span></div>
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.wereadEffective")}</span><small>${t("set.wereadEffectiveHint")}</small></span><span class="lc-checkin__settings-inline"><span class="lc-checkin__settings-effective">${weread.enabled ? t("set.wereadEnabledOn") : t("set.wereadEnabledOff")} · ${escapeHtml((ctx.store.items.find((item) => item.id === weread.itemId) || {name: t("set.wereadNotBound")}).name)} · ${escapeHtml(t("set.wereadThresholdValue", {n: weread.thresholdMinutes}))} · ${wereadKeySet ? t("set.wereadKeySaved") : t("set.wereadKeyNone")}</span></span></div>
                     <div class="lc-checkin__settings-row" data-weread-integration><span class="lc-checkin__settings-label"><span>${t("set.wereadTitle")}</span><small>${t("set.wereadHint")}${weread.enabled ? ` · ${t("set.wereadToday", {n: formatNumber(wereadTodayMinutes)})}` : ""}</small></span><input type="checkbox" class="lc-checkin__switch" data-weread-toggle ${weread.enabled ? "checked" : ""} aria-label="${t("set.wereadToggle")}" /></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.wereadPull")}</span><small>${wereadPullStatus}</small></span><span class="lc-checkin__settings-inline"><button class="lc-checkin__text-button" type="button" data-action="weread-pull">${t("set.wereadPull")}</button></span></div>
                     </details>
@@ -661,8 +703,8 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                         <div class="lc-checkin__document-target-id"><label class="lc-checkin__document-target-field"><span>${t("set.healthDoc")}</span><input type="text" data-health-doc data-settings-search-value value="${escapeHtml(healthInbox.docId)}" placeholder="20260101120000-xxxxxxxx" aria-label="${t("set.healthDoc")}" /></label><div class="lc-checkin__document-target-actions"><button class="lc-checkin__text-button" type="button" data-action="save-health-doc">${t("set.healthSave")}</button></div></div>
                     </div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.healthBindings")}</span><small>${t("set.healthBindingsHint")} ${t("set.healthItemHint")}</small></span><span class="lc-checkin__settings-inline"><button class="lc-checkin__text-button" type="button" data-action="add-health-binding">${t("set.healthAddBinding")}</button></span></div>
-                    <div data-health-bindings>${healthInbox.metricBindings.map((binding) => `<div class="lc-checkin__settings-row" data-health-binding><span class="lc-checkin__settings-inline"><select data-health-binding-metric aria-label="${t("set.healthBindingMetric")}"><option value="steps"${binding.metric === "steps" ? " selected" : ""}>${t("set.healthMetricSteps")}</option><option value="weight"${binding.metric === "weight" ? " selected" : ""}>${t("set.healthMetricWeight")}</option></select><select data-health-binding-item aria-label="${t("set.healthBindingItem")}"><option value="">${t("set.healthItemChoose")}</option>${healthItemOptions(binding.itemId)}</select><button class="lc-checkin__text-button" type="button" data-health-binding-remove aria-label="${t("set.healthBindingRemove")}">×</button></span></div>`).join("")}</div>
-                    <template data-health-binding-template><div class="lc-checkin__settings-row" data-health-binding><span class="lc-checkin__settings-inline"><select data-health-binding-metric aria-label="${t("set.healthBindingMetric")}"><option value="steps" selected>${t("set.healthMetricSteps")}</option><option value="weight">${t("set.healthMetricWeight")}</option></select><select data-health-binding-item aria-label="${t("set.healthBindingItem")}"><option value="">${t("set.healthItemChoose")}</option>${healthItemOptions("")}</select><button class="lc-checkin__text-button" type="button" data-health-binding-remove aria-label="${t("set.healthBindingRemove")}">×</button></span></div></template>
+                    <div data-health-bindings>${healthInbox.metricBindings.map((binding) => `<div class="lc-checkin__settings-row" data-health-binding><span class="lc-checkin__settings-inline"><select data-health-binding-metric aria-label="${t("set.healthBindingMetric")}"><option value="steps"${binding.metric === "steps" ? " selected" : ""}>${t("set.healthMetricSteps")}</option><option value="weight"${binding.metric === "weight" ? " selected" : ""}>${t("set.healthMetricWeight")}</option></select><select data-health-binding-item aria-label="${t("set.healthBindingItem")}"><option value="">${t("set.healthItemChoose")}</option>${healthItemOptions(binding.itemId, binding.metric)}</select><button class="lc-checkin__text-button" type="button" data-health-binding-remove aria-label="${t("set.healthBindingRemove")}">×</button></span></div>`).join("")}</div>
+                    <template data-health-binding-template><div class="lc-checkin__settings-row" data-health-binding><span class="lc-checkin__settings-inline"><select data-health-binding-metric aria-label="${t("set.healthBindingMetric")}"><option value="steps" selected>${t("set.healthMetricSteps")}</option><option value="weight">${t("set.healthMetricWeight")}</option></select><select data-health-binding-item aria-label="${t("set.healthBindingItem")}"><option value="">${t("set.healthItemChoose")}</option>${healthItemOptions("", "steps")}</select><button class="lc-checkin__text-button" type="button" data-health-binding-remove aria-label="${t("set.healthBindingRemove")}">×</button></span></div></template>
                     <div class="lc-checkin__settings-row" data-health-inbox><span class="lc-checkin__settings-label"><span>${t("set.healthTitle")}</span><small>${t("set.healthHint")}</small></span><span class="lc-checkin__settings-inline"><button class="lc-checkin__text-button" type="button" data-action="preview-source" data-source="health">${t("set.sourcePreview")}</button><button class="lc-checkin__text-button" type="button" data-action="refresh-source" data-source="health">${t("set.sourceReadNow")}</button><input type="checkbox" class="lc-checkin__switch" data-health-toggle ${healthInbox.enabled ? "checked" : ""} aria-label="${t("set.healthToggle")}" /></span></div>
                     ${sandboxBlock("health", "today.sandboxPlaceholder.health")}
                     </details>
@@ -759,3 +801,7 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
             </div>
         </div>`;
 }
+
+/** T-1736（D-372）：推荐草案预览——消费 D-371 引擎（recommendWereadDuration/Threshold），
+    只读展示"已保存 → 推荐草案"差异；应用按钮由 bind 侧按 data-rec-target 分发走
+    用户显式 applyPreference 通道（建议≠启用）。已配置/无建议不渲染（无建议也是结论）。 */

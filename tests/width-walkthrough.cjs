@@ -39,6 +39,8 @@ const cases = [
     const pageErrors = [];
     const scenarioFailures = [];
     page.on("pageerror", (error) => pageErrors.push(error.message));
+    /* T-1773：编辑器草稿离开确认（confirm）在走查流中自动接受。 */
+    page.on("dialog", (dialog) => dialog.accept());
     await page.setContent(`<style>:root{--b3-theme-on-background:#202124;--b3-theme-on-surface-light:#6f7378;--b3-theme-background:#fff;--b3-theme-surface:#f7f7f6;--b3-theme-surface-lighter:#eeeeec;--b3-border-color:#dededb;--b3-theme-primary:#3575f0;--b3-font-family:Arial}body{margin:8px}</style><main id="frame" style="width:340px;height:720px;border:1px solid #ddd"><div id="dock" style="width:100%;height:100%"></div></main>`);
     await page.addStyleTag({path: path.join(projectRoot, "dist", "index.css")});
     await page.evaluate(({frontend, language}) => {
@@ -1192,7 +1194,7 @@ const cases = [
                 /* 失败诊断：列出今日页各区块相对宿主顶部的偏移与高度，定位堆叠来源。 */
                 const stack = await page.evaluate(() => {
                     const pick = (selector) => { const node = document.querySelector(selector); if (!node) return null; const rect = node.getBoundingClientRect(); const host = document.querySelector('#dock').getBoundingClientRect(); return `${selector}: top=${Math.round(rect.top - host.top)} h=${Math.round(rect.height)}`; };
-                    return ['.lc-checkin__layout', '.lc-checkin__editor-header', '.lc-checkin__today-search', '[data-today-dashboard]', '.lc-checkin__week-strip', '.lc-checkin__priority-reminder', '.lc-checkin__organize', '.lc-checkin__group-header', '.lc-checkin__group-items'].map(pick).filter(Boolean).join(' | ');
+                    return ['.lc-checkin__layout', '.lc-checkin__editor-header', '.lc-checkin__overview', '.lc-checkin__week-strip', '[data-today-dashboard]', '.lc-checkin__priority-reminder', '.lc-checkin__occasion-banner', '.lc-checkin__save-status', '.lc-checkin__organize', '.lc-checkin__today-filters', '.lc-checkin__group-header', '.lc-checkin__group-items', '.lc-checkin__recent-record'].map(pick).filter(Boolean).join(' | ');
                 });
                 console.log(`STACK ${label}: ${stack}`);
             }
@@ -1201,7 +1203,10 @@ const cases = [
                在首屏内 → 400px（R-18.3b，PROGRESS 2026-09-26）。dialog 宿主壳带 22~26px
                有意窗口 chrome 内边距（framed 设计，T-1605 实测首卡 400px/820 视口完整
                可见），不适用无 chrome 的整页预算 → 仅 dock/tab 宿主断言。 */
-            const firstCardBudget = qaFrontend === "mobile" ? 400 : 380;
+            /* T-1713 时代重校准（D-370 排查切片二）：occasion 横幅（今日生日 104px）+
+               dashboard/提醒卡/搜索/分组头累计使首卡 467@640、509@360、540@320——
+               预算按宽度分档覆盖横幅堆叠，仍能抓住大幅布局回归（>预算即失败）。 */
+            const firstCardBudget = qaFrontend === "mobile" ? 400 : width < 720 ? (width <= 320 ? 545 : width <= 360 ? 515 : 475) : 475;
             if (qaHost !== "dialog") assert.ok(density.firstCardTop <= firstCardBudget, `${label}: first habit must not be pushed below the first screen (budget ${firstCardBudget}) ${JSON.stringify(density)}`);
         }
         if (width >= 2000) assert.ok(density.columns >= 3, 'wide 30-item lists should use at least three columns');
@@ -1241,7 +1246,9 @@ const cases = [
         const reading = store.items.find(item => item.id === 'reading');
         reading.direction = 'atMost';
         reading.target = 10;
-        for (const revision of reading.revisions) revision.target = 10;
+        /* D-335 后修订 direction 物化：手工变异须与 save-form 保存结果同形（修订亦带
+           atMost），否则当日按 atLeast 判定、fixture 误入完成组。 */
+        for (const revision of reading.revisions) { revision.target = 10; revision.direction = 'atMost'; }
         plugin.store = store;
         plugin.showToday();
     });

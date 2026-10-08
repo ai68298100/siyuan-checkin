@@ -5,7 +5,9 @@ import {daysBetweenHalfOpen} from "../date-keys";
 import {currentCalendarDate, escapeHtml, parseLocalDateKey} from "../shared";
 import {uiIcon} from "../ui/icons";
 import {renderPageShellHead} from "./page-shell";
-import {describeElapsedSpan, describeRecurrence, describeOccasionMilestone, elapsedSpanSince, getMissedOccurrence, getOccurrenceDate, nextOccasionMilestones, occasionCycleProgress, occasionTemplateName, OCCASION_TEMPLATES, weekdayName} from "../occasions";
+import {describeElapsedSpan, describeRecurrence, describeOccasionMilestone, elapsedSpanSince, findOverrideOriginFor, getMissedOccurrence, getOccurrenceDate, isOccasionCompleted, nextOccasionMilestones, occasionCycleProgress, occasionTemplateName, OCCASION_TEMPLATES, weekdayName} from "../occasions";
+import {buildOccurrencePreview, type OccurrencePreviewEntry} from "../features/occasion-preview";
+import type {ReminderUserAction} from "../reminders";
 import type {MonthlySubtype, Occasion, OccasionKind, OccasionRecurrence, OccasionStore, OccasionTemplateCategory} from "../occasions";
 import type {OccasionsRootContext} from "./occasion-session";
 
@@ -16,6 +18,10 @@ let occasionRenderSequence = 0;
 export interface OccasionsViewContext extends Pick<OccasionsRootContext, "editingOccasionId" | "occasionSearchQuery" | "occasionStatusFilter" | "occasionKindFilter" | "occasionTimeFilter" | "occasionTemplatesOpen" | "occasionTemplateCategory" | "formOpen" | "filtersOpen" | "helpOpen" | "actionsHelpOpen" | "noteExpandedIds" | "occurrenceMoves" | "formDraft" | "submitting" | "deletingOccasionIds"> {
     occasionStore: OccasionStore;
     appearance: "light" | "dark";
+    occasionSortMode?: "next" | "name" | "updated";
+    occasionPreviewOpen?: boolean;
+    reminderUserActions?: ReminderUserAction[];
+    linkedItems?: Array<{id: string; name: string; linkedOccasionId: string; archived: boolean}>;
 }
 
 export function renderOccasionsView(ctx: OccasionsViewContext, root?: HTMLElement): string {
@@ -25,8 +31,22 @@ export function renderOccasionsView(ctx: OccasionsViewContext, root?: HTMLElemen
     const occasionQuery = (ctx.occasionSearchQuery || "").trim().toLocaleLowerCase();
     const todayKey = dateKey(currentCalendarDate());
     const withNext = ctx.occasionStore.occasions.map((item) => ({item, next: getOccurrenceDate(item, todayKey)}));
+    /* T-1715（D-361）：排序选择——next=启用优先→下次日期→名称（既有默认）；
+       name=启用优先→名称；updated=启用优先→最近修改。无下次日期排在有日期之后。 */
+    const sortMode = ctx.occasionSortMode || "next";
     const allOccasions = withNext.sort((left, right) => {
         if (left.item.enabled !== right.item.enabled) return left.item.enabled ? -1 : 1;
+        if (sortMode === "name") {
+            const byName = left.item.name.localeCompare(right.item.name, "zh-CN");
+            if (byName !== 0) return byName;
+            if (left.next !== right.next) return left.next ? (right.next ? left.next.localeCompare(right.next) : -1) : 1;
+            return left.item.id.localeCompare(right.item.id);
+        }
+        if (sortMode === "updated") {
+            const byUpdated = (right.item.updatedAt || "").localeCompare(left.item.updatedAt || "");
+            if (byUpdated !== 0) return byUpdated;
+            return left.item.name.localeCompare(right.item.name, "zh-CN");
+        }
         if (left.next !== right.next) return left.next ? (right.next ? left.next.localeCompare(right.next) : -1) : 1;
         return left.item.name.localeCompare(right.item.name);
     });
@@ -37,10 +57,24 @@ export function renderOccasionsView(ctx: OccasionsViewContext, root?: HTMLElemen
         if (ctx.occasionTimeFilter === "today" && next !== todayKey) return false;
         if (ctx.occasionTimeFilter === "upcoming" && (!next || next <= todayKey)) return false;
         if (ctx.occasionTimeFilter === "ended" && next) return false;
+        /* T-1713（D-356）：错过口径与 agenda missed 桶同源（启用 + getMissedOccurrence）。 */
+        if (ctx.occasionTimeFilter === "missed" && (!item.enabled || next === todayKey || !getMissedOccurrence(item, todayKey))) return false;
         return true;
     });
     const enabledCount = ctx.occasionStore.occasions.filter((item) => item.enabled).length;
     const todayCount = withNext.filter(({item, next}) => item.enabled && next === todayKey).length;
+    /* T-1713（D-356）：统计口径与 agenda 分桶同源（enabled+getMissedOccurrence/next），
+       统计块改为可点击筛选入口（is-active 高亮当前筛选），title 明示口径。 */
+    const missedCount = withNext.filter(({item, next}) => item.enabled && next !== todayKey && Boolean(getMissedOccurrence(item, todayKey))).length;
+    const endedCount = withNext.filter(({item, next}) => item.enabled && !next).length;
+    const statButton = (key: string, label: string, hint: string, count: number, active: boolean, status: string, time: string): string => `<button class="lc-checkin__occasion-stat${active ? " is-active" : ""}" type="button" data-occasion-stat="${escapeHtml(key)}" data-stat-status="${escapeHtml(status)}" data-stat-time="${escapeHtml(time)}" title="${escapeHtml(hint)}" aria-pressed="${active}"><strong>${count}</strong><small>${escapeHtml(label)}</small></button>`;
+    const stats = [
+        statButton("all", t("occ.filterAll"), t("occ.statAllHint"), ctx.occasionStore.occasions.length, ctx.occasionStatusFilter === "all" && ctx.occasionTimeFilter === "all", "all", "all"),
+        statButton("enabled", t("occ.filterEnabled"), t("occ.statEnabledHint"), enabledCount, ctx.occasionStatusFilter === "enabled" && ctx.occasionTimeFilter === "all", "enabled", "all"),
+        statButton("today", t("occ.filterToday"), t("occ.statTodayHint"), todayCount, ctx.occasionStatusFilter === "enabled" && ctx.occasionTimeFilter === "today", "enabled", "today"),
+        statButton("missed", t("occ.filterMissed"), t("occ.statMissedHint"), missedCount, ctx.occasionStatusFilter === "enabled" && ctx.occasionTimeFilter === "missed", "enabled", "missed"),
+        statButton("ended", t("occ.filterEnded"), t("occ.statEndedHint"), endedCount, ctx.occasionStatusFilter === "all" && ctx.occasionTimeFilter === "ended", "all", "ended"),
+    ].join("");
     const hasActiveFilters = Boolean(occasionQuery || ctx.occasionStatusFilter !== "all" || ctx.occasionKindFilter !== "all" || ctx.occasionTimeFilter !== "all");
     const activeFilterCount = Number(ctx.occasionStatusFilter !== "all") + Number(ctx.occasionKindFilter !== "all") + Number(ctx.occasionTimeFilter !== "all");
     const filterSelect = (key: string, label: string, value: string, options: Array<[string, string]>): string => `<label class="lc-checkin__occasion-filter"><span>${label}</span><select data-occasion-filter="${key}" aria-label="${label}">${options.map(([optionValue, text]) => `<option value="${optionValue}"${optionValue === value ? " selected" : ""}>${text}</option>`).join("")}</select></label>`;
@@ -63,13 +97,53 @@ export function renderOccasionsView(ctx: OccasionsViewContext, root?: HTMLElemen
         /* T-1494：错过处理（中性提示+补标记）与单次改期（仅循环事项）。 */
         const missed = getMissedOccurrence(item, todayKey);
         const lateMarkup = missed ? `<div class="lc-checkin__occasion-late"><span>${t("occ.lateHint", {date: missed})}</span><button class="lc-checkin__text-button" type="button" data-occasion-late-complete data-occasion-late-id="${escapeHtml(item.id)}" data-occasion-late-date="${escapeHtml(missed)}">${t("occ.lateComplete")}</button></div>` : "";
+        /* T-1718（D-359）：改期来源解析——当前发生日被单次改期时提供撤销（只清本次覆盖，
+           不影响其他周期或历史）；原日→新日核对在 move 行内呈现。 */
+        const moveOrigin: string | undefined = next ? findOverrideOriginFor(item, next) : undefined;
+        /* T-1712（D-355）：当前可处理发生日（下次发生日）的完成切换与"本次已完成"回显——
+           复用 setOccasionCompleted 单一通道，撤销/补标/多表面同源；启停与完成语义分离。 */
+        const doneThisTime = Boolean(next && isOccasionCompleted(item, next));
+        /* T-1722（D-365）：提醒处理状态——当前发生日的最新用户动作（snooze 未过期/
+           skip），与"事项已完成"语义分离展示；提醒动作不写 completedDates（既有纪律）。 */
+        const reminderActionsForOccurrence = (ctx.reminderUserActions || [])
+            .filter((action) => action.id === `occasion:${item.id}:${next}`)
+            .sort((left, right) => right.at.localeCompare(left.at));
+        let reminderMarkup = "";
+        if (next && !doneThisTime) {
+            const latest = reminderActionsForOccurrence[0];
+            if (latest?.action === "skip") {
+                reminderMarkup = `<span class="lc-checkin__occasion-remind-state">${t("review.remindersSkipped")}</span>`;
+            } else if (latest?.action === "snooze") {
+                const expiry = typeof latest.expiresAt === "string" && Number.isFinite(Date.parse(latest.expiresAt)) ? Date.parse(latest.expiresAt) : undefined;
+                const sameDay = latest.at.slice(0, 10) === dateKey(currentCalendarDate());
+                const stillDeferred = expiry !== undefined ? Date.now() <= expiry : sameDay;
+                if (stillDeferred) reminderMarkup = `<span class="lc-checkin__occasion-remind-state">${t("review.remindersSnoozed")}</span>`;
+            }
+        }
+        const doneMarkup = item.enabled && next
+            ? `<span class="lc-checkin__occasion-done${doneThisTime ? " is-done" : ""}">${doneThisTime ? t("occ.doneThisTime") : ""}<button class="lc-checkin__text-button" type="button" data-occasion-complete="${escapeHtml(item.id)}" data-occasion-complete-date="${escapeHtml(next)}" data-occasion-complete-target="${doneThisTime ? "false" : "true"}" aria-pressed="${doneThisTime}">${doneThisTime ? t("occ.undoDone") : t("occ.markDone")}</button></span>`
+            : "";
+        /* T-1719（D-362）：完成记录保留窗口透明化——completedDates 归一为唯一升序保留
+           最近 120 条；恰好 120 条=窗口已满（可能存在更早历史被截断），行内如实提示，
+           并显示保留窗口内的完成计数。不暗示完整历史。 */
+        const keptCompletions = item.completedDates.length;
+        const historyCapped = keptCompletions >= 120;
+        const historyMarkup = keptCompletions > 0
+            ? `<span class="lc-checkin__occasion-history" title="${escapeHtml(historyCapped ? t("occ.historyCappedHint") : "")}">${t("occ.doneCount", {n: keptCompletions})}${historyCapped ? ` · ${t("occ.historyCapped")}` : ""}</span>`
+            : "";
+        /* T-1720（D-363）：转打卡关联项目徽章——显示关联项目名与归档态；点击进该项目
+           编辑器（跨页编辑，返回回事项页）。项目被删除后徽章自然消失（无墓碑，诊断
+           归 T-1721）；重建走既有转打卡按钮（重复拦截已排除归档项）。 */
+        const linked = (ctx.linkedItems || []).filter((entry) => entry.linkedOccasionId === item.id);
+        const linkedMarkup = linked.length ? `<span class="lc-checkin__occasion-linked"><button class="lc-checkin__text-button" type="button" data-occasion-linked-edit="${escapeHtml(linked[0].id)}" title="${escapeHtml(t("occ.linkedItem"))}">${linked[0].archived ? `${escapeHtml(linked[0].name)} · ${t("occ.linkedArchived")}` : escapeHtml(linked[0].name)}${linked.length > 1 ? ` +${linked.length - 1}` : ""}</button></span>` : "";
         const moveAvailable = item.enabled && item.recurrence !== "once" && Boolean(next);
         /* T-1621：改期行是事项表面的 root-local 会话草稿。动作重绘或
            过滤切换时沿用该 root 的展开态与日期，不从另一个 surface 借 DOM 状态。 */
-        const moveState = ctx.occurrenceMoves[item.id];
+        const moveState = ctx.occurrenceMoves?.[item.id];
         const moveDate = moveState?.date || "";
         const moveOpen = moveState?.open === true;
-        const moveMarkup = moveAvailable && next ? `<div class="lc-checkin__occasion-move"><button class="lc-checkin__text-button" type="button" data-occasion-move-toggle="${escapeHtml(item.id)}" aria-expanded="${moveOpen ? "true" : "false"}">${t("occ.moveOccurrence")}</button><div class="lc-checkin__occasion-move-row" data-occasion-move-row="${escapeHtml(item.id)}"${moveOpen ? "" : " hidden"}><input type="date" data-occasion-move-date="${escapeHtml(item.id)}" value="${escapeHtml(moveDate)}" min="${escapeHtml(todayKey)}" aria-label="${t("occ.moveNewDate")}" /><button class="lc-checkin__text-button" type="button" data-occasion-move-confirm="${escapeHtml(item.id)}" data-occasion-move-origin="${escapeHtml(next)}"${moveDate ? "" : " disabled"}>${t("occ.moveConfirm")}</button></div></div>` : "";
+        const moveUndoMarkup = moveAvailable && moveOrigin ? `<button class="lc-checkin__text-button" type="button" data-occasion-move-undo="${escapeHtml(item.id)}" data-occasion-move-undo-origin="${escapeHtml(moveOrigin)}" data-occasion-move-undo-next="${escapeHtml(moveOrigin)}">${t("occ.moveUndo")}</button>` : "";
+        const moveMarkup = moveAvailable && next ? `<div class="lc-checkin__occasion-move"><button class="lc-checkin__text-button" type="button" data-occasion-move-toggle="${escapeHtml(item.id)}" aria-expanded="${moveOpen ? "true" : "false"}">${t("occ.moveOccurrence")}</button><div class="lc-checkin__occasion-move-row" data-occasion-move-row="${escapeHtml(item.id)}"${moveOpen ? "" : " hidden"}><span class="lc-checkin__occasion-move-origin-label" data-occasion-move-origin-label="${escapeHtml(item.id)}">${escapeHtml(t("occ.moveFrom", {date: next}))}</span><input type="date" data-occasion-move-date="${escapeHtml(item.id)}" value="${escapeHtml(moveDate)}" min="${escapeHtml(todayKey)}" aria-label="${t("occ.moveNewDate")}" /><button class="lc-checkin__text-button" type="button" data-occasion-move-confirm="${escapeHtml(item.id)}" data-occasion-move-origin="${escapeHtml(next)}"${moveDate ? "" : " disabled"}>${t("occ.moveConfirm")}</button>${moveUndoMarkup}</div></div>` : "";
         /* The next date is the scanning anchor; recurrence and lead time are
            supporting detail. Only exceptional states need a visible badge. */
         const isToday = item.enabled && next === todayKey;
@@ -88,22 +162,24 @@ export function renderOccasionsView(ctx: OccasionsViewContext, root?: HTMLElemen
            DOM gives wide/assistive surfaces a stable fallback and lets icon
            normalization update only the glyph on re-render. */
         const action = (attr: string, value: string, aria: string, title: string, content: string, extra = "") => `<button class="lc-checkin__small-button${extra ? ` ${escapeHtml(extra)}` : ""}" type="button" ${attr}="${escapeHtml(value)}" aria-label="${escapeHtml(aria)}" title="${escapeHtml(title)}"><span class="lc-checkin__action-icon" aria-hidden="true">${content}</span><span class="lc-checkin__action-label">${escapeHtml(title)}</span></button>`;
-        return `<article class="lc-checkin__occasion-manager-row ${item.enabled ? isToday ? "is-today" : "" : "is-disabled"}"><span class="lc-checkin__occasion-icon" aria-hidden="true">${icon}</span><div class="lc-checkin__occasion-row-body"><div class="lc-checkin__occasion-row-title"><strong>${escapeHtml(item.name)}</strong>${status ? `<span class="lc-checkin__occasion-status">${status}</span>` : ""}</div><div class="lc-checkin__occasion-row-date">${dateLineWithSpan}</div>${milestoneMarkup}${cycleMarkup}${lateMarkup}${moveMarkup}<div class="lc-checkin__occasion-row-meta"><span>${escapeHtml(kind)}</span><span>${escapeHtml(recurrence)}</span><span>${t("occ.remindSummary", {n: item.remindBeforeDays})}</span></div>${note}</div><div class="lc-checkin__occasion-row-actions">${action("data-occasion-toitem", item.id, t("occ.toItemAria", {name: item.name}), t("occ.toItem"), uiIcon("add"))}${action("data-occasion-edit", item.id, t("occ.editAria", {name: item.name}), t("occ.editBtn"), uiIcon("edit"))}${action("data-occasion-toggle", item.id, t("occ.toggleAria", {name: item.name}), item.enabled ? t("occ.disable") : t("occ.enable"), uiIcon(item.enabled ? "check" : "circle"), item.enabled ? "is-on" : "")}${action("data-occasion-delete", item.id, t("occ.deleteAria", {name: item.name}), t("common.delete"), uiIcon("trash"))}</div></article>`;
+        return `<article class="lc-checkin__occasion-manager-row ${item.enabled ? isToday ? "is-today" : "" : "is-disabled"}"><span class="lc-checkin__occasion-icon" aria-hidden="true">${icon}</span><div class="lc-checkin__occasion-row-body"><div class="lc-checkin__occasion-row-title"><strong>${escapeHtml(item.name)}</strong>${status ? `<span class="lc-checkin__occasion-status">${status}</span>` : ""}${reminderMarkup}${doneMarkup}</div><div class="lc-checkin__occasion-row-date">${dateLineWithSpan}</div>${milestoneMarkup}${cycleMarkup}${lateMarkup}${moveMarkup}<div class="lc-checkin__occasion-row-meta"><span>${escapeHtml(kind)}</span><span>${escapeHtml(recurrence)}</span><span>${t("occ.remindSummary", {n: item.remindBeforeDays})}</span>${historyMarkup}${linkedMarkup}</div>${note}</div><div class="lc-checkin__occasion-row-actions">${action("data-occasion-toitem", item.id, t("occ.toItemAria", {name: item.name}), t("occ.toItem"), uiIcon("add"))}${action("data-occasion-edit", item.id, t("occ.editAria", {name: item.name}), t("occ.editBtn"), uiIcon("edit"))}${action("data-occasion-toggle", item.id, t("occ.toggleAria", {name: item.name}), item.enabled ? t("occ.disable") : t("occ.enable"), uiIcon(item.enabled ? "pause" : "play"), item.enabled ? "is-on" : "")}${action("data-occasion-delete", item.id, t("occ.deleteAria", {name: item.name}), t("common.delete"), uiIcon("trash"))}</div></article>`;
     });
-    const rows = rowMarkup.length ? rowMarkup.join("") : `<div class="lc-checkin__empty-description">${hasActiveFilters ? t("occ.searchEmpty") : t("occ.empty")}</div>`;
+    /* T-1713：零结果给可恢复路径——有筛选时空态附清除筛选按钮。 */
+    const rows = rowMarkup.length ? rowMarkup.join("") : `<div class="lc-checkin__empty-description">${hasActiveFilters ? `${t("occ.searchEmpty")}<button class="lc-checkin__text-button" type="button" data-occasion-clear-filters>${t("occ.clearFilters")}</button>` : t("occ.empty")}</div>`;
     /* T-1580/T-1592：agenda 分组优先——今日→已错过→即将→已结束→已停用，组头计数；
        过滤先行，分组只重排不改成员。 */
     const agendaGroup = (id: string, label: string, groupRows: string[]): string => groupRows.length ? `<div class="lc-checkin__source-category" data-agenda-section="${id}">${label} · ${groupRows.length}</div>${groupRows.join("")}` : "";
     const agendaBuckets: Record<string, string[]> = {today: [], missed: [], upcoming: [], ended: [], disabled: []};
-    for (const {item, next} of filteredOccasions) {
-        const row = rowMarkup[filteredOccasions.findIndex((entry) => entry.item.id === item.id)];
-        if (!row) continue;
+    /* T-1706：行与条目按构建序 zip 一次映射——同 id 数据不再经 findIndex 串行错行（O(n²)→O(n)）。 */
+    filteredOccasions.forEach(({item, next}, index) => {
+        const row = rowMarkup[index];
+        if (!row) return;
         if (!item.enabled) agendaBuckets.disabled.push(row);
         else if (next === todayKey) agendaBuckets.today.push(row);
         else if (getMissedOccurrence(item, todayKey)) agendaBuckets.missed.push(row);
         else if (next) agendaBuckets.upcoming.push(row);
         else agendaBuckets.ended.push(row);
-    }
+    });
     const agendaRows = [
         agendaGroup("today", t("occ.agendaToday"), agendaBuckets.today),
         agendaGroup("missed", t("occ.agendaMissed"), agendaBuckets.missed),
@@ -207,6 +283,7 @@ export function renderOccasionsView(ctx: OccasionsViewContext, root?: HTMLElemen
                         </div>
                         <label class="lc-checkin__field"><span>${t("occ.remindDays")}</span><input name="remindBeforeDays" type="number" min="0" max="365" step="1" list="${presetId}" value="${escapeHtml(draftValue("remindBeforeDays", String(editing?.remindBeforeDays ?? 3)))}" /><datalist id="${presetId}"><option value="0"><option value="1"><option value="3"><option value="7"><option value="14"><option value="30"></datalist></label>
                         <label class="lc-checkin__field"><span>${t("occ.note")}</span><textarea name="note" maxlength="500" rows="2" placeholder="${t("occ.notePlaceholder")}">${escapeHtml(draftValue("note", editing?.note || ""))}</textarea></label>
+                        ${renderOccurrencePreviewView(editing, ctx.occasionPreviewOpen === true)}
                         <div class="lc-checkin__editor-actions"><button class="lc-checkin__primary-button" type="submit" ${ctx.submitting ? "disabled" : ""}>${editing ? t("occ.save") : t("occ.add")}</button>${editing ? `<button class="lc-checkin__text-button" type="button" data-action="cancel-occasion-edit" ${ctx.submitting ? "disabled" : ""}>${t("occ.cancelEdit")}</button>` : ""}</div>
                     </form>
                 </section>
@@ -217,7 +294,7 @@ export function renderOccasionsView(ctx: OccasionsViewContext, root?: HTMLElemen
                     <label class="lc-checkin__occasion-search">${uiIcon("search")}<input type="search" data-occasion-search value="${escapeHtml(ctx.occasionSearchQuery)}" placeholder="${t("occ.searchPlaceholder")}" aria-label="${t("occ.searchAria")}" /></label>
                     <details class="lc-checkin__occasion-filter-fold" ${isFilterOpen ? "open" : ""}>
                         <summary><span>${t("occ.filters")}</span>${activeFilterCount ? `<em>${activeFilterCount}</em>` : ""}<span class="lc-checkin__fold-chevron" aria-hidden="true">⌄</span></summary>
-                        <div class="lc-checkin__occasion-filters">${filterSelect("status", t("occ.filterStatus"), ctx.occasionStatusFilter, [["all", t("occ.filterAll")], ["enabled", t("occ.filterEnabled")], ["disabled", t("occ.filterDisabled")]])}${filterSelect("kind", t("occ.filterKind"), ctx.occasionKindFilter, [["all", t("occ.filterAll")], ["birthday", t("occ.kindBirthday")], ["anniversary", t("occ.kindAnniversary")], ["scheduled", t("occ.kindScheduled")]])}${filterSelect("time", t("occ.filterTime"), ctx.occasionTimeFilter, [["all", t("occ.filterAll")], ["today", t("occ.filterToday")], ["upcoming", t("occ.filterUpcoming")], ["ended", t("occ.filterEnded")]])}${hasActiveFilters ? `<button class="lc-checkin__text-button" type="button" data-occasion-clear-filters>${t("occ.clearFilters")}</button>` : ""}</div>
+                        <div class="lc-checkin__occasion-filters">${filterSelect("status", t("occ.filterStatus"), ctx.occasionStatusFilter, [["all", t("occ.filterAll")], ["enabled", t("occ.filterEnabled")], ["disabled", t("occ.filterDisabled")]])}${filterSelect("kind", t("occ.filterKind"), ctx.occasionKindFilter, [["all", t("occ.filterAll")], ["birthday", t("occ.kindBirthday")], ["anniversary", t("occ.kindAnniversary")], ["scheduled", t("occ.kindScheduled")]])}${filterSelect("time", t("occ.filterTime"), ctx.occasionTimeFilter, [["all", t("occ.filterAll")], ["today", t("occ.filterToday")], ["missed", t("occ.filterMissed")], ["upcoming", t("occ.filterUpcoming")], ["ended", t("occ.filterEnded")]])}<select data-occasion-sort aria-label="${t("occ.sortLabel")}"><option value="next"${(ctx.occasionSortMode || "next") === "next" ? " selected" : ""}>${t("occ.sortNext")}</option><option value="name"${ctx.occasionSortMode === "name" ? " selected" : ""}>${t("occ.sortName")}</option><option value="updated"${ctx.occasionSortMode === "updated" ? " selected" : ""}>${t("occ.sortUpdated")}</option></select>${hasActiveFilters ? `<button class="lc-checkin__text-button" type="button" data-occasion-clear-filters>${t("occ.clearFilters")}</button>` : ""}</div>
                     </details>
                     <div class="lc-checkin__occasion-manager-list" data-occasion-agenda>${agendaRows || agendaEmpty}</div>
                 </section>
@@ -226,3 +303,11 @@ export function renderOccasionsView(ctx: OccasionsViewContext, root?: HTMLElemen
 }
 
 export type {Occasion};
+
+/** T-1716（D-358）：规则预览骨架——编辑既有事项时以当前规则渲染；新建时为空骨架，
+    由 bind 侧按表单值实时填充（同一 buildOccurrencePreview 投影，零第二套计算）。 */
+function renderOccurrencePreviewView(item: Occasion | undefined, open: boolean): string {
+    const entries = item ? buildOccurrencePreview(item, currentCalendarDate()).entries : [];
+    const rows = entries.map((entry: OccurrencePreviewEntry) => `<div class="lc-checkin__occasion-preview-row"><time datetime="${escapeHtml(entry.occurrenceDate)}">${escapeHtml(entry.occurrenceDate)}</time><small>${escapeHtml(t("occ.previewRemind", {date: entry.remindDate}))}</small></div>`).join("");
+    return `<details class="lc-checkin__occasion-preview" data-occasion-preview ${open ? "open" : ""}><summary>${t("occ.previewTitle")}</summary><div class="lc-checkin__occasion-preview-body" data-occasion-preview-body>${rows}</div></details>`;
+}

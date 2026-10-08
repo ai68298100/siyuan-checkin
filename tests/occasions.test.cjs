@@ -58,12 +58,22 @@ const reminders = require(path.join(path.dirname(output), "reminders.js"));
 // switching recurrence hides irrelevant blocks without dropping its value.
 {
     const module = {exports: {}};
+    /* T-1708：bind 尾部草稿层调用 formSignatureFromData + new FormData——提供 editor-draft
+       与 FormData 垫片（块后恢复原值）。 */
+    const editorDraftModule = {exports: {}};
+    new Function("require", "module", "exports", ts.transpileModule(fs.readFileSync("src/features/editor-draft.ts", "utf8"), {compilerOptions}).outputText)(() => {}, editorDraftModule, editorDraftModule.exports);
+    const occasionPreviewModule = {exports: {}};
+    new Function("require", "module", "exports", ts.transpileModule(fs.readFileSync("src/features/occasion-preview.ts", "utf8"), {compilerOptions}).outputText)(() => {}, occasionPreviewModule, occasionPreviewModule.exports);
+    const previousFormData = globalThis.FormData;
+    globalThis.FormData = class { constructor(form) { this.entries = (form && form.formDataEntries) || []; } get(key) { const found = this.entries.find(([name]) => name === key); return found ? found[1] : null; } forEach(callback) { for (const [name, value] of this.entries) callback(value, name); } };
     new Function("require", "module", "exports", ts.transpileModule(bindSource, {compilerOptions}).outputText)((id) => {
         if (id === "../occasions") return occasions;
         if (id === "./occasion-session") return {
             readOccasionsRootContext: () => ({occasionSearchQuery: "", occasionStatusFilter: "all", occasionKindFilter: "all", occasionTimeFilter: "all", occasionTemplatesOpen: false, occasionTemplateCategory: "recommended", helpOpen: false, actionsHelpOpen: false, noteExpandedIds: new Set(), occurrenceMoves: {}, formSession: 0, submitting: false, deletingOccasionIds: new Set()}),
             writeOccasionsRootContext() {}, captureOccasionDraftFor() {}, nextOccasionFormSession: state => ++state.formSession, isCurrentOccasionFormSession: () => true,
         };
+        if (id === "../features/editor-draft") return editorDraftModule.exports;
+        if (id === "../features/occasion-preview") return occasionPreviewModule.exports;
         if (["../i18n", "../model", "../shared", "../lunar", "siyuan"].includes(id)) return {};
         throw new Error(`Unexpected occasion binding dependency ${id}`);
     }, module, module.exports);
@@ -91,6 +101,7 @@ const reminders = require(path.join(path.dirname(output), "reminders.js"));
     assert.equal((viewSource.match(/name="annualNth"/g) || []).length, 1, "annual and monthly must not submit duplicate ordinal controls");
     const monthlyThirdMonday = occasions.normalizeOccasion({id: "nth-monthly", name: "月度复盘", kind: "scheduled", date: "2026-01-01", recurrence: "monthly", monthlySubtype: "nthweek", nthWeek: 3, weekday: 1, enabled: true});
     assert.equal(occasions.getOccurrenceDate(monthlyThirdMonday, "2026-09-01"), "2026-09-21", "the selected monthly third Monday maps to its actual date");
+    globalThis.FormData = previousFormData;
 }
 const annual = occasions.normalizeOccasion({id: "birthday", name: "妈妈生日", kind: "birthday", date: "2026-09-12", recurrence: "annual", remindBeforeDays: 3, enabled: true});
 assert.equal(annual.date, "2026-09-12");
@@ -116,10 +127,12 @@ assert.equal(occasions.getVisibleOccasions({version: 1, occasions: [monthly]}, n
 const monthEnd = occasions.normalizeOccasion({id: "month-end", name: "月末扣费", kind: "scheduled", date: "2026-01-31", recurrence: "monthly", remindBeforeDays: 2, enabled: true});
 assert.equal(occasions.getVisibleOccasions({version: 1, occasions: [monthEnd]}, new Date(2026, 1, 27, 12))[0].occurrenceDate, "2026-02-28");
 const leapBirthday = occasions.normalizeOccasion({id:"leap", name:"闰年生日", kind:"birthday", date:"2028-02-29", recurrence:"annual", remindBeforeDays:3});
-assert.equal(occasions.getVisibleOccasions({version:1, occasions:[leapBirthday]}, new Date(2027, 1, 27, 12)).length, 0);
+/* T-1704（D-350）：闰日在平年顺延至 02-28——2027-02-27 的提醒窗口内应出现顺延日，
+   修复前此处为空（闰日生日在平年消失）。 */
+assert.equal(occasions.getVisibleOccasions({version:1, occasions:[leapBirthday]}, new Date(2027, 1, 27, 12))[0].occurrenceDate, "2027-02-28");
 assert.equal(occasions.getVisibleOccasions({version:1, occasions:[leapBirthday]}, new Date(2028, 1, 26, 12))[0].occurrenceDate, "2028-02-29");
 const capped = occasions.normalizeOccasion({id:"capped", name:"限制", date:"2026-09-20", recurrence:"once", remindBeforeDays:999, completedDates:["2026-09-20","bad","2026-09-19"]});
-assert.equal(capped.remindBeforeDays, 365); assert.deepEqual(capped.completedDates, ["2026-09-20","2026-09-19"]);
+assert.equal(capped.remindBeforeDays, 365); /* T-1706：完成日期唯一且升序（保留最近 120 条）。 */ assert.deepEqual(capped.completedDates, ["2026-09-19","2026-09-20"]);
 const unchanged = {version:1, occasions:[once]}; assert.equal(occasions.markOccasionCompleted(unchanged, "missing", "2026-09-15", true), unchanged);
 const marked = occasions.markOccasionCompleted(unchanged, "loan", "2026-09-15", true); assert.notEqual(marked, unchanged); assert.equal(occasions.isOccasionCompleted(marked.occasions[0], "2026-09-15"), true); const unmarked = occasions.markOccasionCompleted(marked, "loan", "2026-09-15", false); assert.equal(occasions.isOccasionCompleted(unmarked.occasions[0], "2026-09-15"), false);
 // v5 recurrence engine: lunar annual, weekly, quarterly, interval, month-end/nth-week variants.
@@ -335,14 +348,14 @@ assert.match(viewSource, /occ\.cycleProgress/, "cycle bars label themselves as c
 assert.match(viewSource, /getMissedOccurrence\(item, todayKey\)/, "occasion rows surface the unmarked previous cycle");
 assert.match(viewSource, /data-occasion-late-complete/, "late occurrences expose a mark-complete action");
 assert.match(viewSource, /data-occasion-move-toggle/, "recurring occasions expose a single-instance reschedule action");
-assert.match(viewSource, /const moveState = ctx\.occurrenceMoves\[item\.id\]/, "reschedule rows read the owning root session");
+assert.match(viewSource, /const moveState = ctx\.occurrenceMoves\??\.\[item\.id\]/, "reschedule rows read the owning root session");
 assert.match(viewSource, /value="\$\{escapeHtml\(moveDate\)\}"/, "reschedule date draft survives a root redraw");
 assert.match(bindSource, /data-occasion-late-complete/, "late marks route through the shared completion channel");
 assert.match(bindSource, /saveOccasionOverride/, "reschedules go through the host override channel");
 assert.match(bindSource, /writeState\(\{occurrenceMoves:/, "reschedule open/date changes write the owning root session");
 assert.match(bindSource, /renderRoot\(\);[\s\S]*data-occasion-move-date/, "reschedule toggle redraws only the owning root and restores focus");
 const indexSource2 = fs.readFileSync("src/index.ts", "utf8");
-assert.match(indexSource2, /private saveOccasionOverride\(id: string, originalDate: string, newDate: string, root\?: HTMLElement\): void/, "host implements the override persistence wrapper");
+assert.match(indexSource2, /private saveOccasionOverride\(id: string, originalDate: string, newDate\?: string\): void/, "host implements the override persistence wrapper (T-1718 undo passes undefined)");
 assert.match(indexSource2, /setOccasionOverride\(previous, id, originalDate, newDate\)/, "host delegates to the pure override writer");
 for (const key of ["occ.lateHint", "occ.lateComplete", "occ.moveOccurrence", "occ.moveConfirm", "occ.moveDone", "occ.moveInvalid"]) {
     assert.equal(fs.readFileSync("src/i18n.ts", "utf8").split(`"${key}"`).length - 1, 2, `${key} must exist in both zh and en`);

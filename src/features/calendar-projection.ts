@@ -9,7 +9,7 @@
    - 非排期日不伪造计划项，仅当日有真实记录时给出 logged 点；
    - 有界：天数≤366、项目数≤200，超限截断并显式标注；不含备注/附件/externalRef。 */
 
-import {getItemRevisionForDate, getEventsForDay, isComplete, isItemAvailableOnDate, isScheduledToday, isSkipEvent} from "../model";
+import {getItemDirectionForDate, getItemRevisionForDate, getEventsForDay, isComplete, isItemAvailableOnDate, isScheduledToday, isSkipEvent} from "../model";
 import {evaluateQuotaSchedule} from "../rules";
 import type {CheckinStore} from "../types";
 
@@ -116,7 +116,8 @@ export function buildCalendarProjection(
                 if (value > 0 && available) points.push({date, status: "complete", value, target, unit: revision.unit});
                 continue;
             }
-            if (item.direction === "atMost" && revision.schedule.type === "daily") {
+            /* T-1766：方向按当日修订取值——普通↔戒除切换后，旧日点保持当时的口径。 */
+            if (getItemDirectionForDate(item, at) === "atMost" && revision.schedule.type === "daily") {
                 if (available) points.push({date, status: value > 0 ? "at-most-breach" : "at-most-safe", value, target, unit: revision.unit});
                 continue;
             }

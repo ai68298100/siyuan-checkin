@@ -13,7 +13,8 @@ import {buildCustomSummaryContext, buildSummaryContext} from "./analytics";
 import {buildWeeklyReportMarkdown} from "./features/report";
 import {appendDiagnostic, CHECKIN_DIAGNOSTIC_INFO, normalizeDiagnostics, serializeDiagnostics, summarizeDiagnosticsPreview, type CheckinDiagnostic, type CheckinDiagnosticCode} from "./features/diagnostics";
 import {buildReviewComparison, getPreviousReviewRange} from "./features/review-comparison";
-import {summarizeProjectDraft, type ProjectDraft} from "./features/project-draft";import {buildAnalyticsSnapshot, buildYearHeatmap, type AnalyticsSnapshot} from "./charts";
+import {summarizeProjectDraft, type ProjectDraft} from "./features/project-draft";import {isEditorFormDirty} from "./features/editor-draft";
+import {buildAnalyticsSnapshot, buildYearHeatmap, type AnalyticsSnapshot} from "./charts";
 import {buildShareCardModel, drawShareCard, shareCardSize, type ShareCardCanvas} from "./features/share-card";
 import {saveGeneratedFile} from "./download";
 import {formatLunar, solarToLunar} from "./lunar";
@@ -26,7 +27,7 @@ import {buildHabitInsights} from "./features/insights";
 import {buildCoachingSuggestions} from "./features/coaching";
 import {buildReviewAnalysisKey, selectReviewAnalysis, type ReviewAssistantGoal} from "./features/review-assistant";
 import {CHECKIN_API_NAME, CHECKIN_EVENT_NAMES, DOCK_TOMATO_ADAPTER_ID, emitIntegrationEvent} from "./integrations";
-import {appendEvent, appendEvents, computeLongestStreaks, appendStoreAudit, appendStoreSnapshotHistory, createDefaultStore, createEmptyStoreSnapshotHistory, createStoreSnapshotEnvelope, countCompletedDays, dateKey, deleteItemCascade, deleteItemsCascade, evaluateItemRule, getActiveItemById, getEventById, getEventsForDay, getEventsInDateRange, getItemById, getItemRevisionForDate, getProgress, getSkipDatesForItem, isComplete, isItemAvailableOnDate, isScheduledToday, isSkipEvent, makeId, mergeNormalizedStores, mergeStoreAudits, normalizeItem as normalizeCheckinItem, normalizeStore, normalizeStoreAudit, parseStoreSnapshotHistoryExport, inspectStoreSnapshotHistory, readStoreSnapshotHistory, removeEvents, type StoreAuditEntry} from "./model";
+import {appendEvent, appendEvents, computeLongestStreaks, appendStoreAudit, appendStoreSnapshotHistory, createDefaultStore, createEmptyStoreSnapshotHistory, createStoreSnapshotEnvelope, countCompletedDays, dateKey, deleteItemCascade, deleteItemsCascade, evaluateItemRule, getActiveItemById, getEventById, getEventsForDay, getEventsInDateRange, getItemById, getItemDirectionForDate, getItemRevisionForDate, getProgress, getSkipDatesForItem, isComplete, isItemAvailableOnDate, isScheduledToday, isSkipEvent, makeId, mergeNormalizedStores, mergeStoreAudits, normalizeItem as normalizeCheckinItem, normalizeStore, normalizeStoreAudit, parseStoreSnapshotHistoryExport, inspectStoreSnapshotHistory, readStoreSnapshotHistory, removeEvents, type StoreAuditEntry} from "./model";
 import type {FocusAdapter, SummaryProvider} from "./integrations";
 import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinKind, CheckinPriority, CheckinSchedule, CheckinStore, CheckinTimeSlot, CompletionSource, ScheduleType, TomatoValueMode, TodayRootContext, UserTemplate} from "./types";
 import type {CustomSummaryRange, SummaryRange, EventRangeSummary, EventRangeSummaryOptions} from "./analytics";
@@ -79,6 +80,7 @@ import {createSourceIngestReport, type DocumentSourceKey, type SourceIngestRepor
 import {SOURCE_SCAN_MAX_PAGES, blockIdCursorClause, scanBoundedPages} from "./features/scan-cursor";
 import {normalizeSourceGovernance, settleSegmentsToDays, sourceDayMinutes} from "./features/source-framework";
 import {openTabPageFor, showArchivedFor, showEditorFor, showEditorReturnFor, showInsightsFor, showOccasionsFor, showReviewFor, showSettingsFor, showTodayFor, type NavigationHost} from "./navigation";
+import {createRootPageStore, type CheckinPageId, type RootPageStore} from "./features/root-page-store";
 import {bindQuickDialogViewportFor, closeQuickDialogFor, ensureMobileTopBarButtonFor, ensureSpeedSwitchQuickActionsFor, handleQuickDialogDestroyedFor, openQuickDialogFor, quickDialogSizeOf, toggleQuickDialogFor, type QuickDialogHost} from "./render/quick-dialog";
 import {bindBulkModeFor, bindItemContextMenuFor, bindItemDragFor, bindPageKeyboardFor, bindQuickKeyboardFor, type TodayBindingsHost} from "./render/today-bindings";
 import {bindFocusTimerPanelFor, finishFocusTimerFor, openFocusTimerFor, paintFocusTimer, renderFocusMiniStripFor, renderFocusTimerPanelFor, stopFocusTimerFor, tickFocusTimerFor, type FocusTimerHost} from "./render/focus-timer";
@@ -226,6 +228,9 @@ interface RecentRecord {
     unit: string;
     /** R-18.5（D-263 收尾）：本次记录使连击命中里程碑阶梯（如 7/30/100/365）时的分级庆祝。 */
     milestone?: number;
+    /** T-1776：回执直达所写事实——来源标注与行内事实详情按事件呈现。 */
+    source?: CheckinEvent["source"];
+    localDate?: string;
 }
 
 interface LockManagerLike {
@@ -619,7 +624,7 @@ export default class CheckinPlugin extends Plugin {
         return {
             getStore: () => this.store,
             getNow: () => currentCalendarDate(),
-            onJumpDate: (date: string) => this.jumpToHistoryDate(date),
+            onJumpDate: (date: string) => this.jumpToHistoryDate(date, this.primaryRoot()),
             /* T-1351：汇总行 → 项目洞察；锚点行 → 打开锚点文档（内核 rootID，经 openTab）。 */
             onJumpItem: (itemId: string) => this.jumpToItemInsights(itemId),
             onJumpItemAnchor: (blockId: string, isSourceCurrent?: () => boolean) => void this.jumpToItemAnchorDoc(blockId, isSourceCurrent),
@@ -630,7 +635,7 @@ export default class CheckinPlugin extends Plugin {
         };
     }
 
-    /* T-1351：渲染块项目行跳回顾页洞察。 */
+    /* T-1351：渲染块项目行跳回顾页洞察。渲染块只有 dock 一个消费者：目标按 dock→页签 回落。 */
     private jumpToItemInsights(itemId: string) {
         const item = getActiveItemById(this.store, itemId);
         if (!item) return;
@@ -645,9 +650,7 @@ export default class CheckinPlugin extends Plugin {
             this.showInsights(item, root);
             return;
         }
-        this.insightsItemId = item.id;
-        this.setPageForRoot("insights");
-        this.render();
+        this.showInsights(item, this.primaryRoot());
     }
 
     /* T-1352：构建当前周期报告（与回顾页导出口径一致：来源筛选 + 区块开关 + 偏差/基线）。 */
@@ -1832,7 +1835,9 @@ export default class CheckinPlugin extends Plugin {
     private occasionSearchQuery = "";
     private occasionStatusFilter: "all" | "enabled" | "disabled" = "all";
     private occasionKindFilter: "all" | "birthday" | "anniversary" | "scheduled" = "all";
-    private occasionTimeFilter: "all" | "today" | "upcoming" | "ended" = "all";
+    private occasionTimeFilter: "all" | "today" | "missed" | "upcoming" | "ended" = "all";
+    /* T-1715：事项排序模式（会话态）。 */
+    private occasionSortMode: "next" | "name" | "updated" = "next";
     private occasionTemplatesOpen = false;
     private occasionTemplateCategory: "recommended" | import("./occasions").OccasionTemplateCategory = "recommended";
     private occasionFormOpen = false;
@@ -1852,7 +1857,27 @@ export default class CheckinPlugin extends Plugin {
     private currentStreaks = new Map<string, number>();
     private bestStreakItem?: CheckinItem;
     private bestStreakValue = 0;
-    private currentPage: PageId = "today";
+    private readonly rootPages: RootPageStore = createRootPageStore();
+    private get currentPage(): CheckinPageId { return this.rootPages.activePage(); }
+    private set currentPage(page: CheckinPageId) { this.rootPages.navigate(undefined, page); }
+    public applyNavigation(root: HTMLElement | undefined, page: CheckinPageId): void {
+        if (root && page !== "editor" && this.pageOfRoot(root) === "editor") {
+            const form = root.querySelector("form");
+            const baseline = root.dataset.editorDraftBaseline;
+            if (isEditorFormDirty(form ? new FormData(form) : undefined, baseline) && !window.confirm(t("editor.dirtyLeaveConfirm"))) return;
+        }
+        this.rootPages.navigate(root, page);
+        if (root) this.setPageForRoot(page, root);
+    }
+    public pageOfRoot(root: HTMLElement): CheckinPageId { return this.rootPages.pageOf(root); }
+    public releaseRootContext(root: HTMLElement): void {
+        this.rootPages.release(root);
+        if (!this.rootPages.lastActiveRoot()) {
+            const fallback = this.dockElement ?? this.tabElement ?? null;
+            if (fallback) this.rootPages.setActiveRoot(fallback);
+        }
+    }
+    private primaryRoot(): HTMLElement | undefined { return this.dockElement ?? this.tabElement ?? this.quickDialogElement; }
     private rootContexts = new Map<HTMLElement, RootContext>();
     private insightsCompatibilitySnapshot?: InsightsRootContext;
     private editorCompatibilitySnapshot?: EditorRootContext;
@@ -2127,6 +2152,8 @@ private reviewCompatibilitySnapshot?: {
     private speedSwitchQuickActionsRegistered = false;
     private speedSwitchRetryTimer?: number;
     private editingOccasionId?: string;
+    /* T-1708（D-354）：事项表单草稿（会话态；bind-occasions 输入即快照、重绘恢复）。 */
+    private occasionDraft?: {editingId?: string; baseUpdatedAt?: string; values: Array<[string, string]>};
     private readyResolver?: (ready: boolean) => void;
     private readonly readyPromise = new Promise<boolean>((resolve) => {
         this.readyResolver = resolve;
@@ -2188,6 +2215,10 @@ private reviewCompatibilitySnapshot?: {
             destroy: function () {
                 const root = plugin.dockElement;
                 if (root) disposeResponsiveCharts(root);
+                if (plugin.dockElement) {
+                    disposeResponsiveCharts(plugin.dockElement);
+                    plugin.releaseRootContext(plugin.dockElement);
+                }
                 plugin.dockElement = undefined;
                 if (root) plugin.forgetSurfaceRoot(root);
             },
@@ -2211,6 +2242,7 @@ private reviewCompatibilitySnapshot?: {
             destroy: function (this: {element: Element; tab: {close: () => void}}) {
                 disposeResponsiveCharts(this.element as HTMLElement);
                 if (plugin.tabElement === this.element) {
+                    plugin.releaseRootContext(plugin.tabElement);
                     plugin.tabElement = undefined;
                     plugin.forgetSurfaceRoot(this.element as HTMLElement);
                     if (plugin.tabInstance === this.tab) {
@@ -3662,7 +3694,7 @@ this.scheduleMidnightRefresh();
     }
 
     private syncRecentRecordToast() {
-        const markup = renderRecentRecordView(this.recentRecord, this.reducedMotion);
+        const markup = renderRecentRecordView(this.recentRecord, this.recentRecord ? getEventById(this.store, this.recentRecord.eventId) : undefined, this.reducedMotion);
         const roots = [this.dockElement, this.tabElement, this.quickDialogElement]
             .filter((root, index, all): root is HTMLElement => Boolean(root) && all.indexOf(root) === index);
         for (const root of roots) {
@@ -4303,7 +4335,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
         if (!this.rootContexts.has(root)) return;
         if (!root.isConnected) return;
         this.setActiveRoot(root);
-        const page = this.pageForRoot(root);
+        const page = this.rootPages.ensure(root).page;
         const context = this.ensureRootContext(root);
         /* A short, explicit mobile host marker keeps the final responsive
            layer deterministic without repeating long :has() selectors for
@@ -4371,20 +4403,20 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
         /* 桌面快速弹窗的 全屏/关闭 并入顶栏（renderTopNav）。页签和 dock
            的生命周期由思源宿主管理，不在内容区伪造第二枚关闭按钮。 */
         if (this.isMobileFrontend && !root.querySelector(".lc-checkin__mobile-topbar")) {
-            root.insertAdjacentHTML("afterbegin", this.renderMobileTopbar());
+            root.insertAdjacentHTML("afterbegin", this.renderMobileTopbar(page));
         }
         /* A wide dock hides the compact bottom bar to preserve vertical space.
            Give that surface its own persistent rail instead of leaving the
            navigation unreachable (the rail is hidden again below 720px). */
         if (root === this.dockElement && !root.querySelector(".lc-checkin__rail")) {
-            root.insertAdjacentHTML("afterbegin", this.renderRail());
+            root.insertAdjacentHTML("afterbegin", this.renderRail(page));
         }
         const layout = root.querySelector<HTMLElement>(".lc-checkin__layout");
         if (layout) {
             /* 顶部导航只服务桌面宽容器；移动端顶栏自带导航 tabs（renderMobileTopbar），
                窄 dock 面板由 CSS 隐藏 —— v9.5.1 曾在窄容器裸渲染出独立导航行（用户点名）。
                桌面导航挂在宿主而不是滚动的 .lc-checkin__layout 上，切页/滚动时几何基线保持不变。 */
-            if (!this.isMobileFrontend) root.insertAdjacentHTML("afterbegin", this.renderTopNav(root));
+            if (!this.isMobileFrontend) root.insertAdjacentHTML("afterbegin", this.renderTopNav(root, page));
             if (this.focusTimerState && this.focusTimerRoot === root) layout.insertAdjacentHTML("beforeend", this.renderFocusTimerPanel());
             else if (this.focusTimerState) layout.insertAdjacentHTML("beforeend", renderFocusMiniStripFor(this as unknown as FocusTimerHost));
             layout.querySelector<HTMLElement>("[data-focus-mini-back]")?.addEventListener("click", () => {
@@ -4395,7 +4427,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
         /* 底部导航在所有表面都渲染（含桌面侧边栏面板）：宽容器由 CSS 隐藏、
            窄容器（手机弹窗 / 侧边栏 dock）显示 —— 侧边栏此前完全没有导航入口。 */
         if (!root.querySelector(".lc-checkin__mobile-nav")) {
-            root.insertAdjacentHTML("beforeend", this.renderMobileNav());
+            root.insertAdjacentHTML("beforeend", this.renderMobileNav(page));
         }
         /* 页面重绘会替换滚动区；移动端提醒属于宿主流内横幅，重绘后把同一节点
            放回当前表面，避免通知被 innerHTML 清掉或退回固定浮层。 */
@@ -5551,6 +5583,26 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
             });
             this.render();
         });
+        /* T-1736（D-372）：推荐草案逐项应用——按 target 分发到对应偏好字段，走用户
+           显式 applyPreference 通道（建议≠启用）；绑定应用沿用分钟校验守卫。 */
+        root.querySelectorAll<HTMLElement>("[data-rec-apply]").forEach((button) => button.addEventListener("click", () => {
+            const target = button.dataset.recApply || "";
+            const value = button.dataset.recValue || "";
+            if (target === "wereadIntegration.itemId") {
+                this.applyPreference(() => {
+                    this.wereadIntegration = {...this.wereadIntegration, itemId: value, enabled: Boolean(value) && getActiveItemById(this.store, value) && this.hasMinuteTarget(value) && isWereadApiKey(this.wereadIntegration.apiKey) ? this.wereadIntegration.enabled : false};
+                });
+                this.render();
+                return;
+            }
+            if (target === "wereadIntegration.thresholdMinutes") {
+                const threshold = Math.max(1, Math.min(1440, Math.round(Number(value) || 30)));
+                this.applyPreference(() => {
+                    this.wereadIntegration = {...this.wereadIntegration, thresholdMinutes: threshold};
+                });
+                this.render();
+            }
+        }));
         root.querySelector<HTMLSelectElement>("[data-weread-finish-item]")?.addEventListener("change", (event) => {
             const finishItemId = (event.currentTarget as HTMLSelectElement).value;
             /* 完读绑定可选（空 = 关闭完读事件）；不影响时长联动与开关状态。 */
@@ -6091,6 +6143,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
                         await this.persist();
                         return report;
                     } catch (error) {
+                        /* T-1798：持久化失败统一回滚导入内存。 */
                         this.store = previousStore;
                         throw error;
                     }
@@ -6146,6 +6199,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
                         await this.persist();
                         return report;
                     } catch (error) {
+                        /* T-1798：持久化失败统一回滚导入内存。 */
                         this.store = previousStore;
                         throw error;
                     }
@@ -6208,6 +6262,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
                         await this.persist();
                         return {itemsCreated: report.itemsCreated, eventsCreated: report.eventsCreated, duplicates: report.duplicates};
                     } catch (error) {
+                        /* T-1798：持久化失败统一回滚导入内存。 */
                         this.store = previousStore;
                         throw error;
                     }
@@ -6368,27 +6423,27 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
 
     /* 手机端顶栏（T-118 用户反馈）：导航全部归底栏（顶栏页签与底栏完全重复），
        顶栏只保留 关闭 + 页面标题 + 今日进度，单行尽量矮。 */
-    private renderMobileTopbar(): string {
-        const progress = this.currentPage === "today" ? this.todayProgressLabel() : "";
+    private renderMobileTopbar(page: CheckinPageId): string {
+        const progress = page === "today" ? this.todayProgressLabel() : "";
         /* Root pages use one close action; nested pages replace it with Back.
            Rendering both controls consumed the entire left rail on phones and
            made the centred title look offset. */
-        const contextBackAction = this.currentPage === "editor" ? "back"
-            : this.currentPage === "insights" || this.currentPage === "archived" ? "back" : "";
+        const contextBackAction = page === "editor" ? "back"
+            : page === "insights" || page === "archived" ? "back" : "";
         const leadingAction = contextBackAction
             ? `<button class="lc-checkin__topbar-context" type="button" data-action="${contextBackAction}" aria-label="${t("common.back")}" title="${t("common.back")}">${uiIcon("back")}</button>`
             : `<button class="lc-checkin__topbar-close" type="button" data-action="close-dialog" aria-label="${t("common.close")}">${uiIcon("close")}</button>`;
-        const occasionAction = this.currentPage === "occasions"
+        const occasionAction = page === "occasions"
             ? `<button class="lc-checkin__topbar-context" type="button" data-action="new-occasion" aria-label="${t("occ.newAria")}" title="${t("occ.newAria")}">${uiIcon("add")}</button>`
             : "";
-        return `<div class="lc-checkin__mobile-topbar" data-appearance="${this.resolvedAppearance()}" data-palette="${this.palette}" data-page="${this.currentPage}"><div class="lc-checkin__topbar-leading">${leadingAction}</div><strong class="lc-checkin__topbar-title">${this.getPageTitle()}</strong><div class="lc-checkin__topbar-trailing">${progress ? `<span class="lc-checkin__topbar-meta" role="status" aria-label="${t("today.progressAria")}">${progress}</span>` : ""}${occasionAction}</div></div>`;
+        return `<div class="lc-checkin__mobile-topbar" data-appearance="${this.resolvedAppearance()}" data-palette="${this.palette}" data-page="${page}"><div class="lc-checkin__topbar-leading">${leadingAction}</div><strong class="lc-checkin__topbar-title">${this.getPageTitle(page)}</strong><div class="lc-checkin__topbar-trailing">${progress ? `<span class="lc-checkin__topbar-meta" role="status" aria-label="${t("today.progressAria")}">${progress}</span>` : ""}${occasionAction}</div></div>`;
     }
 
-    private renderMobileNav(): string {
+    private renderMobileNav(page: CheckinPageId): string {
         const entries = [["today", t("nav.today"), "home"], ["review", t("nav.review"), "summary"], ["occasions", t("nav.occasions"), "calendar"], ["settings", t("nav.settings"), "settings"]] as const;
-        const buttons = entries.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`);
+        const buttons = entries.map(([navPage, label, icon]) => `<button type="button" data-mobile-nav="${navPage}" class="${page === navPage ? "is-selected" : ""}" aria-current="${page === navPage ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`);
         /* 底栏需要短标签保持五列等宽；完整动作名称继续用于辅助名称与 tooltip。 */
-        const add = `<button class="lc-checkin__mobile-nav-add ${this.currentPage === "editor" ? "is-selected" : ""}" type="button" data-mobile-nav="add" aria-label="${t("nav.add")}" title="${t("nav.add")}"><span>${uiIcon("add")}</span><small>${t("common.add")}</small></button>`;
+        const add = `<button class="lc-checkin__mobile-nav-add ${page === "editor" ? "is-selected" : ""}" type="button" data-mobile-nav="add" aria-label="${t("nav.add")}" title="${t("nav.add")}"><span>${uiIcon("add")}</span><small>${t("common.add")}</small></button>`;
         return `<nav class="lc-checkin__mobile-nav" aria-label="${t("app.navAria")}">${buttons.slice(0, 2).join("")}${add}${buttons.slice(2).join("")}</nav>`;
     }
     /* 顶栏进度：与今日页口径一致（未归档 + 当日可用 + 当日排期）。 */
@@ -6402,14 +6457,14 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
 
     /* Desktop-wide containers show a labelled left rail instead of the bottom bar.
        Both use data-mobile-nav so one binding covers them. */
-    private renderRail(): string {
+    private renderRail(page: CheckinPageId): string {
         const entries = [["today", "今日", "home"], ["review", "回顾", "summary"], ["occasions", "事项", "calendar"], ["settings", "设置", "settings"]] as const;
-        return `<nav class="lc-checkin__rail" aria-label="${t("app.navAria")}">${entries.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}</nav>`;
+        return `<nav class="lc-checkin__rail" aria-label="${t("app.navAria")}">${entries.map(([railPage, label, icon]) => `<button type="button" data-mobile-nav="${railPage}" class="${page === railPage ? "is-selected" : ""}" aria-current="${page === railPage ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}</nav>`;
     }
 
     /* 桌面顶栏：左侧五个导航项，右侧 全屏/关闭 —— 正常软件的标题栏布局（T-030/T-031）。
        窄容器由 CSS 隐藏（改用底部导航）。 */
-    private renderTopNav(root: HTMLElement): string {
+    private renderTopNav(root: HTMLElement, page: CheckinPageId): string {
         const entries = [["today", t("nav.today"), "home"], ["review", t("nav.review"), "summary"], ["occasions", t("nav.occasions"), "calendar"], ["settings", t("nav.settings"), "settings"]] as const;
         const ownsDialogChrome = Boolean(this.quickDialog) && root === this.quickDialogElement && !this.isMobileFrontend;
         const fullscreen = ownsDialogChrome
@@ -6420,7 +6475,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
             : "";
         const avatarPresetGlyph: Record<string, string> = {star: "★", horse: "🐴", leaf: "🌿", sun: "☀", target: "🎯"};
         const avatar = this.avatarImage ? `<img src="${escapeHtml(this.avatarImage)}" alt="" />` : this.avatar === "check" ? uiIcon("check") : escapeHtml(avatarPresetGlyph[this.avatar] || this.avatar);
-        return `<nav class="lc-checkin__topnav" aria-label="${t("app.navAria")}"><span class="lc-checkin__topnav-brand"><span class="lc-checkin__topnav-avatar" aria-hidden="true">${avatar}</span>${t("dock.title")}</span><div class="lc-checkin__topnav-tabs">${entries.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}</div>${dialogActions}</nav>`;
+        return `<nav class="lc-checkin__topnav" aria-label="${t("app.navAria")}"><span class="lc-checkin__topnav-brand"><span class="lc-checkin__topnav-avatar" aria-hidden="true">${avatar}</span>${t("dock.title")}</span><div class="lc-checkin__topnav-tabs">${entries.map(([navPage, label, icon]) => `<button type="button" data-mobile-nav="${navPage}" class="${page === navPage ? "is-selected" : ""}" aria-current="${page === navPage ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}</div>${dialogActions}</nav>`;
     }
 
     /* 8.6 连续记录：按项目统计当前连续打卡天数（自然日粒度，从事件推导）。 */
@@ -6777,9 +6832,18 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
         const state = root ? this.occasionStateForRoot(root) : this.createOccasionsRootContext();
         return renderOccasionsView({
             occasionStore: this.occasionStore,
+            reminderUserActions: this.reminderUserActions,
+            linkedItems: this.store.items.filter((item) => Boolean(item.linkedOccasionId)).map((item) => ({id: item.id, name: item.name, linkedOccasionId: item.linkedOccasionId || "", archived: item.archived === true})),
             ...state,
             appearance: this.resolvedAppearance(),
         }, root);
+    }
+
+    /** T-1720：事项关联项目徽章点击后，跨页打开仍存活的项目编辑器。 */
+    private showEditorForLinkedItem(itemId: string): void {
+        const item = this.store.items.find((candidate) => candidate.id === itemId && !candidate.archived);
+        if (!item) { showMessage(t("msg.alreadyGenerated")); return; }
+        this.showEditor(item, undefined, this.rootPages.lastActiveRoot() ?? undefined);
     }
 
     /* 方法体外置于 render/fragments.ts（T-022）。 */
@@ -7256,7 +7320,7 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
                     kind: revision.kind,
                     unit: revision.unit,
                     recordStep: revision.recordStep,
-                    atMost: item.direction === "atMost",
+                    atMost: getItemDirectionForDate(item, day) === "atMost",
                     hasJournal: Boolean(item.journal?.templateId),
                 };
             });
@@ -7326,7 +7390,7 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
             const events: CheckinEvent[] = [];
             for (const item of this.store.items) {
                 if (!requested.has(item.id) || item.archived || !isItemAvailableOnDate(item, day) || !isScheduledToday(item, day)
-                    || getEventsForDay(this.store, item.id, day).length || action === "record" && item.direction === "atMost") continue;
+                    || getEventsForDay(this.store, item.id, day).length || action === "record" && getItemDirectionForDate(item, day) === "atMost") continue;
                 const revision = getItemRevisionForDate(item, day);
                 const value = action === "skip" ? 0 : revision.kind === "binary" ? 1 : Math.max(1, revision.target);
                 const event = this.makeEvent(item, value, "manual", revision.unit, undefined, undefined, moment);
@@ -7955,7 +8019,7 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
             return;
         }
         const revision = getItemRevisionForDate(item, actionDate);
-        const binaryAtMost = item.direction === "atMost" && revision.kind === "binary";
+        const binaryAtMost = getItemDirectionForDate(item, actionDate) === "atMost" && revision.kind === "binary";
         // For a limiting binary habit the requested toggle state describes
         // whether a lapse is recorded, while isComplete describes avoidance.
         const complete = binaryAtMost
@@ -8004,7 +8068,7 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
         if (!current || !revision || !isItemAvailableOnDate(current, actionDate)) {
             return undefined;
         }
-        if (revision.kind === "binary" && (current.direction === "atMost"
+        if (revision.kind === "binary" && (getItemDirectionForDate(current, actionDate) === "atMost"
             ? getEventsForDay(this.store, current.id, actionDate).some((event) => !isSkipEvent(event))
             : isComplete(this.store, current, actionDate))) {
             return undefined;
@@ -8047,6 +8111,9 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
             progress: getProgress(this.store, current, actionDate),
             target: revision.schedule.type === "quota" ? revision.schedule.quota?.amount || revision.target : revision.target,
             unit: revision.unit || "次",
+            /* T-1776：回执携带事件身份事实——来源标注与"查看此记录"按本事件呈现。 */
+            source: event.source,
+            localDate: event.localDate,
             /* R-18.5（D-263 收尾）：连击命中里程碑 → 庆祝升级为里程碑级（其余为日常轻反馈）。 */
             ...(STREAK_MILESTONES.includes(currentStreak) ? {milestone: currentStreak} : {}),
         });
@@ -8092,6 +8159,9 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
                 await this.persist();
             } catch {
                 this.store = previous;
+                /* T-1795：撤销失败恢复撤销 token（同事件仍可再次撤销，回执原样重新呈现；
+                   store 已回滚，回执内的进度/目标值仍然准确）。 */
+                this.setRecentRecord(recent);
                 showMessage(t("msg.undoFail"));
                 return;
             }
@@ -8369,8 +8439,8 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
         }
     }
 
-    private getPageTitle(): string {
-        switch (this.currentPage) {
+    private getPageTitle(page: CheckinPageId): string {
+        switch (page) {
             case "review": return t("review.title");
             case "occasions": return t("occasions.title");
             case "archived": return t("archived.title");
@@ -8474,17 +8544,21 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
         const editingOccasionId = occasionState?.editingOccasionId ?? this.editingOccasionId;
         const existing = editingOccasionId ? this.occasionStore.occasions.find((item) => item.id === editingOccasionId) : undefined;
         const lunar = solarToLunar(new Date(Number(date.slice(0, 4)), Number(date.slice(5, 7)) - 1, Number(date.slice(8, 10))));
+        const calendar = recurrence === "annual" ? String(data.get("calendar") || "solar") : "solar";
+        const lunarLeap = recurrence === "annual" && calendar === "lunar" ? lunar?.leap === true : false;
+        const annualSubtype = String(data.get("annualSubtype") || "byday");
+        const month = Number(data.get("annualMonth")) || undefined;
+        const nthWeek = Number(data.get("annualNth")) || Number(data.get("monthlyNth")) || undefined;
+        const weekday = Number(data.get(recurrence === "monthly" ? "monthlyWeekday" : recurrence === "weekly" ? "weeklyWeekday" : "annualWeekday")) || 0;
+        const monthlySubtype = String(data.get("monthlySubtype") || "byday");
+        const intervalUnit = String(data.get("intervalUnit") || "month");
+        const intervalCount = Number(data.get("intervalCount")) || undefined;
+        const ruleChanged = Boolean(existing) && (existing?.date !== date || existing?.recurrence !== recurrence || existing?.kind !== kind || existing?.calendar !== calendar || existing?.lunarLeap !== lunarLeap || existing?.annualSubtype !== annualSubtype || existing?.month !== month || existing?.nthWeek !== nthWeek || existing?.weekday !== weekday || existing?.monthlySubtype !== monthlySubtype || existing?.intervalUnit !== intervalUnit || existing?.intervalCount !== intervalCount);
         const normalized = normalizeOccasion({
             id: existing?.id, name, kind, date, recurrence,
-            calendar: recurrence === "annual" ? String(data.get("calendar") || "solar") : "solar",
-            lunarLeap: recurrence === "annual" && String(data.get("calendar")) === "lunar" ? lunar?.leap === true : false,
-            annualSubtype: String(data.get("annualSubtype") || "byday"),
-            month: Number(data.get("annualMonth")) || undefined,
-            nthWeek: Number(data.get("annualNth")) || Number(data.get("monthlyNth")) || undefined,
-            weekday: Number(data.get(recurrence === "monthly" ? "monthlyWeekday" : recurrence === "weekly" ? "weeklyWeekday" : "annualWeekday")) || 0,
-            monthlySubtype: String(data.get("monthlySubtype") || "byday"),
-            intervalUnit: String(data.get("intervalUnit") || "month"),
-            intervalCount: Number(data.get("intervalCount")) || undefined,
+            calendar, lunarLeap, annualSubtype, month, nthWeek, weekday,
+            monthlySubtype, intervalUnit, intervalCount,
+            overrides: ruleChanged ? undefined : existing?.overrides,
             remindBeforeDays, note: String(data.get("note") || ""),
             enabled: existing?.enabled !== false, completedDates: existing?.completedDates || [], createdAt: existing?.createdAt, updatedAt: new Date().toISOString(),
         });
@@ -8493,6 +8567,7 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
             if (occasionState && root && this.isSurfaceRoot(root, "occasions")) { occasionState.submitting = false; this.render(root); }
             return;
         }
+        if (ruleChanged && existing?.overrides && Object.keys(existing.overrides).length && this.isCurrentOccasionSurface(root)) showMessage(t("msg.occasionOverridesCleared"));
         const previous = this.occasionStore;
         this.occasionStore = upsertOccasion(previous, normalized);
         try { await this.persistOccasions(this.occasionStore, root); } catch {
@@ -8501,6 +8576,7 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
             if (occasionState && root && this.isSurfaceRoot(root, "occasions")) { occasionState.submitting = false; this.render(root); }
             return;
         }
+        this.occasionDraft = undefined;
         if (root) {
             if (occasionState && this.isSurfaceRoot(root, "occasions")) {
                 occasionState.editingOccasionId = undefined;
@@ -8528,10 +8604,12 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
         else this.renderBackgroundUpdate();
     }
 
-    /* 11.0-C 延期/跳过/恢复：动作落独立存储（与打卡、事项数据隔离），低干扰提示后重渲染。 */
-    reminderUserAction(id: string, action: "snooze" | "skip" | "restore" | "defer"): void {
-        if (!id) return;
-        void this.enqueueMutation(async () => {
+    /* 11.0-C 延期/跳过/恢复：动作落独立存储（与打卡、事项数据隔离），低干扰提示后重渲染。
+       T-1707（D-353）：卸载门（disposed/disposing 不再发起写入）+ 写入挂 mutation 队列
+       等待完成——不再与事项持久化无序交错，拆卸期静默丢弃动作。 */
+    async reminderUserAction(id: string, action: "snooze" | "skip" | "restore" | "defer"): Promise<void> {
+        if (!id || this.disposed || this.disposing) return;
+        await this.enqueueMutation(async () => {
             /* T-1622：动作前重读并入其他窗口已写回的记录（按 (id,action,at) 并集），
                本窗口写回不再覆盖对方动作；远端读取失败按本窗口记忆继续。 */
             try {
@@ -8584,7 +8662,9 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
 
     /* T-1494：单次实例改期——写入 Occasion overrides（additive，键=原发生日期），
         持久化失败恢复旧 store；仅列表行显式「改期」入口可触发。 */
-    private saveOccasionOverride(id: string, originalDate: string, newDate: string, root?: HTMLElement): void {
+    private saveOccasionOverride(id: string, originalDate: string, newDate: string, root?: HTMLElement): void;
+    private saveOccasionOverride(id: string, originalDate: string, newDate?: string): void;
+    private saveOccasionOverride(id: string, originalDate: string, newDate?: string, root?: HTMLElement): void {
         void this.enqueueMutation(async () => {
             const previous = this.occasionStore;
             const next = setOccasionOverride(previous, id, originalDate, newDate);
@@ -8595,7 +8675,7 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
             this.occasionStore = next;
             try {
                 await this.persistOccasions(this.occasionStore, root);
-                if (this.isCurrentOccasionSurface(root)) showMessage(t("occ.moveDone", {date: newDate}));
+                if (this.isCurrentOccasionSurface(root)) showMessage(t("occ.moveDone", {date: newDate || originalDate}));
             } catch {
                 this.occasionStore = previous;
                 if (this.isCurrentOccasionSurface(root)) showMessage(t("msg.occasionToggleFail"));

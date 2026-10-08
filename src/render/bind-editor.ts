@@ -16,6 +16,7 @@ import {buildTemplateLinkageCard, templateLinkageForName, templateLinkageI18nKey
 import {buildTemplateSharePackage} from "../features/template-share";
 import {parseTemplateShare, planImportDecisions, TEMPLATE_IMPORT_MAX_BYTES, type ImportDecision} from "../features/template-import";
 import {buildNameInference, inferFieldsFromName} from "../features/name-inference";
+import {formSignatureFromData} from "../features/editor-draft";
 import {fetchSyncPost, showMessage} from "siyuan";
 import {buildAnchorDocumentPath, filterAnchorChoices} from "../features/note-anchor-picker";
 import {describeEditorPreviewActions, describeEditorPreviewMeta} from "./editor";
@@ -243,6 +244,10 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         applyIconFilter();
     }));
     root.querySelector<HTMLElement>("[data-action='back']")?.addEventListener("click", () => host.showEditorReturn(root));
+    /* T-1773：编辑器草稿基线——绑定期把表单签名写入 root dataset；离开时由
+       index.applyNavigation 单一咽喉点比对，附件走独立 pending 管线。 */
+    const draftForm = root.querySelector<HTMLFormElement>("form");
+    if (draftForm) root.dataset.editorDraftBaseline = formSignatureFromData(new FormData(draftForm));
     root.querySelector<HTMLElement>("[data-action='archive']")?.addEventListener("click", () => host.archiveEditingItem(root));
     root.querySelector<HTMLElement>("[data-action='delete-item']")?.addEventListener("click", () => host.deleteEditingItem(root));
     const scheduleSelect = root.querySelector<HTMLSelectElement>("select[name='schedule']");
@@ -1297,7 +1302,7 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
                     }
                 }
             }
-            void host.saveForm(data, editingId, submittedAt, expectedFingerprint, continueCreation, root).then((savedId) => {
+            void host.enqueueMutation(() => host.saveForm(data, editingId, submittedAt, expectedFingerprint, continueCreation, root)).then((savedId) => {
                 resetSubmitting();
                 if (continueCreation && typeof savedId === "string" && savedId && isCurrentSession()) {
                     const nameInput = root.querySelector<HTMLInputElement>("input[name='name']");

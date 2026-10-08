@@ -109,6 +109,7 @@ export function bindDialogCloseFor(host: PluginOpsHost, root: HTMLElement): void
 export function bindMobileNavFor(host: PluginOpsHost, root: HTMLElement): void {
     root.querySelectorAll<HTMLElement>("[data-mobile-nav]").forEach((button) => button.addEventListener("click", () => {
         const page = button.dataset.mobileNav;
+        /* T-1621 步骤一：导航只落在发起表面——dock/页签/快速弹窗各自独立切页，互不覆盖。 */
         if (page === "today") host.showToday(root);
         else if (page === "review" || page === "history" || page === "summary") host.showReview(root);
         else if (page === "insights") host.showInsights(undefined, root);

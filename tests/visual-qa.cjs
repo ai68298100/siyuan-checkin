@@ -30,6 +30,9 @@ const qaFrontend = process.env.CHECKIN_QA_FRONTEND || "desktop";
     const page = await browser.newPage({viewport: {width: initialWidth, height: 760}, deviceScaleFactor: 1});
     const pageErrors = [];
     page.on("pageerror", (error) => pageErrors.push(error.message));
+    /* T-1773：编辑器草稿离开确认（confirm）在走查流中自动接受——走查本就模拟
+       「改完离开」的用户路径，确认框出现即视为守门生效。 */
+    page.on("dialog", (dialog) => dialog.accept());
     /* Dark mode mirrors SiYuan's dark theme tokens so the reference palette can
        be verified against both appearances. */
     const darkTheme = process.env.CHECKIN_QA_THEME === "dark";

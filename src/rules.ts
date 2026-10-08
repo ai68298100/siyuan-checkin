@@ -37,8 +37,18 @@ export function getItemRevisionForDate(item: CheckinItem, date = new Date()): Ch
         kind: item.kind,
         target: item.target,
         unit: item.unit,
+        direction: item.direction === "atMost" ? "atMost" : "atLeast",
         schedule: cloneSchedule(item.schedule),
     };
+}
+
+export type RuleDirection = "atLeast" | "atMost";
+
+/** T-1766：当日有效方向——完成判定/连击/统计/投影的唯一方向来源。
+    规范化条目的修订已物化 direction；未规范化的内存条目回退顶层 direction
+    （与 T-1766 之前"历史按当前方向判定"的行为一致，仅作防御）。 */
+export function getItemDirectionForDate(item: CheckinItem, date = new Date()): RuleDirection {
+    return getItemRevisionForDate(item, date).direction ?? (item.direction === "atMost" ? "atMost" : "atLeast");
 }
 
 export type RuleStatus = "scheduled" | "off" | "unavailable";

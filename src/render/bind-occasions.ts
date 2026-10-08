@@ -2,8 +2,10 @@
    宿主成员经 BindOccasionsHost 结构化接口声明。 */
 import {t} from "../i18n";
 import {dateKey} from "../model";
-import {currentCalendarDate, isValidLocalDateInput} from "../shared";
-import {deleteOccasion, occasionTemplateName, OCCASION_TEMPLATES} from "../occasions";
+import {currentCalendarDate, escapeHtml, isValidLocalDateInput} from "../shared";
+import {deleteOccasion, findSimilarOccasions, normalizeOccasion, occasionTemplateName, OCCASION_TEMPLATES} from "../occasions";
+import {buildOccurrencePreview} from "../features/occasion-preview";
+import {formSignatureFromData, isEditorFormDirty} from "../features/editor-draft";
 import {formatLunar, solarToLunar} from "../lunar";
 import {showMessage} from "siyuan";
 import type {Occasion, OccasionStore, OccasionTemplateCategory} from "../occasions";
@@ -18,10 +20,19 @@ export interface BindOccasionsHost {
     /** T-1613：仅移动端在展开表单后滚动定位（桌面表单常驻可见无需滚动）。 */
     isMobileFrontend?: boolean;
     editingOccasionId?: string;
+    /** T-1708（D-354）：事项表单草稿——输入即快照进宿主态，远端重载整页重绘后由
+        绑定期恢复（值/编辑目标匹配时）；baseUpdatedAt 用于检测远端更新同事项的
+        冲突（confirm：保留草稿继续编辑 / 载入远端数据）。不跨插件重载保留。 */
+    occasionDraft?: {editingId?: string; baseUpdatedAt?: string; values: Array<[string, string]>};
+    /** T-1714：搜索渲染的卸载门（拆卸期不再重绘）。 */
+    /** T-1716：规则预览折叠态（会话态，跨重绘保留）。 */
+    occasionPreviewOpen?: boolean;
     occasionSearchQuery: string;
     occasionStatusFilter: "all" | "enabled" | "disabled";
     occasionKindFilter: "all" | "birthday" | "anniversary" | "scheduled";
-    occasionTimeFilter: "all" | "today" | "upcoming" | "ended";
+    occasionTimeFilter: "all" | "today" | "missed" | "upcoming" | "ended";
+    /** T-1715：排序模式（缺省 next=近到远既有口径）。 */
+    occasionSortMode?: "next" | "name" | "updated";
     occasionTemplatesOpen: boolean;
     occasionTemplateCategory: "recommended" | OccasionTemplateCategory;
     occasionStateForRoot?(root: HTMLElement): OccasionsRootContext;
@@ -38,8 +49,12 @@ export interface BindOccasionsHost {
     persistOccasions(root?: HTMLElement): Promise<void>;
     /** T-1494：按发生日期标记完成（错过补标记复用既有通道）。 */
     setOccasionCompleted(id: string, occurrenceDate: string, completed: boolean, root?: HTMLElement): Promise<boolean>;
+    /** T-1720（D-363）：关联项目徽章点击进该项目编辑器（宿主跨页编辑，返回回事项页）。 */
+    showEditorForLinkedItem?(itemId: string): void;
+    /** T-1720：关联项目上下文（宿主打卡 store 投影）。 */
+    linkedItems?: Array<{id: string; name: string; linkedOccasionId: string; archived: boolean}>;
     /** T-1494：单次实例改期（宿主走 setOccasionOverride 既有持久化通道）。 */
-    saveOccasionOverride?(id: string, originalDate: string, newDate: string, root?: HTMLElement): void;
+    saveOccasionOverride?(id: string, originalDate: string, newDate?: string, root?: HTMLElement): void;
     syncOccasionLunarHint(form: HTMLFormElement | null): void;
     saveOccasionForm(data: FormData, root?: HTMLElement): Promise<unknown>;
 }
@@ -61,12 +76,20 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
     const revealOccasionForm = () => { const drawer = root.querySelector<HTMLDetailsElement>("[data-occasion-form-drawer]"); if (drawer) drawer.open = true; if (host.isMobileFrontend) root.querySelector<HTMLElement>(".lc-checkin__occasion-form-panel")?.scrollIntoView({block: "start", behavior: "instant"}); };
     root.querySelectorAll<HTMLElement>("[data-action='new-occasion']").forEach((button) => button.addEventListener("click", () => { writeState({editingOccasionId: undefined, formDraft: undefined, formOpen: true, submitting: false, formSession: currentState().formSession + 1}); renderRoot(); revealOccasionForm(); }));
     root.querySelector<HTMLElement>("[data-action='cancel-occasion-edit']")?.addEventListener("click", () => { writeState({editingOccasionId: undefined, formDraft: undefined, formOpen: false, submitting: false, formSession: currentState().formSession + 1}); renderRoot(); });
-    root.querySelector<HTMLInputElement>("[data-occasion-search]")?.addEventListener("input", (event) => {
-        writeState({occasionSearchQuery: (event.currentTarget as HTMLInputElement).value});
+    /* T-1714：搜索输入保留 IME 组合态与光标位置，避免重绘吞输入。 */
+    const occasionSearch = root.querySelector<HTMLInputElement>("[data-occasion-search]");
+    let occasionComposing = false;
+    const applyOccasionSearch = (input: HTMLInputElement) => {
+        if (!input.isConnected || host.disposing) return;
+        writeState({occasionSearchQuery: input.value});
+        const caret = input.selectionStart;
         renderRoot();
-        const searchInput = root.querySelector<HTMLInputElement>("[data-occasion-search]");
-        if (searchInput) { searchInput.focus(); searchInput.setSelectionRange(searchInput.value.length, searchInput.value.length); }
-    });
+        const next = root.querySelector<HTMLInputElement>("[data-occasion-search]");
+        if (next) { next.focus(); const position = caret === null ? next.value.length : Math.min(caret, next.value.length); next.setSelectionRange(position, position); }
+    };
+    occasionSearch?.addEventListener("compositionstart", () => { occasionComposing = true; });
+    occasionSearch?.addEventListener("compositionend", () => { occasionComposing = false; applyOccasionSearch(occasionSearch); });
+    occasionSearch?.addEventListener("input", (event) => { const input = event.currentTarget as HTMLInputElement; if (occasionComposing || (event as InputEvent).isComposing) return; applyOccasionSearch(input); });
     root.querySelectorAll<HTMLSelectElement>("[data-occasion-filter]").forEach((select) => select.addEventListener("change", () => {
         const key = select.dataset.occasionFilter;
         if (key === "status") writeState({occasionStatusFilter: select.value as BindOccasionsHost["occasionStatusFilter"]});
@@ -74,17 +97,29 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
         if (key === "time") writeState({occasionTimeFilter: select.value as BindOccasionsHost["occasionTimeFilter"]});
         renderRoot();
     }));
+    /* T-1715：排序选择（宿主字段，往返自动恢复）。 */
+    root.querySelector<HTMLSelectElement>("[data-occasion-sort]")?.addEventListener("change", (event) => {
+        host.occasionSortMode = (event.currentTarget as HTMLSelectElement).value as BindOccasionsHost["occasionSortMode"];
+        host.render();
+    });
     root.querySelector<HTMLElement>("[data-occasion-clear-filters]")?.addEventListener("click", () => {
         writeState({occasionSearchQuery: "", occasionStatusFilter: "all", occasionKindFilter: "all", occasionTimeFilter: "all"}); renderRoot();
     });
+    root.querySelectorAll<HTMLElement>("[data-occasion-stat]").forEach((button) => button.addEventListener("click", () => {
+        writeState({occasionStatusFilter: (button.dataset.statStatus || "all") as BindOccasionsHost["occasionStatusFilter"], occasionTimeFilter: (button.dataset.statTime || "all") as BindOccasionsHost["occasionTimeFilter"]});
+        renderRoot();
+    }));
     root.querySelectorAll<HTMLElement>("[data-occasion-edit]").forEach((button) => button.addEventListener("click", () => { writeState({editingOccasionId: button.dataset.occasionEdit, formDraft: undefined, formOpen: true, formSession: currentState().formSession + 1}); renderRoot(); revealOccasionForm(); }));
     root.querySelectorAll<HTMLElement>("[data-occasion-toitem]").forEach((button) => button.addEventListener("click", () => {
         void host.enqueueMutation(async () => { await host.createOccasionLinkedItem(button.dataset.occasionToitem || "", root); });
     }));
     root.querySelectorAll<HTMLElement>("[data-occasion-toggle]").forEach((button) => button.addEventListener("click", () => {
         const id = button.dataset.occasionToggle || "";
-        const item = host.occasionStore.occasions.find((candidate) => candidate.id === id);
-        if (item) void host.enqueueMutation(() => host.updateOccasion({...item, enabled: !item.enabled}, root));
+        if (!host.occasionStore.occasions.some((candidate) => candidate.id === id)) return;
+        void host.enqueueMutation(async () => {
+            const latest = host.occasionStore.occasions.find((candidate) => candidate.id === id);
+            if (latest) await host.updateOccasion({...latest, enabled: !latest.enabled}, root);
+        });
     }));
     root.querySelectorAll<HTMLElement>("[data-occasion-delete]").forEach((button) => button.addEventListener("click", () => {
         const id = button.dataset.occasionDelete || "";
@@ -119,6 +154,23 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
         if (!id || !missedDate) return;
         void host.enqueueMutation(async () => { await host.setOccasionCompleted(id, missedDate, true, root); });
     }));
+    /* T-1712（D-355）：行内完成/撤销当前可处理发生日——复用 setOccasionCompleted 单一
+       通道（与今日横幅/回顾/补标同源），撤销同通道回滚；启停走 data-occasion-toggle
+       互不混淆。 */
+    root.querySelectorAll<HTMLElement>("[data-occasion-complete]").forEach((button) => button.addEventListener("click", () => {
+        const id = button.dataset.occasionComplete || "";
+        const occurrenceDate = button.dataset.occasionCompleteDate || "";
+        const target = button.dataset.occasionCompleteTarget === "true";
+        if (!id || !occurrenceDate) return;
+        void host.enqueueMutation(async () => { await host.setOccasionCompleted(id, occurrenceDate, target); });
+    }));
+    /* T-1720（D-363）：关联项目徽章点击进该项目编辑器（跨页编辑，返回回事项页）；
+       归档项目只读不可进（先启用再编辑）。 */
+    root.querySelectorAll<HTMLElement>("[data-occasion-linked-edit]").forEach((button) => button.addEventListener("click", () => {
+        const id = button.dataset.occasionLinkedEdit || "";
+        const linked = (host.linkedItems || []).find((entry) => entry.id === id);
+        if (linked && !linked.archived && host.showEditorForLinkedItem) host.showEditorForLinkedItem(id);
+    }));
     root.querySelectorAll<HTMLElement>("[data-occasion-move-toggle]").forEach((button) => button.addEventListener("click", () => {
         const id = button.dataset.occasionMoveToggle || "";
         const row = root.querySelector<HTMLElement>(`[data-occasion-move-row='${CSS.escape(id) || id}']`);
@@ -136,23 +188,36 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
         const dateInput = row.querySelector<HTMLInputElement>("[data-occasion-move-date]");
         const confirmButton = row.querySelector<HTMLButtonElement>("[data-occasion-move-confirm]");
         if (!dateInput || !confirmButton) return;
+        /* T-1718（D-359）：原日→新日可视核对（选日即更新标签）；撞到已完成/其他
+           覆盖实例时 confirm 反馈（允许但明确）。 */
+        const originLabel = row.querySelector<HTMLElement>("[data-occasion-move-origin-label]");
+        const originDate = confirmButton.dataset.occasionMoveOrigin || "";
         dateInput.addEventListener("change", () => {
-            const current = currentState();
-            writeState({occurrenceMoves: {...current.occurrenceMoves, [id]: {open: true, date: dateInput.value}}});
             confirmButton.disabled = !dateInput.value;
+            if (originLabel && dateInput.value) originLabel.textContent = t("occ.moveTo", {from: originDate, to: dateInput.value});
+            if (originLabel && !dateInput.value) originLabel.textContent = t("occ.moveFrom", {date: originDate});
         });
         confirmButton.addEventListener("click", () => {
             if (!dateInput.value || confirmButton.disabled) return;
+            const target = host.occasionStore.occasions.find((candidate) => candidate.id === id);
+            const clash = target && ((target.completedDates || []).includes(dateInput.value)
+                || Object.values(target.overrides || {}).some((override) => override.date === dateInput.value)
+                || Boolean(target.overrides?.[dateInput.value]));
+            if (clash && !window.confirm(t("msg.occasionMoveClash", {date: dateInput.value}))) return;
             const current = currentState();
-            /* Close the inline editor immediately while retaining the date as
-               a retryable root-local draft if persistence later fails. */
             writeState({occurrenceMoves: {...current.occurrenceMoves, [id]: {open: false, date: dateInput.value}}});
-            row.hidden = true;
-            const toggle = root.querySelector<HTMLElement>(`[data-occasion-move-toggle='${CSS.escape(id) || id}']`);
-            toggle?.setAttribute("aria-expanded", "false");
             if (host.saveOccasionOverride) host.saveOccasionOverride(id, confirmButton.dataset.occasionMoveOrigin || "", dateInput.value, root);
         });
     });
+    /* T-1718：撤销改期——只清本次覆盖（setOccasionOverride 传 undefined），恢复周期
+       规则日期；不影响其他周期或历史。 */
+    root.querySelectorAll<HTMLElement>("[data-occasion-move-undo]").forEach((button) => button.addEventListener("click", () => {
+        const id = button.dataset.occasionMoveUndo || "";
+        const origin = button.dataset.occasionMoveUndoOrigin || "";
+        if (!id || !origin) return;
+        if (!window.confirm(t("msg.occasionMoveUndoConfirm", {origin, next: button.dataset.occasionMoveUndoNext || ""}))) return;
+        if (host.saveOccasionOverride) host.saveOccasionOverride(id, origin, undefined);
+    }));
 
     const syncBlocks = () => {
         const form = root.querySelector<HTMLFormElement>("[data-occasion-form]");
@@ -187,6 +252,12 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
         if (!template) return;
         const form = root.querySelector<HTMLFormElement>("[data-occasion-form]");
         if (!form) return;
+        /* T-1702（D-349）：编辑既有事项时套用模板=以模板覆写当前表单草案，编辑目标
+           （editingOccasionId/历史/关联）保持不变；确认取消零写入。新建路径维持原样
+           （模板即新事项起点）。 */
+        if (host.editingOccasionId && !window.confirm(t("msg.occasionTemplateOverwrite"))) return;
+        /* T-1708：模板程序性覆写表单后清草稿——重绘恢复不得盖回模板之前的值。 */
+        host.occasionDraft = undefined;
         const set = (name: string, value: string) => { const field = form.querySelector<HTMLInputElement | HTMLSelectElement>(`[name='${name}']`); if (field) field.value = value; };
         set("name", occasionTemplateName(template));
         set("kind", template.kind);
@@ -203,7 +274,8 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
         set("intervalCount", String(template.intervalCount || 1));
         set("intervalUnit", template.intervalUnit || "month");
         set("remindBeforeDays", String(template.remindBeforeDays));
-        writeState({editingOccasionId: undefined, formDraft: undefined, formOpen: true, formSession: currentState().formSession + 1});
+        /* 编辑态保留目标；新建态的 editingOccasionId 已由新建入口清空。 */
+        writeState({formDraft: undefined, formOpen: true, formSession: currentState().formSession + 1});
         syncBlocks();
     }));
     root.querySelectorAll<HTMLButtonElement>("[data-occasion-template-category]").forEach((button) => button.addEventListener("click", () => {
@@ -211,8 +283,13 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
         renderRoot();
     }));
 
+    /* T-1703（D-349）：提交幂等门——在途提交期间忽略重复 submit（快速双击/Enter 连发
+       最多产生一次变更），按钮同步 disabled+aria-busy；失败/完成后释放可重试。
+       编辑目标由 saveOccasionForm 从宿主状态在锁内复核。 */
+    let occasionSubmitBusy = false;
     root.querySelector<HTMLFormElement>("[data-occasion-form]")?.addEventListener("submit", (event) => {
         event.preventDefault();
+        if (occasionSubmitBusy) return;
         const form = event.currentTarget as HTMLFormElement;
         const data = new FormData(form);
         if (!String(data.get("name") || "").trim() || !isValidLocalDateInput(String(data.get("date") || ""))) {
@@ -220,12 +297,109 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
             return;
         }
         const current = currentState();
+        /* T-1717（D-360）：新建前重复/相似提示——只提示不合并，合法重名（不同人的
+           生日）确认后保留；编辑既有事项不查。优先读取 root 状态，兼容旧宿主字段。 */
+        if (!host.editingOccasionId) {
+            const editingOccasionId = current.editingOccasionId ?? host.editingOccasionId;
+            if (!editingOccasionId) {
+                const duplicates = findSimilarOccasions(host.occasionStore.occasions, String(data.get("name") || ""));
+                if (duplicates.length && !window.confirm(t("msg.occasionDuplicate", {names: duplicates.map((item) => item.name).join("、")}))) return;
+            }
+        }
         captureOccasionDraftFor(root, current);
         const session = nextOccasionFormSession(current);
+        occasionSubmitBusy = true;
+        const submitButton = form.querySelector<HTMLButtonElement>("button[type='submit']");
+        submitButton?.setAttribute("disabled", "true");
+        submitButton?.setAttribute("aria-busy", "true");
         writeState({submitting: true});
         renderRoot();
         void host.enqueueMutation(() => host.saveOccasionForm(data, root)).catch(() => {
             if (isCurrentOccasionFormSession(host, root, session)) writeState({submitting: false});
+        }).finally(() => {
+            occasionSubmitBusy = false;
+            submitButton?.removeAttribute("disabled");
+            submitButton?.removeAttribute("aria-busy");
         });
     });
+
+    /* T-1708（D-354）：事项表单草稿——输入即快照进宿主态（远端 onDataChanged 整页
+       重绘不再吞未保存表单），绑定期按编辑目标匹配恢复；远端更新过同一事项
+       （updatedAt 变化）时 confirm 冲突：确定=保留草稿继续编辑，取消=载入远端数据。
+       草稿不跨插件重载保留；程序性批量写表单（模板套用等）后必须清草稿。 */
+    const occasionDraftForm = root.querySelector<HTMLFormElement>("[data-occasion-form]");
+    if (occasionDraftForm) {
+        const draft = host.occasionDraft;
+        if (draft && (draft.editingId ?? undefined) === (host.editingOccasionId ?? undefined)) {
+            const draftTarget = draft.editingId ? host.occasionStore.occasions.find((candidate) => candidate.id === draft.editingId) : undefined;
+            const remoteChanged = Boolean(draft.editingId) && draftTarget ? draftTarget.updatedAt !== draft.baseUpdatedAt : false;
+            const applyDraft = () => {
+                for (const [name, value] of draft.values) {
+                    const field = occasionDraftForm.querySelector<HTMLInputElement | HTMLSelectElement>(`[name='${name}']`);
+                    if (field) field.value = value;
+                }
+            };
+            if (remoteChanged && !window.confirm(t("msg.occasionDraftConflict"))) {
+                host.occasionDraft = undefined;
+            } else {
+                applyDraft();
+                showMessage(t("msg.occasionDraftRestored"));
+                host.occasionDraft = undefined;
+            }
+        }
+        const draftBaseUpdatedAt = host.editingOccasionId
+            ? host.occasionStore.occasions.find((candidate) => candidate.id === host.editingOccasionId)?.updatedAt
+            : undefined;
+        const draftBaseline = formSignatureFromData(new FormData(occasionDraftForm));
+        occasionDraftForm.addEventListener("input", () => {
+            const data = new FormData(occasionDraftForm);
+            if (isEditorFormDirty(data, draftBaseline)) {
+                const values: Array<[string, string]> = [];
+                data.forEach((value, key) => { if (typeof value === "string") values.push([key, value]); });
+                host.occasionDraft = {editingId: host.editingOccasionId, baseUpdatedAt: draftBaseUpdatedAt, values};
+            } else if (host.occasionDraft) host.occasionDraft = undefined;
+        });
+        /* T-1716（D-358）：规则预览实时填充——从表单值构造 normalize 输入（与
+           saveOccasionForm 同字段集合），经 buildOccurrencePreview 单一投影渲染
+           接下来发生日与提醒出现日；只读、零写入、不触发保存。 */
+        const previewBody = root.querySelector<HTMLElement>("[data-occasion-preview-body]");
+        const previewDetails = root.querySelector<HTMLDetailsElement>("[data-occasion-preview]");
+        previewDetails?.addEventListener("toggle", (event) => { host.occasionPreviewOpen = (event.currentTarget as HTMLDetailsElement).open; });
+        const updateOccurrencePreview = () => {
+            if (!previewBody) return;
+            const data = new FormData(occasionDraftForm);
+            const read = (name: string) => String(data.get(name) || "");
+            const recurrenceValue = read("recurrence");
+            const draftInput = {
+                name: read("name") || "预览",
+                kind: read("kind") || "scheduled",
+                date: read("date"),
+                recurrence: ["once", "annual", "monthly", "weekly", "quarterly", "halfyearly", "interval"].includes(recurrenceValue) ? recurrenceValue : "annual",
+                calendar: recurrenceValue === "annual" ? read("calendar") || "solar" : "solar",
+                annualSubtype: read("annualSubtype") || "byday",
+                month: Number(read("annualMonth")) || undefined,
+                nthWeek: Number(read("annualNth")) || undefined,
+                weekday: Number(read("weekday")) || 0,
+                monthlySubtype: read("monthlySubtype") || "byday",
+                intervalUnit: read("intervalUnit") || "month",
+                intervalCount: Number(read("intervalCount")) || undefined,
+                remindBeforeDays: Math.max(0, Math.min(365, Math.round(Number(read("remindBeforeDays")) || 0))),
+                note: "",
+            };
+            const draftOccasion = normalizeOccasion(draftInput);
+            if (!draftOccasion) {
+                previewBody.innerHTML = `<small>${escapeHtml(t("occ.previewNone"))}</small>`;
+                return;
+            }
+            const preview = buildOccurrencePreview(draftOccasion, currentCalendarDate());
+            if (!preview.entries.length) {
+                previewBody.innerHTML = `<small>${escapeHtml(t(preview.reasonKey || "occ.previewNone"))}</small>`;
+                return;
+            }
+            previewBody.innerHTML = preview.entries.map((entry) => `<div class="lc-checkin__occasion-preview-row"><time datetime="${escapeHtml(entry.occurrenceDate)}">${escapeHtml(entry.occurrenceDate)}</time><small>${escapeHtml(t("occ.previewRemind", {date: entry.remindDate}))}</small></div>`).join("");
+        };
+        updateOccurrencePreview();
+        occasionDraftForm.addEventListener("input", updateOccurrencePreview);
+        occasionDraftForm.addEventListener("change", updateOccurrencePreview);
+    }
 }

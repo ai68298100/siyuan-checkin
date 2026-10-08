@@ -147,7 +147,7 @@ assert.match(pluginSource, /private async saveJournalData\(\): Promise<void> \{[
     "journal configuration writes must reconcile remote state while holding the storage lock");
 assert.match(pluginSource, /lastPersistedJournalIntegration = \{\.\.\.this\.journalIntegrationPref\};/,
     "journal integration baseline must be initialized after restore");
-assert.match(pluginSource, /reminderUserAction\(id: string, action: "snooze" \| "skip" \| "restore" \| "defer"\): void \{[\s\S]*?void this\.enqueueMutation\(async \(\) => \{/,
+assert.match(pluginSource, /reminderUserAction\(id: string, action: "snooze" \| "skip" \| "restore" \| "defer"\): (?:void|Promise<void>) \{[\s\S]*?(?:void|await) this\.enqueueMutation\(async \(\) => \{/,
     "reminder actions must write inside the mutation queue");
 assert.match(pluginSource, /D-315：偏好桶明确采用后写者胜[\s\S]*?withStorageLock/, "preference writes must document and serialize the last-writer-wins boundary");
 assert.match(workflowSource, /export function mergeSuggestionWorkflows\(/, "suggestion workflow must merge concurrent audit/token updates");

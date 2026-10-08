@@ -24,9 +24,12 @@ assert.match(quickDialogSource, /dialog\.destroy\(\);[\s\S]*handleQuickDialogDes
 
 const cleanup = quickDialogSource.match(/export function handleQuickDialogDestroyedFor\(host: QuickDialogHost, dialog: Dialog\): void \{([\s\S]*?)\n\}/)?.[1] || "";
 assert.match(cleanup, /if \(host\.quickDialog !== dialog\) return;/, "dialog cleanup must be idempotent");
-assert.match(cleanup, /const page = root && host\.pageForRoot \? host\.pageForRoot\(root\) : host\.currentPage;/, "closing reads the session page from its root (T-1597)");
-assert.match(cleanup, /rememberQuickPage\(page\);/, "closing saves the session page (T-1597)");
-assert.match(quickDialogSource, /host\.setPageForRoot\?\.\(nextPage, root\)/, "reopening replays the session page on the dialog root (T-1597)");
+/* T-1621：会话页按弹窗自己的 root 记取与回放，其余表面页面不动。 */
+assert.match(cleanup, /const closingPage = host\.quickDialogElement \? host\.pageOfRoot\(host\.quickDialogElement\) : host\.currentPage;/, "closing saves the dialog root's own page (T-1597/T-1621)");
+assert.match(cleanup, /if \(root\) host\.releaseRootContext\(root\);/, "destroyed dialog root releases its page context (T-1621)");
+assert.match(cleanup, /rememberQuickPage\(closingPage\);/, "closing remembers the dialog page for replay (T-1597)");
+assert.doesNotMatch(cleanup, /host\.currentPage = lastQuickPage;/, "closing must NOT write the dialog page back to the host-level proxy (T-1621)");
+assert.match(quickDialogSource, /const nextPage = QUICK_PRESERVED_PAGES\.has\(lastQuickPage\) \? lastQuickPage : "today";[\s\S]*host\.applyNavigation\(root, nextPage\);/, "reopening replays the session page onto the dialog root only (T-1597/T-1621)");
 assert.match(cleanup, /void host\.reconcileStore\(\);/, "closing the dialog must reconcile persisted data");
 assert.match(source, /data-action=\\?"close-dialog\\?"/,
     "the dialog content must expose an explicit close action");
@@ -51,7 +54,7 @@ assert.match(iconsSource, /const UI_ICON_PATHS[\s\S]*home:[\s\S]*insight:/, "nav
 for (const destination of ["review", "occasions", "settings"]) assert.match(source, new RegExp(`\\[\\"${destination}\\",`));
 assert.match(source, /buttons\.slice\(0, 2\)[\s\S]*?\$\{add\}[\s\S]*?buttons\.slice\(2\)/, "mobile navigation must center the add action");
 assert.doesNotMatch(source, /currentPage !== "editor" && !root\.querySelector\("\.lc-checkin__mobile-nav"\)/, "editor must retain bottom navigation");
-assert.match(pluginOpsSource, /else if \(page === "review" \|\| page === "history" \|\| page === "summary"\) host\.showReview\(root\)/, "legacy review routes remain supported");
+assert.match(pluginOpsSource, /else if \(page === "review" \|\| page === "history" \|\| page === "summary"\) host\.showReview\(root\)/, "legacy review routes remain supported on the originating surface (T-1621)");
 assert.match(bindPageNavSource, /data-history-insights-id/,
     "history records should link directly to item insights");
 assert.match(source, /revision\.schedule\.type === "quota" && revision\.schedule\.quota\?\.countMode === "dates"/,

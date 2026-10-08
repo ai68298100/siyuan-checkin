@@ -22,6 +22,9 @@ export const UI_ICON_PATHS: Record<string, string> = {
     close: "M6 6l12 12M18 6 6 18",
     check: "m5 12 4 4L19 6",
     circle: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z",
+    /* T-1711（D-355）：启停动作专用图标——check/circle 易与事项完成混淆。 */
+    pause: "M7 5h4v14H7zM13 5h4v14h-4z",
+    play: "M8 5v14l11-7z",
     camera: "M4 7h4l2-3h4l2 3h4v13H4z M16 13a4 4 0 1 0-8 0 4 4 0 0 0 8 0",
 };
 

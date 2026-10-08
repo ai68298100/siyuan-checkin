@@ -62,6 +62,14 @@ export interface BindTodayHost {
     showSettings(root?: HTMLElement): void;
     openTabPage(): void;
     showEditor(item?: CheckinItem, returnTo?: "insights", root?: HTMLElement): void;
+    /** T-1772：其他活跃项目管理行的归档动作。 */
+    archiveItems?(itemIds: string[]): Promise<boolean>;
+    /** T-1775：七日条日期入口复用回顾按日钻取状态。 */
+    showReview?(root?: HTMLElement): void;
+    selectedHistoryDate?: string;
+    historyScope?: "day" | "period";
+    historyPage?: number;
+    editingHistoryNoteId?: string;
     revisionFingerprint(item: CheckinItem, date: Date): string;
     /** T-1424 用户跳过新手引导（粘性，偏好持久化）。 */
     firstSuccessSkipGuidance(): void;
@@ -72,7 +80,7 @@ export interface BindTodayHost {
     /** 手机端打卡成功的短振动（桌面/关闭时为空操作）。 */
     pulseHaptic(): void;
     /** T-1621：按所属表面登记打卡后焦点恢复目标。 */
-    setPendingFocusItem(root: HTMLElement, itemId: string): void;
+    setPendingFocusItem?(root: HTMLElement, itemId: string): void;
     enqueueMutation<T>(operation: () => Promise<T>): Promise<T>;
     recordEvent(item: CheckinItem, value: number, moment: {occurredAt: string; localDate: string}, expectedRevisionFingerprint?: string, note?: string, attachment?: string): Promise<unknown>;
     toggleItem(itemId: string, moment: {occurredAt: string; localDate: string}, desiredComplete: boolean, expectedRevisionFingerprint?: string, eventsToUndo?: CheckinEvent[]): Promise<unknown>;
@@ -198,7 +206,7 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
         const item = getActiveItemById(host.store, targetId);
         if (!item || isComplete(host.store, item, date) || parsed.value === undefined) return;
         const moment = captureActionMoment();
-        host.setPendingFocusItem(root, item.id);
+        if (host.setPendingFocusItem) host.setPendingFocusItem(root, item.id);
         host.pulseHaptic();
         void host.enqueueMutation(() => host.recordEvent(item, parsed.value!, moment, host.revisionFingerprint(item, date)));
     });
@@ -209,6 +217,17 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
         host.focusTodaySearch(undefined, root);
     }));
     root.querySelector<HTMLElement>("[data-action='undo-record']")?.addEventListener("click", () => host.undoRecentRecord());
+    /* T-1776：回执"查看此记录"——行内展开该事件的事实详情（与回顾同款投影），
+       本地 DOM 切换不触重渲染；撤销仍只作用于回执对应事件（T-1795）。 */
+    root.querySelectorAll<HTMLElement>("[data-action='toggle-record-details']").forEach((button) => button.addEventListener("click", () => {
+        const eventId = button.dataset.recordDetailsToggle || "";
+        const panel = root.querySelector<HTMLElement>(`[data-record-details-panel="${CSS.escape(eventId)}"]`);
+        if (!panel) return;
+        const expanded = !panel.hidden;
+        panel.hidden = expanded;
+        button.setAttribute("aria-expanded", String(!expanded));
+        button.textContent = expanded ? t("today.viewRecord") : t("today.hideRecord");
+    }));
     root.querySelector<HTMLElement>("[data-action='retry-save']")?.addEventListener("click", () => {
         void host.retrySave();
     });
@@ -217,7 +236,7 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
         if (!item) return;
         const date = currentCalendarDate();
         const revision = getItemRevisionForDate(item, date);
-        host.setPendingFocusItem(root, item.id);
+        if (host.setPendingFocusItem) host.setPendingFocusItem(root, item.id);
         host.pulseHaptic();
         host.enqueueMutation(() => host.recordEvent(item, revision.kind === "binary" ? 1 : getRecordStep(revision.kind, revision.unit, revision.recordStep), captureActionMoment(), host.revisionFingerprint(item, date)));
     }));
@@ -229,6 +248,20 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
     root.querySelector<HTMLElement>("[data-action='history']")?.addEventListener("click", () => host.showHistory(root));
     root.querySelector<HTMLElement>("[data-action='skip-onboard']")?.addEventListener("click", () => host.firstSuccessSkipGuidance());
     root.querySelector<HTMLElement>("[data-action='archived']")?.addEventListener("click", () => host.showArchived(root));
+    root.querySelectorAll<HTMLElement>("[data-manage-edit]").forEach((button) => button.addEventListener("click", () => {
+        const item = getActiveItemById(host.store, button.dataset.manageEdit || "");
+        if (item) host.showEditor(item, undefined, root);
+    }));
+    root.querySelectorAll<HTMLElement>("[data-manage-archive]").forEach((button) => button.addEventListener("click", () => {
+        const id = button.dataset.manageArchive || "";
+        if (id && getActiveItemById(host.store, id)) void host.archiveItems?.([id]);
+    }));
+    root.querySelectorAll<HTMLElement>("[data-week-strip-date]").forEach((button) => button.addEventListener("click", () => {
+        const value = button.dataset.weekStripDate;
+        if (!value || !host.showReview) return;
+        host.selectedHistoryDate = value; host.historyScope = "day"; host.historyPage = 0; host.editingHistoryNoteId = undefined;
+        host.showReview(root);
+    }));
     root.querySelectorAll<HTMLElement>("[data-heatmap-year]").forEach((button) => button.addEventListener("click", (event) => {
         event.stopPropagation();
         const offset = Number(button.dataset.heatmapYear);
@@ -362,7 +395,7 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
             const date = calendarDateFromKey(moment.localDate);
             const revision = getItemRevisionForDate(item, date);
             const expectedRevisionFingerprint = host.revisionFingerprint(item, date);
-            host.setPendingFocusItem(root, item.id);
+            if (host.setPendingFocusItem) host.setPendingFocusItem(root, item.id);
             host.pulseHaptic();
             /* T-1462：chips 各自携带 data-amount；主步长按钮的 data-amount 与重算值等价，缺失/非法时回落重算。 */
             const amountValue = Number((event.currentTarget as HTMLElement).dataset.amount);
@@ -433,21 +466,40 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
                 const recordWithDetails = (value: number): void => {
                     const note = element.querySelector<HTMLInputElement>(".lc-checkin__record-note")?.value;
                     const attachment = pendingAttachments.get(itemId);
-                    pendingAttachments.delete(itemId);
-                    host.setPendingFocusItem(root, item.id);
+                    if (host.setPendingFocusItem) host.setPendingFocusItem(root, item.id);
                     host.pulseHaptic();
-                    host.enqueueMutation(() => host.recordEvent(item, value, moment, expectedRevisionFingerprint, note, attachment));
-                    const attachButton = element.querySelector<HTMLElement>("[data-attach-button]");
-                    if (attachButton) { attachButton.classList.remove("has-photo"); attachButton.dataset.photo = ""; }
-                    /* T-1455：录完即收起面板并交还焦点——否则输入挂起策略会吞掉打卡后
-                       的界面刷新（Enter 保存场景），条目看起来没变。 */
-                    setExpandedExactEntries(expandedExactEntries().filter((id) => id !== item.id));
-                    const exactEntry = element.querySelector<HTMLElement>("[data-exact-entry]");
-                    if (exactEntry) exactEntry.hidden = true;
-                    const trigger = element.querySelector<HTMLElement>("[data-action='toggle-exact']");
-                    if (trigger) trigger.setAttribute("aria-expanded", "false");
-                    const active = (element.ownerDocument?.activeElement ?? null) as HTMLElement | null;
-                    active?.blur?.();
+                    /* T-1795：写失败保留草稿现场——附件放回 pendingAttachments、精确面板
+                       保持展开（可修改后重试）；成功才消费附件并收起清场（T-1455）。 */
+                    const restoreDraft = () => {
+                        if (attachment) pendingAttachments.set(itemId, attachment);
+                        if (!expandedExactEntries().includes(itemId)) setExpandedExactEntries([...expandedExactEntries(), itemId]);
+                        host.render(root);
+                    };
+                    void host.enqueueMutation(async () => {
+                        try {
+                            const recorded = await host.recordEvent(item, value, moment, expectedRevisionFingerprint, note, attachment);
+                            if (!recorded) {
+                                restoreDraft();
+                                return recorded;
+                            }
+                            pendingAttachments.delete(itemId);
+                            const attachButton = element.querySelector<HTMLElement>("[data-attach-button]");
+                            if (attachButton) { attachButton.classList.remove("has-photo"); attachButton.dataset.photo = ""; }
+                            /* T-1455：录完即收起面板并交还焦点——否则输入挂起策略会吞掉打卡后
+                               的界面刷新（Enter 保存场景），条目看起来没变。 */
+                            setExpandedExactEntries(expandedExactEntries().filter((id) => id !== item.id));
+                            const exactEntry = element.querySelector<HTMLElement>("[data-exact-entry]");
+                            if (exactEntry) exactEntry.hidden = true;
+                            const trigger = element.querySelector<HTMLElement>("[data-action='toggle-exact']");
+                            if (trigger) trigger.setAttribute("aria-expanded", "false");
+                            const active = (element.ownerDocument?.activeElement ?? null) as HTMLElement | null;
+                            active?.blur?.();
+                            return recorded;
+                        } catch (error) {
+                            restoreDraft();
+                            throw error;
+                        }
+                    });
                 };
                 if (revision.kind === "binary") {
                     /* T-1239（D-219）：at-most 反转——无破戒时点击记录破戒；已破戒时点击撤销。 */
@@ -459,7 +511,7 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
                             recordWithDetails(1);
                             return;
                         }
-                        host.setPendingFocusItem(root, item.id);
+                        if (host.setPendingFocusItem) host.setPendingFocusItem(root, item.id);
                         host.pulseHaptic();
                         host.enqueueMutation(() => host.toggleItem(item.id, moment, false, expectedRevisionFingerprint, lapseEvents));
                         return;
@@ -473,7 +525,7 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
                         return;
                     }
                     const eventsToUndo = desiredComplete ? [] : getEventsForDay(host.store, item.id, calendarDateFromKey(moment.localDate)).map((event) => ({...event}));
-                    host.setPendingFocusItem(root, item.id);
+                    if (host.setPendingFocusItem) host.setPendingFocusItem(root, item.id);
                     host.pulseHaptic();
                     host.enqueueMutation(() => host.toggleItem(item.id, moment, desiredComplete, expectedRevisionFingerprint, eventsToUndo));
                     return;

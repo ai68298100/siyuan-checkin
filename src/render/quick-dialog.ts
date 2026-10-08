@@ -38,6 +38,10 @@ export interface QuickDialogHost {
     renderInto(root: HTMLElement): void;
     reconcileStore(): Promise<void>;
     persistViewPreferences(): Promise<void>;
+    /* T-1621 步骤一：弹窗页独立于 dock/页签（root-page-store 代理层）。 */
+    applyNavigation(root: HTMLElement | undefined, page: QuickDialogHost["currentPage"]): void;
+    pageOfRoot(root: HTMLElement): QuickDialogHost["currentPage"];
+    releaseRootContext(root: HTMLElement): void;
 }
 
 /** Content-driven default: a fixed reading width beats scaling blank margins with the window. */
@@ -86,7 +90,7 @@ function rememberQuickPage(page: QuickPage): void {
 export function openQuickDialogFor(host: QuickDialogHost): void {
     if (host.disposed || host.disposing) return;
     if (host.quickDialog) {
-        if (host.quickDialogElement && host.setPageForRoot) host.setPageForRoot("today", host.quickDialogElement);
+        if (host.quickDialogElement) host.applyNavigation(host.quickDialogElement, "today");
         else host.currentPage = "today";
         if (host.quickDialogElement && host.setEditorStateForRoot) host.setEditorStateForRoot(host.quickDialogElement, {editingId: undefined, editingFingerprint: undefined, editorReturnPage: undefined, appliedTemplateNote: undefined, submitting: false}, true);
         else {
@@ -98,11 +102,8 @@ export function openQuickDialogFor(host: QuickDialogHost): void {
     }
 
     const nextPage = QUICK_PRESERVED_PAGES.has(lastQuickPage) ? lastQuickPage : "today";
-    if (!host.setPageForRoot) {
-        host.currentPage = nextPage;
-        host.editingId = undefined;
-        host.editingFingerprint = undefined;
-    }
+    host.editingId = undefined;
+    host.editingFingerprint = undefined;
     let dialog: Dialog | undefined;
     const mobile = host.isMobileFrontend;
     const hostClass = mobile ? "lc-checkin-dialog-host lc-checkin-dialog-host--mobile" : "lc-checkin-dialog-host";
@@ -133,9 +134,9 @@ export function openQuickDialogFor(host: QuickDialogHost): void {
     }
     host.quickDialog = dialog;
     host.quickDialogElement = root;
-    host.setPageForRoot?.(nextPage, root);
-    host.setEditorStateForRoot?.(root, {editingId: undefined, editingFingerprint: undefined, editorReturnPage: undefined, appliedTemplateNote: undefined, submitting: false}, true);
     host.quickDialogFullscreen = false;
+    /* T-1597 + T-1621：会话页只落在弹窗自己的 root——重开回放，其余表面不动。 */
+    host.applyNavigation(root, nextPage);
     bindQuickDialogViewportFor(host, dialog);
     bindQuickDialogFrameFor(host, dialog);
     /* T-1597：编辑页未保存先提示——捕获阶段拦截 SiYuan 关闭按钮（祖先 capture 先于
@@ -304,7 +305,7 @@ export function closeQuickDialogFor(host: QuickDialogHost): void {
 export function handleQuickDialogDestroyedFor(host: QuickDialogHost, dialog: Dialog): void {
     if (host.quickDialog !== dialog) return;
     const root = host.quickDialogElement;
-    const page = root && host.pageForRoot ? host.pageForRoot(root) : host.currentPage;
+    const closingPage = host.quickDialogElement ? host.pageOfRoot(host.quickDialogElement) : host.currentPage;
     if (root) disposeResponsiveCharts(root);
     host.quickDialogViewportCleanup?.();
     host.quickDialogViewportCleanup = undefined;
@@ -313,14 +314,13 @@ export function handleQuickDialogDestroyedFor(host: QuickDialogHost, dialog: Dia
     host.quickDialog = undefined;
     host.quickDialogElement = undefined;
     if (root) host.forgetSurfaceRoot?.(root);
+    if (root) host.releaseRootContext(root);
     host.quickDialogFullscreen = false;
     /* T-1597：记录会话页签——编辑页降级为今日（表单草稿仅存 DOM，随窗口销毁）。 */
-    rememberQuickPage(page);
+    rememberQuickPage(closingPage);
     if (host.disposed || host.disposing) return;
-    if (!host.forgetSurfaceRoot) {
-        host.editingId = undefined;
-        host.editingFingerprint = undefined;
-    }
+    host.editingId = undefined;
+    host.editingFingerprint = undefined;
     host.render();
     void host.reconcileStore();
 }

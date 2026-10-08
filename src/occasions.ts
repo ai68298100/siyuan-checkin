@@ -225,7 +225,20 @@ export function normalizeOccasionStore(value: unknown): OccasionStore {
     const raw = Array.isArray(source.occasions) ? source.occasions : [];
     const tombstones = normalizeOccasionTombstones(source.tombstones);
     const deletedIds = new Set(tombstones.map((tombstone) => tombstone.occasionId));
-    const occasions = raw.map(normalizeOccasion).filter((item): item is Occasion => Boolean(item)).filter((item) => !deletedIds.has(item.id));
+    /* T-1706（D-352）：按 id 去重隔离——损坏数据/手工编辑可能引入同 id 多条，
+       agenda 按 id 回取行与按 id 写操作会同时命中。胜者确定性：updatedAt 新者优先，
+       其次 completedDates 更多，再同则保留先出现者；去重不报错（可恢复规范形）。 */
+    const winners = new Map<string, Occasion>();
+    for (const candidate of raw) {
+        const occasion = normalizeOccasion(candidate);
+        if (!occasion) continue;
+        const existing = winners.get(occasion.id);
+        if (!existing) { winners.set(occasion.id, occasion); continue; }
+        const challengerBetter = occasion.updatedAt > existing.updatedAt
+            || (occasion.updatedAt === existing.updatedAt && occasion.completedDates.length > existing.completedDates.length);
+        if (challengerBetter) winners.set(occasion.id, occasion);
+    }
+    const occasions = [...winners.values()].filter((item) => !deletedIds.has(item.id));
     return {version: OCCASIONS_STORE_VERSION, occasions, ...(tombstones.length ? {tombstones} : {})};
 }
 
@@ -242,7 +255,12 @@ export function normalizeOccasion(value: unknown): Occasion | undefined {
         : source.recurrence === "once" ? "once" : source.recurrence === "monthly" ? "monthly" : source.recurrence === "annual" ? "annual" : "once";
     if (!name || !isValidOccasionDate(date)) return undefined;
     const now = new Date().toISOString();
-    const completedDates = Array.isArray(source.completedDates) ? source.completedDates.filter((item): item is string => typeof item === "string" && isValidLocalDate(item)).slice(-120) : [];
+    /* T-1706：完成日期唯一且升序，保留最近 120 条——重复/乱序输入归一为确定性形。 */
+    const completedDates = Array.isArray(source.completedDates)
+        ? [...new Set(source.completedDates.filter((item): item is string => typeof item === "string" && isValidLocalDate(item)))]
+            .sort((left, right) => left.localeCompare(right))
+            .slice(-120)
+        : [];
     /* T-1494 实例覆盖归一化（additive，有界 60 条）：键与改期值都必须是真实日历日且不同。 */
     const overrides: Record<string, OccasionOverride> = {};
     if (source.overrides && typeof source.overrides === "object" && !Array.isArray(source.overrides)) {
@@ -358,10 +376,18 @@ function annualSolarOccurrence(item: Occasion, localDate: string): string | unde
     }
     const monthDay = item.date.slice(5);
     const year = Number(localDate.slice(0, 4));
-    const candidate = `${year}-${monthDay}`;
-    if (isValidLocalDate(candidate) && candidate >= localDate) return candidate;
-    const next = `${year + 1}-${monthDay}`;
-    return isValidLocalDate(next) ? next : undefined;
+    /* T-1704（D-350）：闰日（02-29）在非闰年顺延至当年 02-28——与月度/interval 的
+       月末 clamp 纪律一致。此前平年直接 undefined，闰日生日/年检会从今日与
+       即将分组中消失两个年度；闰年仍优先真实 02-29。 */
+    const resolveAnnualDay = (targetYear: number): string | undefined => {
+        const exact = `${targetYear}-${monthDay}`;
+        if (isValidLocalDate(exact)) return exact;
+        if (monthDay === "02-29" && isValidLocalDate(`${targetYear}-02-28`)) return `${targetYear}-02-28`;
+        return undefined;
+    };
+    const current = resolveAnnualDay(year);
+    if (current && current >= localDate) return current;
+    return resolveAnnualDay(year + 1);
 }
 
 function annualLunarOccurrence(item: Occasion, localDate: string): string | undefined {
@@ -497,7 +523,24 @@ export function getMissedOccurrence(item: Occasion, localDate: string): string |
         default: return undefined;
     }
     if (!previous || previous >= localDate) return undefined;
-    return item.completedDates.includes(previous) ? undefined : previous;
+    /* T-1705（D-351）：改期实例的错过判定——原日被单次改期时，完成/补标都落在
+       实际发生日：原日未完成但改期日已完成则不提示（此前会误报原日漏记），
+       改期日未完成则提示**实际发生日**（补标对象与完成记录一致，避免重复完成）。
+       跟随覆盖链有界防环；无覆盖时行为与旧版逐值一致。 */
+    return resolveOverrideTarget(item, previous) === previous
+        ? (item.completedDates.includes(previous) ? undefined : previous)
+        : (item.completedDates.includes(resolveOverrideTarget(item, previous)) ? undefined : resolveOverrideTarget(item, previous));
+}
+
+/** T-1705：跟随单次改期链解析实际发生日（有界 8 步防环；无覆盖返回原日）。 */
+function resolveOverrideTarget(item: Occasion, date: string): string {
+    let current = date;
+    for (let guard = 0; guard < 8; guard += 1) {
+        const override = item.overrides?.[current];
+        if (!override || !isValidLocalDate(override.date) || override.date === current) break;
+        current = override.date;
+    }
+    return current;
 }
 
 /** T-1494 写入单次实例覆盖（改期）；newDate 为空/等于原日期时移除该覆盖。
@@ -522,6 +565,32 @@ export function setOccasionOverride(store: OccasionStore, id: string, originalDa
         }),
         ...(store.tombstones?.length ? {tombstones: store.tombstones} : {}),
     };
+}
+
+/** T-1718（D-359）：当前发生日的改期来源——overrides 中值为 next 的键（撤销对象）；
+    next 为周期规则日（无改期）返回 undefined。 */
+export function findOverrideOriginFor(item: Occasion, next: string): string | undefined {
+    for (const [origin, override] of Object.entries(item.overrides || {})) {
+        if (override.date === next) return origin;
+    }
+    return undefined;
+}
+
+/** T-1717（D-360）：新建前的重复与相似提示（防误建）——exact=同名（trim 后精确相等）；
+    similar=双向包含（大小写不敏感，如"张三生日"vs"生日"）。排除编辑目标自身与已归档；
+    只提示不合并——合法重名（不同人的生日）由用户确认后保留。上限 5 条防弹窗过长。 */
+export function findSimilarOccasions(occasions: readonly Occasion[], name: string, excludeId?: string, limit = 5): Occasion[] {
+    const needle = name.trim().toLocaleLowerCase();
+    if (!needle) return [];
+    const exact: Occasion[] = [];
+    const similar: Occasion[] = [];
+    for (const item of occasions) {
+        if (item.id === excludeId) continue;
+        const candidate = item.name.trim().toLocaleLowerCase();
+        if (candidate === needle) exact.push(item);
+        else if ((candidate.includes(needle) || needle.includes(candidate)) && candidate.length > 0) similar.push(item);
+    }
+    return [...exact, ...similar].slice(0, limit);
 }
 
 export function markOccasionCompleted(store: OccasionStore, id: string, occurrenceDate: string, completed: boolean): OccasionStore {

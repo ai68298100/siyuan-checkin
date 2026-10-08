@@ -1,6 +1,6 @@
 import {getOccurrenceDate, getVisibleOccasions, isOccasionCompleted, type OccasionStore} from "./occasions";
 import {dateKey, getEventsForDay, isComplete, isItemAvailableOnDate, isScheduledToday, isSkipEvent} from "./model";
-import {daysBetweenHalfOpen, nextLocalDay} from "./date-keys";
+import {addDays, daysBetweenHalfOpen, nextLocalDay} from "./date-keys";
 import type {CheckinStore} from "./types";
 
 export type ReminderSource = "occasion" | "checkin";
@@ -103,6 +103,10 @@ export function projectCheckinReminders(store: CheckinStore, date: Date): Remind
 
 /** T-100 逾期历史：枚举每个启用事项在过去发生、且从未补记的发生日（纯投影，只读）。
     补记走 markOccasionCompleted；跳过今天与未来，按发生日倒序返回。
+    T-1771（D-338）有界窗口：先从最早锚点整史枚举；仅当 1000 次预算耗尽仍未到今日
+    （每日等稠密长历史）时，改从「今日-1000 天」的近窗起点重投影——最近的错过永远
+    在列，旧版会停在约 1000 次发生处导致回顾拿不到近期账；稀疏/年轻事项行为不变。
+    截断语义：稠密历史的投影窗口=最近约 1000 天，更早的错过不进入该行动清单。
     注意：本模块被 tests/occasions.test.cjs、tests/reminder-actions.test.cjs 以固定模块集
     转译加载；date-keys.ts 属于该固定集，新增共享依赖须同步两处加载清单。 */
 export function projectOverdueOccurrenceHistory(store: OccasionStore, date: Date): OverdueOccurrenceEntry[] {
@@ -112,29 +116,47 @@ export function projectOverdueOccurrenceHistory(store: OccasionStore, date: Date
         if (occasion.enabled === false) continue;
         if (!/^\d{4}-\d{2}-\d{2}$/.test(occasion.date) || occasion.date >= today) continue;
         const kind = occasion.kind === "birthday" ? "birthday" : occasion.kind === "anniversary" ? "anniversary" : "scheduled";
-        let cursor = occasion.date;
-        let guard = 0;
-        while (cursor < today && guard < 1000) {
-            guard += 1;
-            if (!isOccasionCompleted(occasion, cursor)) {
-                const overdueDays = daysBetweenHalfOpen(cursor, today) ?? 0;
-                entries.push({
-                    id: `overdue:${occasion.id}:${cursor}`,
-                    occasionId: occasion.id,
-                    name: occasion.name,
-                    kind,
-                    recurrence: occasion.recurrence,
-                    occurrenceDate: cursor,
-                    overdueDays,
-                    note: occasion.note,
-                });
+        const collect = (startCursor: string): {collected: OverdueOccurrenceEntry[]; truncated: boolean} => {
+            const collected: OverdueOccurrenceEntry[] = [];
+            let cursor = startCursor;
+            let guard = 0;
+            while (cursor < today && guard < 1000) {
+                guard += 1;
+                if (!isOccasionCompleted(occasion, cursor)) {
+                    const overdueDays = daysBetweenHalfOpen(cursor, today) ?? 0;
+                    collected.push({
+                        id: `overdue:${occasion.id}:${cursor}`,
+                        occasionId: occasion.id,
+                        name: occasion.name,
+                        kind,
+                        recurrence: occasion.recurrence,
+                        occurrenceDate: cursor,
+                        overdueDays,
+                        note: occasion.note,
+                    });
+                }
+                const nextDayKey = nextLocalDay(cursor);
+                if (!nextDayKey) break;
+                const nextDate = getOccurrenceDate(occasion, nextDayKey);
+                if (!nextDate || nextDate <= cursor) break;
+                cursor = nextDate;
             }
-            const nextDayKey = nextLocalDay(cursor);
-            if (!nextDayKey) break;
-            const nextDate = getOccurrenceDate(occasion, nextDayKey);
-            if (!nextDate || nextDate <= cursor) break;
-            cursor = nextDate;
+            /* 截断仅指预算耗尽而递推未穷尽（cursor 仍停在今日之前）；到达今日或
+               发生序列自然走完（once/尾部）都算完整覆盖。 */
+            return {collected, truncated: cursor < today && guard >= 1000};
+        };
+        /* 第一遍：整史枚举——稀疏/年轻事项与旧版逐条一致。 */
+        const firstPass = collect(occasion.date);
+        if (!firstPass.truncated) {
+            entries.push(...firstPass.collected);
+            continue;
         }
+        /* 第二遍：预算耗尽仍未到今日 → 近窗重投影，保证最近错过在列；
+           起点取窗口内首个发生日（once 等窗口外单次事项自然为空，由第一遍完整覆盖）。 */
+        const windowStart = addDays(today, -1000);
+        const anchor = windowStart && windowStart > occasion.date ? getOccurrenceDate(occasion, windowStart) : occasion.date;
+        if (!anchor || anchor >= today) continue;
+        entries.push(...collect(anchor).collected);
     }
     return entries.sort((left, right) => right.occurrenceDate.localeCompare(left.occurrenceDate)
         || left.name.localeCompare(right.name, "zh-CN")
@@ -224,9 +246,13 @@ export function normalizeReminderUserActions(value: unknown, limit = 200, now: D
     /* T-1219：snooze 只在记录当日的本地日期内生效（applyReminderActions），
        超过 7 天的 snooze 已不可能再被投影到，物理清理防止历史堆积；
        skip 对该次实例持续生效，不受时效清理。
-       T-1421：expiresAt 必须不早于 at 且不超过 at+7 天，否则丢弃该字段（回落当日语义）。 */
+       T-1421：expiresAt 必须不早于 at 且不超过 at+7 天，否则丢弃该字段（回落当日语义）。
+       T-1770（D-339）：容量按动作类分账——snooze 是当日/防抖短命动作，skip 是长期决策，
+       各自独占 max 配额；snooze 噪声不再把仍会投影的旧 skip 挤出存储（旧版单一
+       slice(-200) 使 201 条较新 snooze 即可让一次性逾期事项的 skip 失效并再次提示）。
+       同类超出仍按最旧淘汰：skip 容量边界=每存储 max 条，恢复走 restore 显式清理。 */
     const snoozeCutoff = now.getTime() - 7 * 86400000;
-    return value.filter((entry): entry is ReminderUserAction => {
+    const survivors = value.filter((entry): entry is ReminderUserAction => {
         if (!entry || typeof entry !== "object") return false;
         const candidate = entry as Partial<ReminderUserAction>;
         return typeof candidate.id === "string" && candidate.id.length > 0 && candidate.id.length <= 200
@@ -235,15 +261,29 @@ export function normalizeReminderUserActions(value: unknown, limit = 200, now: D
                reconciliation. */
             && (candidate.action === "snooze" || candidate.action === "skip" || candidate.action === "restore")
             && typeof candidate.at === "string" && !Number.isNaN(Date.parse(candidate.at));
-        }).filter((entry) => entry.action === "skip" || entry.action === "restore" || Date.parse(entry.at) >= snoozeCutoff)
-        .slice(-max).map((entry) => {
-            if (entry.action !== "snooze" || typeof (entry as Partial<ReminderUserAction>).expiresAt !== "string") return {id: entry.id, action: entry.action, at: entry.at};
-            const expiresAt = (entry as Partial<ReminderUserAction>).expiresAt as string;
-            const issuedAt = Date.parse(entry.at);
-            const expiry = Date.parse(expiresAt);
-            if (Number.isNaN(expiry) || expiry < issuedAt || expiry - issuedAt > 7 * 86400000) return {id: entry.id, action: entry.action, at: entry.at};
-            return {id: entry.id, action: entry.action, at: entry.at, expiresAt};
+        }).filter((entry) => entry.action === "skip" || entry.action === "restore" || Date.parse(entry.at) >= snoozeCutoff);
+    const resolveExpiresAt = (entry: ReminderUserAction): ReminderUserAction => {
+        if (entry.action !== "snooze" || typeof (entry as Partial<ReminderUserAction>).expiresAt !== "string") return {id: entry.id, action: entry.action, at: entry.at};
+        const expiresAt = (entry as Partial<ReminderUserAction>).expiresAt as string;
+        const issuedAt = Date.parse(entry.at);
+        const expiry = Date.parse(expiresAt);
+        if (Number.isNaN(expiry) || expiry < issuedAt || expiry - issuedAt > 7 * 86400000) return {id: entry.id, action: entry.action, at: entry.at};
+        return {id: entry.id, action: entry.action, at: entry.at, expiresAt};
+    };
+    if (survivors.length <= max) return survivors.map(resolveExpiresAt);
+    /* 超预算：两类各自保留最新 max 条，幸存者保持原有相对顺序。 */
+    const keptByClass = new Set<number>();
+    for (const className of ["snooze", "skip"] as const) {
+        const indexes: number[] = [];
+        survivors.forEach((entry, index) => {
+            if (entry.action === className) indexes.push(index);
         });
+        indexes.slice(-max).forEach((index) => keptByClass.add(index));
+    }
+    /* restore is a durable removal record; retain it even when the per-class
+       quotas trim short-lived snooze records. */
+    survivors.forEach((entry, index) => { if (entry.action === "restore") keptByClass.add(index); });
+    return survivors.filter((_, index) => keptByClass.has(index)).map(resolveExpiresAt);
 }
 
 export function serializeReminderUserActions(actions: readonly ReminderUserAction[]): string {

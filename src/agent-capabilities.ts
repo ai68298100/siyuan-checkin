@@ -1,6 +1,6 @@
 /* 思源智能体能力注册：从 index.ts 外置（T-022）。
    所有状态访问经 AgentCapabilityDeps 回调进行，保证处理器在请求时读取实时数据。 */
-import {dateKey, getItemRevisionForDate, getProgress, isComplete, isItemAvailableOnDate, makeId, normalizeItem as normalizeCheckinItem} from "./model";
+import {dateKey, getItemDirectionForDate, getItemRevisionForDate, getEventsForDay, getProgress, isComplete, isItemAvailableOnDate, isSkipEvent, makeId, normalizeItem as normalizeCheckinItem} from "./model";
 import {currentCalendarDate, captureActionMoment, calendarDateFromKey, formatNumber, getRecordStep, isValidLocalDateInput} from "./shared";
 import {getOccurrenceDate, getVisibleOccasions, isOccasionCompleted, normalizeOccasion, type Occasion} from "./occasions";
 import {buildHabitInsights} from "./features/insights";
@@ -182,7 +182,15 @@ export function registerAgentCapabilities(deps: AgentCapabilityDeps): void {
             const actionDate = calendarDateFromKey(moment.localDate);
             if (!item || !isItemAvailableOnDate(item, actionDate)) return {error: "找不到今日可用的打卡项目。"};
             const revision = getItemRevisionForDate(item, actionDate);
-            if (revision.kind === "binary" && isComplete(deps.getStore(), item, actionDate)) return {error: "该打卡项目今天已经完成。"};
+            /* T-1768（D-337）：戒除类二值项目的"完成"只代表此刻还守住，首次破戒必须可写。
+               与 index 记录器（recordEvent）同口径：按当日真实事件判断，已记破戒才拦截；
+               普通二值仍按完成阻断；数值型戒除沿用进度上限口径不变。 */
+            const dayAtMost = getItemDirectionForDate(item, actionDate) === "atMost";
+            if (revision.kind === "binary" && dayAtMost
+                && getEventsForDay(deps.getStore(), item.id, actionDate).some((event) => !isSkipEvent(event))) {
+                return {error: "今天已记录过破戒，破戒日如实记录一次即可，无需重复输入。"};
+            }
+            if (revision.kind === "binary" && !dayAtMost && isComplete(deps.getStore(), item, actionDate)) return {error: "该打卡项目今天已经完成。"};
             const value = args.value === undefined
                 ? (revision.schedule.type === "quota" && revision.schedule.quota?.countMode === "dates" ? 1 : revision.kind === "binary" ? 1 : getRecordStep(revision.kind, revision.unit, revision.recordStep))
                 : args.value;
@@ -194,8 +202,10 @@ export function registerAgentCapabilities(deps: AgentCapabilityDeps): void {
             if (!event) return {error: "记录未执行，项目可能已在其他窗口更新或今日不可记录。"};
             const current = deps.getStore().items.find((candidate) => candidate.id === item.id) || item;
             const target = revision.schedule.type === "quota" ? revision.schedule.quota?.amount || revision.target : revision.target;
+            /* T-1768：破戒记录向用户说明真实含义——不是"完成"，是守住被如实记下并中断。 */
+            const lapseRecorded = revision.kind === "binary" && dayAtMost && !isSkipEvent(event);
             return {
-                result: `已为“${current.name}”记录 ${formatNumber(event.value)}${event.unit || "次"}。`,
+                result: `已为“${current.name}”记录 ${formatNumber(event.value)}${event.unit || "次"}。${lapseRecorded ? "（戒除项目：本次记录即破戒，连续守住从中断处重新开始。）" : ""}`,
                 structuredContent: {
                     item: {id: current.id, name: current.name, icon: current.icon},
                     event,

@@ -24,6 +24,8 @@ const reviewBind = read("src", "render", "bind-page-navigation.ts");
 const occasionsBind = read("src", "render", "bind-occasions.ts");
 const navigation = read("src", "navigation.ts");
 const editorBind = read("src", "render", "bind-editor.ts");
+const pluginOps = read("src", "plugin-ops.ts");
+const quickDialog = read("src", "render", "quick-dialog.ts");
 const pageShell = read("src", "render", "page-shell.ts");
 const occasionSession = read("src", "render", "occasion-session.ts");
 const occasions = read("src", "render", "occasions.ts");
@@ -222,8 +224,9 @@ try {
         assert.match(todayBindings, /event\.key === "Escape" && root\.querySelector\("\.lc-checkin__item-context-menu"\)/, "Escape 关闭上下文菜单");
         assert.match(todayBindings, /if \(restoreFocus && trigger\?\.isConnected\) trigger\.focus\(\)/, "菜单收口归还触发器焦点");
         assert.match(todayBindings, /"ArrowDown", "ArrowUp"\]\.includes\(event\.key\)/, "菜单内方向键移动");
-        /* 读屏状态：导航 aria-current 与选中态绑定（底栏/rail/topnav 三形态同构）、折叠 aria-expanded 渲染在位。 */
-        assert.match(indexSrc, /aria-current="\$\{this\.currentPage === page \? "page" : "false"\}"/, "导航 aria-current 绑定");
+        /* 读屏状态：导航 aria-current 与选中态绑定（底栏/rail/topnav 三形态同构，T-1621 起按 root 当前页）、折叠 aria-expanded 渲染在位。 */
+        assert.match(indexSrc, /aria-current="\$\{page === navPage \? "page" : "false"\}"/, "导航 aria-current 绑定（per-root 页）");
+        assert.match(indexSrc, /aria-current="\$\{page === railPage \? "page" : "false"\}"/, "rail aria-current 绑定（per-root 页）");
         assert.match(fragments, /aria-expanded="\$\{!collapsed\}"/, "分组折叠 aria-expanded");
         assert.match(fragments, /aria-expanded="\$\{!ctx\.completedCollapsed\}"/, "已完成折叠 aria-expanded");
         /* IME 组合态四搜索面与 reduced-motion=既有块 2/3 承载，此处不重复。 */
@@ -236,7 +239,7 @@ try {
         assert.match(editorBind, /host\.showEditorReturn\(root\)/, "编辑器返回走返回栈并保留表面上下文（不再固定 showToday）");
         assert.match(reviewBind, /host\.showEditor\(item, "insights", root\)/, "洞察编辑规则 CTA 携带返回页与表面上下文");
         assert.match(indexSrc, /private rootContexts = new Map<HTMLElement, RootContext>/, "宿主按 root 保存页面上下文");
-        assert.match(indexSrc, /const page = this\.pageForRoot\(root\)/, "渲染按 root 读取当前页");
+        assert.match(indexSrc, /const page = (?:this\.pageForRoot\(root\)|this\.rootPages\.ensure\(root\)\.page)/, "渲染按 root 读取当前页");
         assert.match(pageShell, /scrollTops: Partial<Record<PageId, number>>/, "RootContext 持有 root 级滚动槽");
         assert.match(pageShell, /today\?: TodayRootContext/, "RootContext 持有 Today 会话态");
         assert.match(indexSrc, /public todayStateForRoot\(root: HTMLElement\): TodayRootContext/, "Today 会话态按 root 暴露");
@@ -309,6 +312,57 @@ try {
         for (const fn of ["showTodayFor", "showReviewFor", "showArchivedFor", "showEditorFor", "showInsightsFor"]) {
             assert.match(navigation, new RegExp(`export function ${fn}`), `导航单一路径 ${fn} 在 navigation.ts`);
         }
+    });
+
+    check("multi-root pages stay independent via the RootContext proxy (T-1621 step 1)", () => {
+        /* 存储模块与宿主代理层：每 root 独立上下文，宿主 currentPage 为读写代理。 */
+        assert.match(indexSrc, /import \{createRootPageStore, type CheckinPageId, type RootPageStore\} from "\.\/features\/root-page-store";/, "root-page-store 模块导入");
+        assert.match(indexSrc, /private readonly rootPages: RootPageStore = createRootPageStore\(\);/, "宿主持有 per-root 存储");
+        assert.match(indexSrc, /private get currentPage\(\): CheckinPageId \{\s*return this\.rootPages\.activePage\(\);/, "currentPage 读代理=最后活跃 root");
+        assert.match(indexSrc, /private set currentPage\(page: CheckinPageId\) \{\s*this\.rootPages\.navigate\(undefined, page\);/, "currentPage 写代理=全局同步全部 root（兼容既有语义）");
+        assert.match(indexSrc, /applyNavigation\(root: HTMLElement \| undefined, page: CheckinPageId\): void \{[\s\S]*?this\.rootPages\.navigate\(root, page\);/, "导航落点 host 方法（T-1773 草稿守卫后仍委托 rootPages）");
+        assert.match(indexSrc, /releaseRootContext\(root: HTMLElement\): void/, "root 销毁释放入口");
+        assert.match(indexSrc, /const fallback = this\.dockElement \?\? this\.tabElement \?\? null;/, "最后活跃释放回落 dock→页签");
+        /* renderInto 注册点与按 root 取页。 */
+        assert.match(indexSrc, /const page = (?:this\.rootPages\.ensure\(root\)\.page|this\.pageForRoot\(root\));/, "renderInto 按 root 注册并取页");
+        assert.match(indexSrc, /roots\.some\(\(surface\) => this\.pageForRoot\(surface\) === "review"\)/, "回顾快照按任一回顾 root 判定");
+        assert.doesNotMatch(indexSrc, /root\.innerHTML = this\.currentPage === "editor"/, "页面选择不再读宿主代理页");
+        /* 导航 chrome 按 root 页高亮。 */
+        assert.match(indexSrc, /this\.renderMobileTopbar\(page\)/, "移动顶栏按 root 页");
+        assert.match(indexSrc, /this\.renderRail\(page\)/, "rail 按 root 页");
+        assert.match(indexSrc, /this\.renderTopNav\(root, page\)/, "桌面顶栏按 root 页");
+        assert.match(indexSrc, /this\.renderMobileNav\(page\)/, "底栏按 root 页");
+        assert.match(indexSrc, /this\.getPageTitle\(page\)/, "页标题按 root 页");
+        assert.doesNotMatch(indexSrc, /aria-current="\$\{this\.currentPage === page/, "导航高亮不再读宿主代理页");
+        /* dock/页签销毁释放上下文。 */
+        assert.match(indexSrc, /plugin\.releaseRootContext\(plugin\.dockElement\);/, "dock 卸载释放上下文");
+        assert.match(indexSrc, /plugin\.releaseRootContext\(plugin\.tabElement\);/, "页签卸载释放上下文");
+        /* 渲染块跳转走 primaryRoot（dock 优先、页签回落）。 */
+        assert.match(indexSrc, /this\.jumpToHistoryDate\(date, this\.primaryRoot\(\)\)/, "渲染块日期跳转按 primaryRoot");
+        assert.match(indexSrc, /this\.showInsights\(item, this\.primaryRoot\(\)\)/, "渲染块项目跳转按 primaryRoot");
+        /* 导航函数：可选 root + applyNavigation 单一落点；导航函数不再写宿主代理页。 */
+        assert.match(navigation, /applyNavigation\(root: HTMLElement \| undefined, page: CheckinPageId\): void;/, "NavigationHost 导航落点契约");
+        assert.match(navigation, /pageOfRoot\(root: HTMLElement\): CheckinPageId;/, "NavigationHost per-root 读页契约");
+        for (const fn of ["showTodayFor", "showReviewFor", "showArchivedFor", "showOccasionsFor", "showSettingsFor"]) {
+            assert.match(navigation, new RegExp(`export function ${fn}\\(host: NavigationHost, root\\?: HTMLElement\\): void`), `${fn} 接受可选 root`);
+        }
+        assert.match(navigation, /export function showInsightsFor\(host: NavigationHost, item\?: CheckinItem, root\?: HTMLElement\): void/, "showInsightsFor 接受可选 root");
+        assert.match(navigation, /export function showEditorFor\(host: NavigationHost, item\?: CheckinItem, returnTo\?: NavigationHost\["editorReturnPage"\], root\?: HTMLElement\): void/, "showEditorFor 接受可选 root");
+        assert.match(navigation, /const currentPage = root && host\.pageForRoot \? host\.pageForRoot\(root\) : host\.currentPage;/, "洞察返回页读取发起表面");
+        assert.match(navigation, /const returnPage = currentPage === "review" \? "review"/, "洞察返回页按发起表面判定");
+        assert.match(navigation, /setPage\(host, "insights", root\);/, "洞察导航走统一落点");
+        const navWrites = navigation.match(/host\.currentPage = "/g) || [];
+        assert.equal(navWrites.length, 1, "导航函数仅 openTabPageFor 保留宿主级写（页签继承孤儿页）");
+        /* 分发层：rail/底栏/顶栏导航只落在发起表面。 */
+        assert.match(pluginOps, /if \(page === "today"\) host\.showToday\(root\);/, "底栏今日按发起表面");
+        assert.match(pluginOps, /else if \(page === "add"\) host\.showEditor\(undefined, undefined, root\);/, "底栏新建按发起表面");
+        /* bind 层抽查：返回/跳转携带 root。 */
+        assert.match(todayBind, /host\.showSettings\(root\)/, "今日→设置按发起表面");
+        assert.match(reviewBind, /host\.jumpToHistoryDate\(date, root\)/, "回顾日历跳转按发起表面");
+        assert.match(editorBind, /host\.showEditorReturn\(root\)/, "编辑器返回按发起表面");
+        /* 快速弹窗页记忆归弹窗 root（行为断言在 mobile-dialog）。 */
+        assert.match(quickDialog, /host\.applyNavigation\(host\.quickDialogElement, "today"\);/, "弹窗重置只落弹窗 root");
+        assert.doesNotMatch(quickDialog, /host\.currentPage = lastQuickPage;/, "弹窗关闭不再写宿主代理页");
     });
 
     console.log(`Cross-page consistency: ${checks} checks passed.`);

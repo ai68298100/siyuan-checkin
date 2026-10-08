@@ -2,6 +2,7 @@
 import {t} from "./i18n";
 import {openTab, showMessage} from "siyuan";
 import type {CheckinItem, CheckinStore, PageId, EditorRootContext, InsightsRootContext} from "./types";
+import type {CheckinPageId} from "./features/root-page-store";
 
 export interface NavigationHost {
     store: CheckinStore;
@@ -28,7 +29,9 @@ export interface NavigationHost {
     openQuickDialog(): void;
     render(root?: HTMLElement): void;
     setPageForRoot?(page: PageId, root?: HTMLElement): void;
+    applyNavigation(root: HTMLElement | undefined, page: CheckinPageId): void;
     pageForRoot?(root: HTMLElement): PageId;
+    pageOfRoot(root: HTMLElement): CheckinPageId;
     insightsStateForRoot?(root: HTMLElement): InsightsRootContext;
     setInsightsStateForRoot?(root: HTMLElement | undefined, patch: Partial<InsightsRootContext>): void;
     editorStateForRoot?(root: HTMLElement): EditorRootContext;
@@ -45,7 +48,9 @@ function clearEditor(host: NavigationHost, root?: HTMLElement): void {
 }
 
 function setPage(host: NavigationHost, page: PageId, root?: HTMLElement): void {
-    if (host.setPageForRoot) host.setPageForRoot(page, root);
+    /* T-1621：主线 per-root 导航含编辑器离开确认；旧宿主回落到 rootContexts 代理。 */
+    if (host.applyNavigation) host.applyNavigation(root, page);
+    else if (host.setPageForRoot) host.setPageForRoot(page, root);
     else host.currentPage = page;
 }
 

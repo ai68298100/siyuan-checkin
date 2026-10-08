@@ -18,7 +18,7 @@ export interface SaveFormHost {
     invalidateSummary(): void;
     broadcast(event: unknown): void;
     renderBackgroundUpdate(): void;
-    showToday(): void;
+    showToday(root?: HTMLElement): void;
 }
 
 export async function saveEditorForm(
@@ -27,7 +27,7 @@ export async function saveEditorForm(
     editingId: string | undefined,
     submittedAt: {occurredAt: string; localDate: string},
     expectedFingerprint?: string,
-    options?: {continueCreation?: boolean; stayOnPage?: boolean},
+    options?: {continueCreation?: boolean; stayOnPage?: boolean; root?: HTMLElement},
 ): Promise<string | undefined> {
     const name = String(data.get("name") || "").trim();
     const templateAnchor = String(data.get("templateAnchor") || "").trim().slice(0, 80);
@@ -57,7 +57,7 @@ export async function saveEditorForm(
     const existing = editingId ? host.store.items.find((item) => item.id === editingId) : undefined;
     if (editingId && (!existing || !expectedFingerprint || host.itemFingerprint(existing) !== expectedFingerprint)) {
         showMessage(t("msg.conflictEdit"));
-        if (!options?.stayOnPage) host.showToday();
+        if (!options?.stayOnPage) host.showToday(options?.root);
         return undefined;
     }
     const createdDate = existing?.createdDate || submittedAt.localDate;
@@ -96,6 +96,9 @@ export async function saveEditorForm(
         target,
         unit,
         ...(recordStep ? {recordStep} : {}),
+        /* T-1766：方向显式进修订——本次保存起的方向变更只从生效日起算，不追溯旧日。
+           表单未勾选戒除（或排期非每日回落）时物化为 atLeast，与 normalize 的规范形逐键一致。 */
+        direction: direction === "atMost" ? "atMost" : "atLeast",
         schedule: {...schedule, weekdays: schedule.weekdays ? [...schedule.weekdays] : undefined},
     };
     const revisions: CheckinItemRevision[] = existing?.revisions.map((entry) => ({
@@ -135,6 +138,9 @@ export async function saveEditorForm(
         completionSource,
         tomatoMode,
         ...(direction ? {direction} : {}),
+        /* T-1769：转打卡建档时写入的 linkedOccasionId 必须跨普通编辑保留，
+           否则编辑任意字段后达成回写（index setOccasionCompleted）断链。 */
+        ...(existing?.linkedOccasionId ? {linkedOccasionId: existing.linkedOccasionId} : {}),
         ...(anchorBlockId ? {noteAnchor: {blockId: anchorBlockId, ...(anchorAppendNotes ? {appendNotes: true} : {})}} : {}),
         ...(!taskHorizonCalendarVisible ? {taskHorizonCalendarVisible: false as const} : {}),
         ...(streakTolerance >= 1 ? {streakTolerance} : {}),
@@ -159,7 +165,7 @@ export async function saveEditorForm(
     host.broadcast({type: existing ? "item-updated" : "item-created", item});
     /* T-1488：「保存并继续」保持编辑器打开（分组/类型等上下文由表单自身保留），
        由 bind-editor 负责清空名称并聚焦；常规路径仍返回今日页。 */
-    if (!options?.continueCreation && !options?.stayOnPage) host.showToday();
+    if (!options?.continueCreation && !options?.stayOnPage) host.showToday(options?.root);
     /* T-1486：返回保存条目 id，供宿主消费联动预接线计划（失败路径均返回 undefined，零副作用）。 */
     return item.id;
 }

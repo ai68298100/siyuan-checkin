@@ -1,6 +1,6 @@
-import type {CheckinEvent, CheckinItem, CheckinStore} from "./types";
+import type {CheckinEvent, CheckinItem, CheckinQuota, CheckinSchedule, CheckinStore} from "./types";
 import {evaluateQuotaSchedule, getQuotaPeriodBounds} from "./rules";
-import {dateKey, getEventsInDateRange, getSkipDatesForItem, getItemRevisionForDate, isComplete, isItemAvailableOnDate, isScheduledToday, isSkipEvent} from "./model";
+import {dateKey, getEventDateKey, getEventsInDateRange, getSkipDatesForItem, getItemRevisionForDate, isComplete, isItemAvailableOnDate, isScheduledToday, isSkipEvent} from "./model";
 const EVENT_RANGE_LIMITS = {maxDays: 366, maxPoints: 366, maxEvents: 5000} as const;
 
 export type SummaryRange = "day" | "week" | "month";
@@ -264,24 +264,55 @@ function summarizeItem(store: CheckinStore, item: CheckinItem, bounds: DateRange
 
 const EMPTY_EVENTS: CheckinEvent[] = [];
 
+/* T-1767（D-341）：配额摘要按每个周期的生效规则与真实可用日评估。
+   旧实现用范围末日修订评估全部周期（周↔月/额度切换即整体用错规则与周期键），
+   且只看周期首日的可用性（月中创建/归档恢复的整周期被丢弃）。
+   现逐日按当日修订的 quota 规则与周期键分桶：桶代表日（周期内首个范围日）的
+   生效规则评估该周期；事件归属其发生日当时生效的规则与周期键（每事件恰计一次，
+   周期跨界不双计；非配额纪元的事件不进入配额结算）；周期只要在范围内存在任一
+   可用日即计入（部分可用周期仍按一个周期计）；周期标签取最后一个配额桶的周期类型。 */
 function summarizeQuota(store: CheckinStore, item: CheckinItem, bounds: DateRange, events: CheckinEvent[]): QuotaSummary | undefined {
-    const asOf = new Date(bounds.end.getTime() - 86400000);
-    const revision = getItemRevisionForDate(item, asOf);
-    if (revision.schedule.type !== "quota" || !revision.schedule.quota) return undefined;
-    const period = revision.schedule.quota.period;
     const elapsedEndKey = dateKey(new Date(bounds.end.getTime() - 86400000));
-    const periods = new Map<string, Date>();
-    for (let day = new Date(bounds.start); day < bounds.end; day.setDate(day.getDate() + 1)) {
-        const key = getQuotaPeriodBounds(period, day).periodKey;
-        if (!periods.has(key)) periods.set(key, new Date(day));
+    interface QuotaPeriodBucket {
+        representative: Date;
+        schedule: CheckinSchedule;
+        quota: CheckinQuota;
+        unit: string;
+        anyAvailable: boolean;
     }
+    const periods = new Map<string, QuotaPeriodBucket>();
+    for (let day = new Date(bounds.start); day < bounds.end; day.setDate(day.getDate() + 1)) {
+        const revision = getItemRevisionForDate(item, day);
+        if (revision.schedule.type !== "quota" || !revision.schedule.quota) continue;
+        const {periodKey} = getQuotaPeriodBounds(revision.schedule.quota.period, day);
+        let bucket = periods.get(periodKey);
+        if (!bucket) {
+            bucket = {representative: new Date(day), schedule: revision.schedule, quota: revision.schedule.quota, unit: revision.unit, anyAvailable: false};
+            periods.set(periodKey, bucket);
+        }
+        if (isItemAvailableOnDate(item, day)) bucket.anyAvailable = true;
+    }
+    const attributed = new Map<CheckinEvent, string>();
+    for (const event of events) {
+        if (isSkipEvent(event)) continue;
+        const eventDate = dateFromKey(getEventDateKey(event));
+        if (!eventDate || eventDate < bounds.start || eventDate >= bounds.end) continue;
+        const revision = getItemRevisionForDate(item, eventDate);
+        if (revision.schedule.type !== "quota" || !revision.schedule.quota) continue;
+        const {periodKey} = getQuotaPeriodBounds(revision.schedule.quota.period, eventDate);
+        if (!periods.has(periodKey)) continue;
+        attributed.set(event, periodKey);
+    }
+    if (!periods.size) return undefined;
+    let periodLabel: QuotaSummary["period"] | undefined;
     let elapsedPeriods = 0;
     let completedPeriods = 0;
     let current: ReturnType<typeof evaluateQuotaSchedule>;
-    const contributingEvents = events.filter(event => !isSkipEvent(event));
-    for (const representative of periods.values()) {
-        if (!isItemAvailableOnDate(item, representative)) continue;
-        const progress = evaluateQuotaSchedule(revision.schedule, contributingEvents, item.id, representative, revision.schedule.quota.countMode === "value" ? revision.unit : undefined);
+    for (const [periodKey, bucket] of periods) {
+        if (!bucket.anyAvailable) continue;
+        periodLabel = bucket.quota.period;
+        const eraEvents = events.filter((event) => attributed.get(event) === periodKey);
+        const progress = evaluateQuotaSchedule(bucket.schedule, eraEvents, item.id, bucket.representative, bucket.quota.countMode === "value" ? bucket.unit : undefined);
         if (!progress) continue;
         if (progress.endDate < elapsedEndKey) {
             elapsedPeriods += 1;
@@ -290,8 +321,9 @@ function summarizeQuota(store: CheckinStore, item: CheckinItem, bounds: DateRang
             current = progress;
         }
     }
+    if (!periodLabel) return undefined;
     return {
-        period,
+        period: periodLabel,
         elapsedPeriods,
         completedPeriods,
         completionRate: elapsedPeriods ? Math.round((completedPeriods / elapsedPeriods) * 100) : 0,

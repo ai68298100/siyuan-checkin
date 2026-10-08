@@ -740,6 +740,28 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__editor-actions { padding-top:12px; }
 .lc-checkin__completed-section { margin-top:24px; padding-top:12px; border-top-color:var(--lc-checkin-border); }
 .lc-checkin__completed-section .lc-checkin__section-title { font-size:12px; }
+/* T-1772：其他活跃项目管理分节——与今日筛选同族的折叠 summary + 行式列表。 */
+.lc-checkin__manage { margin-top:18px; }
+.lc-checkin__manage > summary { display:flex; align-items:center; justify-content:space-between; min-height:42px; padding:8px 12px; border:1px solid var(--lc-checkin-border); border-radius:10px; background:var(--lc-checkin-surface); font-size:13px; font-weight:600; cursor:pointer; list-style:none; }
+.lc-checkin__manage > summary::-webkit-details-marker { display:none; }
+.lc-checkin__manage-list { display:flex; flex-direction:column; gap:8px; margin-top:8px; }
+.lc-checkin__manage-row { display:flex; align-items:center; gap:10px; min-height:48px; padding:7px 11px; border:1px solid var(--lc-checkin-border); border-radius:10px; background:var(--lc-checkin-surface); }
+.lc-checkin__manage-icon { flex-basis:30px; width:30px; height:30px; display:flex; align-items:center; justify-content:center; border-radius:8px; font-size:16px; }
+.lc-checkin__manage-info { flex:1 1 auto; display:flex; flex-direction:column; min-width:0; }
+.lc-checkin__manage-info strong { font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.lc-checkin__manage-info small { color:var(--lc-checkin-muted); font-size:11px; }
+/* T-1777：规则变更历史时间线（编辑器高级区内只读 details）。 */
+.lc-checkin__rule-timeline { margin-top:12px; }
+.lc-checkin__rule-timeline > summary { font-size:12px; font-weight:600; color:var(--lc-checkin-text); cursor:pointer; }
+.lc-checkin__rule-timeline-body { display:flex; flex-direction:column; gap:8px; margin-top:8px; }
+.lc-checkin__rule-timeline-entry { padding:8px 10px; border:1px solid var(--lc-checkin-border); border-radius:8px; background:var(--lc-checkin-surface); }
+.lc-checkin__rule-timeline-entry.is-current { border-color:color-mix(in srgb,var(--lc-checkin-accent) 45%,var(--lc-checkin-border)); }
+.lc-checkin__rule-timeline-entry.is-unknown { border-style:dashed; }
+.lc-checkin__rule-timeline-head { display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:12px; }
+.lc-checkin__rule-timeline-head em { font-style:normal; color:var(--lc-checkin-accent); font-size:11px; }
+.lc-checkin__rule-timeline-changes { display:flex; flex-direction:column; gap:4px; margin-top:6px; }
+.lc-checkin__rule-timeline-change { display:flex; justify-content:space-between; gap:8px; font-size:12px; }
+.lc-checkin__rule-timeline-why { margin:6px 0 0; padding-left:16px; color:var(--lc-checkin-muted); font-size:11px; }
 .lc-checkin--history .lc-checkin__editor-header { margin-bottom:22px; }
 .lc-checkin__history-row { min-height:48px; padding:0 12px; border:1px solid var(--lc-checkin-border); border-radius:7px; background:var(--lc-checkin-surface); }
 .lc-checkin__history-event { min-height:48px; padding:7px 11px; border:1px solid transparent; box-shadow:var(--lc-checkin-shadow-sm); }
@@ -2931,6 +2953,9 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin--today > .lc-checkin__progress span { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--lc-checkin-accent), var(--lc-checkin-lilac)); transition: width 240ms ease; }
 
 .lc-checkin--today .lc-checkin__week-strip { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; margin: 0 0 12px; }
+/* T-1775：有内容日格为可达日期入口（button 语义）——键盘焦点环 + 指针手型。 */
+.lc-checkin--today .lc-checkin__week-strip button.lc-checkin__day-chip { font: inherit; cursor: pointer; }
+.lc-checkin--today .lc-checkin__week-strip button.lc-checkin__day-chip:focus-visible { border-color: var(--lc-checkin-accent); outline: 2px solid var(--lc-checkin-accent); outline-offset: 1px; }
 .lc-checkin--today .lc-checkin__day-chip {
     display: grid;
     place-items: center;
@@ -4447,7 +4472,9 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin--occasions .lc-checkin__occasion-manager-row.is-disabled { opacity: 1; border-style: dashed; background: color-mix(in srgb, var(--lc-checkin-muted-surface) 72%, var(--lc-checkin-bg)); }
 .lc-checkin--occasions .lc-checkin__occasion-manager-row.is-disabled .lc-checkin__occasion-row-body { color: var(--lc-checkin-muted); }
 .lc-checkin--occasions .lc-checkin__occasion-manager-row.is-disabled .lc-checkin__occasion-row-body strong { color: var(--lc-checkin-muted); text-decoration: line-through; text-decoration-thickness: 1px; }
-.lc-checkin--occasions .lc-checkin__occasion-manager-row.is-disabled::after { content: "已停用"; justify-self: end; color: var(--lc-checkin-muted); font-size: 10px; }
+/* T-1723（D-364）：原 ::after 写死中文"已停用"已删——停用状态由渲染层 status 徽章
+   （occ.statusDisabled，双语）承担，CSS 不再有 i18n 漏出。 */
+.lc-checkin--occasions .lc-checkin__occasion-manager-row.is-disabled::after { content: none; }
 .lc-checkin--occasions .lc-checkin__occasion-form-panel { min-width: 0; }
 .lc-checkin--occasions .lc-checkin__occasion-list-panel { min-width: 0; }
 @container lc5 (max-width: 899px) {
