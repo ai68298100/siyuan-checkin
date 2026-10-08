@@ -107,6 +107,10 @@ function fixture(kind = "binary", direction) {
         if (model.isComplete(host.store, host.store.items[0], shared.currentCalendarDate())) classes.add("is-complete");
         else classes.delete("is-complete");
     };
+    /* Root-aware draft recovery may request a regular render after restoring
+       the originating surface; the structural host keeps that side effect
+       intentionally inert. */
+    host.render = () => {};
     for (const name of ["bindDialogClose", "bindItemDrag", "bindQuickKeyboard", "bindBulkMode", "bindFocusTimerPanel", "bindMobileNav", "pulseHaptic", "invalidateSummary", "broadcast", "writebackNoteAnchor", "writeSummaryResidentForDate", "setRecentRecord", "maybeAutoArchiveAfterRecord"]) host[name] = () => {};
     host.renderBackgroundUpdate();
     bindTodayHandlers(rootNode, host);

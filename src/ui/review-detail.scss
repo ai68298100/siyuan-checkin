@@ -180,7 +180,6 @@
         .lc-checkin__log-month-body { padding: 6px; }
         .lc-checkin__log-week-body { padding: 0 6px 6px; }
         .lc-checkin__log-row, .lc-checkin__log-row.has-thumb { grid-template-columns: 28px minmax(0, 1fr); }
-        .lc-checkin__log-group > summary { grid-template-columns: 28px minmax(0, 1fr) auto; }
         .lc-checkin__log-row > .lc-checkin__log-icon { grid-column: 1; grid-row: 1; }
         .lc-checkin__log-row > .lc-checkin__log-main { grid-column: 2; grid-row: 1; }
         .lc-checkin__log-row > .lc-checkin__log-value { grid-column: 2; grid-row: 2; max-width: none; }
@@ -188,7 +187,6 @@
         .lc-checkin__log-row.has-thumb > .lc-checkin__log-icon { grid-column: 1; grid-row: 1; }
         .lc-checkin__log-row.has-thumb > .lc-checkin__log-main { grid-column: 2; grid-row: 1; }
         .lc-checkin__log-group > summary > .lc-checkin__log-value { grid-column: 2; grid-row: 2; }
-        .lc-checkin__log-group > summary > i { grid-column: 3; grid-row: 1 / span 2; }
         .lc-checkin__log-value { max-width: 76px; }
         .lc-checkin__log-group > summary > .lc-checkin__log-value { max-width: none; }
         .lc-checkin__log-subrow, .lc-checkin__log-subrow.has-thumb { grid-template-columns: minmax(0, 1fr) auto; align-items: start; }

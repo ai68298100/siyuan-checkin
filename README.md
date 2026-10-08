@@ -8,13 +8,13 @@
 
 把一次行动记录下来，再用同一份可追溯数据完成统计、提醒、复盘和笔记联动。
 
-**当前版本：18.16.0**
+**当前版本：18.17.0**
 
-18.16.0 改善事项页表单、文档与笔记本选择、CSV 导入反馈和设置页字体。这里介绍已发布功能；开发中的可靠性与多表面改造见 [PROGRESS](PROGRESS.md)。
+18.17.0 汇总两台电脑的开发成果，加入事项管理增强、微信读书推荐、提醒状态、跨页面关联和多表面可靠性改进。这里介绍已发布功能；后续开发进展见 [PROGRESS](PROGRESS.md)。
 
 [![最新 Release](https://img.shields.io/github/v/release/ai68298100/siyuan-checkin?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-checkin/releases/latest) [![CI](https://github.com/ai68298100/siyuan-checkin/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-checkin/actions/workflows/ci.yml) [![License](https://img.shields.io/github/license/ai68298100/siyuan-checkin)](LICENSE)
 
-[最新 Release](https://github.com/ai68298100/siyuan-checkin/releases/latest) · [18.16.0 发布说明](docs/releases/release-notes-18.16.0.md) · [问题反馈](https://github.com/ai68298100/siyuan-checkin/issues) · [开发文档](docs/)
+[最新 Release](https://github.com/ai68298100/siyuan-checkin/releases/latest) · [18.17.0 发布说明](docs/releases/release-notes-18.17.0.md) · [问题反馈](https://github.com/ai68298100/siyuan-checkin/issues) · [开发文档](docs/)
 
 </div>
 
@@ -25,7 +25,7 @@
 ## 仓库与版本状态
 
 - **稳定安装包**来自 `main` 分支上的发布 tag；普通用户请从 [Releases](https://github.com/ai68298100/siyuan-checkin/releases) 下载，不要直接下载开发分支源码。
-- **当前开发**在 `dev/thispc-1002` 进行，开发分支上的提交可能尚未进入任何 Release，也不代表已完成真实思源客户端验收。
+- **当前开发**以 `main` 为统一基线；`dev/thispc-1002` 保留为双机合并记录和后续开发分支，未进入 Release 的新提交不代表已完成真实思源客户端验收。
 - **问题反馈**请优先使用 [Issue 模板](https://github.com/ai68298100/siyuan-checkin/issues/new/choose)，安全漏洞请看 [安全报告说明](SECURITY.md)；不要在公开 Issue 中粘贴 Key、Token、笔记内容或完整诊断导出。
 
 [安装与开始](#安装与兼容性) · [核心功能](#核心功能) · [联动与来源](#笔记联动与外部来源) · [接入 API](#api) · [开发与验证](#开发与验证) · [交流](#小驴系列与交流)
@@ -64,7 +64,14 @@
 | **归档** | 搜索、恢复或删除不再参与今日计划的项目；归档不会删除历史事件。 |
 | **设置** | 管理主题、语言、减少动效、默认打开方式、日记/笔记联动、第三方来源、备份恢复、诊断、审计和显示偏好。 |
 
-### 18.16.0 重点
+### 18.17.0 重点
+
+- **微信读书推荐**：根据已读取的来源事实生成分钟项目与阈值建议，预览与应用分离，只有用户明确点击才写入设置。
+- **事项工作台**：支持重复/相似名称确认、规则预览、排序、单次改期与冲突提示、逐次完成、提醒状态和关联打卡项目跳转。
+- **跨表面可靠性**：事项、快速弹窗、今日记录和设置状态按 root 隔离，草稿、失败回执、提醒动作和导入回滚可恢复。
+- **无障碍与多端**：补齐键盘日期导航、焦点恢复、移动端表单定位、读屏状态和多窗口生命周期保护。
+
+### 18.16.0 历史重点
 
 - **事项页表单**：移动端打开表单直接定位，桌面端保留当前位置。
 - **文档与笔记本选择**：问卷和叶归配置使用统一的搜索与候选列表，目标卡在宽窄容器均保持单列。

@@ -802,7 +802,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__insight-row strong { color:var(--lc-checkin-text); font-weight:550; }
 @container lc5 (min-width: 720px) {
  .lc-checkin__topnav { min-height: 52px; }
- .lc-checkin__topnav-tabs { gap: 4px; }
  .lc-checkin__topnav-tabs button { min-width: 72px; padding-inline: 12px; }
  .lc-checkin__topnav-action { min-width: 36px; min-height: 36px; }
  .lc-checkin--today .lc-checkin__organize { justify-content: flex-start; }
@@ -1745,8 +1744,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     .lc-checkin__sync-notice { min-height: 20px; max-width: 100%; box-sizing: border-box; padding: 3px 0; font-size: 10px; }
     .lc-checkin__save-status { justify-content: flex-start; text-align: left; }
     .lc-checkin__save-status button { min-height: 28px; }
-    .lc-checkin .is-error { color: var(--lc-checkin-danger-text); }
-    .lc-checkin .is-success { color: var(--lc-checkin-success-text); }
     .lc-checkin--occasions .lc-checkin__occasion-list-panel { min-height: 0; }
     .lc-checkin--occasions .lc-checkin__occasion-list-panel .lc-checkin__section-heading { position: sticky; z-index: 2; top: 0; background: var(--lc-checkin-surface); }
     .lc-checkin--occasions .lc-checkin__occasion-manager-list { max-height: 52vh; overflow: auto; overscroll-behavior: contain; }
@@ -4171,7 +4168,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     .lc-checkin--settings .lc-checkin__settings-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(180px, 260px); align-items: center; }
     .lc-checkin--settings .lc-checkin__settings-row > :is(select, input, .lc-checkin__settings-inline, .lc-checkin__text-button, .lc-checkin__small-button, .lc-checkin__file-button, .lc-checkin__settings-value) { justify-self: end; max-width: 100%; }
     .lc-checkin--settings .lc-checkin__settings-layout { max-width: 1180px; margin-inline: auto; }
-    .lc-checkin--settings .lc-checkin__settings-groups { gap: 10px; }
     .lc-checkin--settings .lc-checkin__settings-card { scroll-margin-top: 72px; }
     .lc-checkin--settings .lc-checkin__settings-card h2 { line-height: 1.35; word-break: keep-all; }
     .lc-checkin--settings .lc-checkin__settings-row > select,
@@ -4699,9 +4695,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     .lc-checkin--today .lc-checkin__item-topline { flex-wrap: nowrap; }
     .lc-checkin--today .lc-checkin__item-name { flex: 0 1 auto; }
     /* 次要信息退出首屏：标签只留"重要"，复盘/编辑小钮隐藏（长按或回顾页可达） */
-    .lc-checkin--today .lc-checkin__item-tag { display: none; }
-    .lc-checkin--today .lc-checkin__item-tag.is-high { display: inline-block; }
-    .lc-checkin--today .lc-checkin__item-topline .lc-checkin__small-button { display: none; }
     .lc-checkin--today .lc-checkin__item-meta { white-space: nowrap; }
     /* 大号触控打卡钮 */
     .lc-checkin--today .lc-checkin__item-action :is(.lc-checkin__record-button, .lc-checkin__quick-button) {
@@ -6496,7 +6489,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 }
 
 @container lc-dock (max-width: 340px) {
-    .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-action { grid-column: 1 / -1; }
 }
 
 /* Final desktop/tablet density pass. Keep only declarations that change the
@@ -6595,7 +6587,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 @container lc5 (min-width: 720px) {
     .lc-checkin__layout { display: block; padding-top: 0; }
     .lc-checkin__layout > * { grid-column: auto; }
-    .lc-checkin__rail { display: none !important; }
 
     .lc-checkin__topnav {
         position: sticky;
@@ -6616,7 +6607,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     }
     .lc-checkin__topnav-tabs { display: flex; align-items: center; gap: 2px; min-width: 0; flex: 1 1 auto; overflow-x: auto; scrollbar-width: none; scrollbar-gutter: stable; }
     .lc-checkin__topnav-tabs button { flex: 0 0 auto; }
-    .lc-checkin__topnav-tabs::-webkit-scrollbar { display: none; }
     .lc-checkin__topnav-actions { flex: 0 0 auto; min-width: 72px; justify-content: flex-end; }
     .lc-checkin__topnav-action { flex: 0 0 32px; }
     .lc-checkin__topnav-action:focus-visible { outline: 2px solid var(--lc-checkin-accent); outline-offset: 2px; }
@@ -8964,7 +8954,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     .lc-checkin-dock-host .lc-checkin--settings .lc-checkin__settings-inline { flex-wrap: wrap; justify-content: flex-end; overflow: hidden; }
 }
 @container lc-dock (max-width: 340px) {
-    .lc-checkin-dock-host .lc-checkin--settings .lc-checkin__settings-row { grid-template-columns: minmax(0, 1fr); }
     .lc-checkin-dock-host .lc-checkin--settings .lc-checkin__settings-row > :is(select, input[type="number"], input[type="range"], .lc-checkin__settings-inline, .lc-checkin__text-button, .lc-checkin__small-button, .lc-checkin__file-button, .lc-checkin__settings-value) { justify-self: stretch; }
 }
 
@@ -9474,7 +9463,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
             "action action"
             "exact exact";
     }
-    .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-action { grid-area: action; }
     .lc-checkin-dock-host .lc-checkin--occasions .lc-checkin__occasion-manager-row {
         grid-template-columns: 28px minmax(0, 1fr);
     }

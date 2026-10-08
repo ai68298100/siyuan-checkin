@@ -1,5 +1,11 @@
 # TODO
 
+## 当前统一状态（2026-10-08）
+
+- 当前发布基线为 **v18.17.0**；两台电脑的代码已在合并提交 `135ff336` 汇合，后续稳定同步入口为 GitHub `main`。
+- 本文件中 v18.16.0 及更早版本号属于任务登记时的历史基线，保留用于追溯；新任务统一以源码、`PROGRESS.md`、`BLOCKERS.md` 和 `docs/releases/` 的最新版本为准。
+- 仍开放的产品决策、真实宿主/Android 现场验收和外部来源依赖继续保留，不因版本号升级自动标记完成。
+
 最新产品定位与原型决策：[产品定位与下一阶段路线](docs/product-positioning-and-roadmap-2026-10.md) · [UI 原型 v3](docs/prototypes/checkin-ui-v3.html) · [完整设计规范](docs/ui-prototype-spec-v3-2026-10.md)（D-374～D-376）。当前索引以源码、详细任务和本轮实际证据为准；本次梳理只更新计划与文档，运行代码改造分阶段领取。
 
 <!-- merge note: retained origin/main entries for conflict 1; both sides preserved -->

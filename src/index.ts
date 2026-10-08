@@ -1866,8 +1866,10 @@ export default class CheckinPlugin extends Plugin {
             const baseline = root.dataset.editorDraftBaseline;
             if (isEditorFormDirty(form ? new FormData(form) : undefined, baseline) && !window.confirm(t("editor.dirtyLeaveConfirm"))) return;
         }
-        this.rootPages.navigate(root, page);
-        if (root) this.setPageForRoot(page, root);
+        /* 全局兼容入口（root 未传）也必须同步已注册 rootContexts；新注册的
+           surface 保留 today 初始页，避免一个旧的无 root 调用污染后来打开的
+           dock/tab。显式 root 仍只更新当前 surface。 */
+        this.setPageForRoot(page, root);
     }
     public pageOfRoot(root: HTMLElement): CheckinPageId { return this.rootPages.pageOf(root); }
     public releaseRootContext(root: HTMLElement): void {
@@ -4262,12 +4264,20 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
         if (root) {
             if (this.ensureRootContext(root).page === "review" && page !== "review") this.cancelReviewSummary(root);
             this.ensureRootContext(root).page = page;
+            this.rootPages.navigate(root, page);
             this.activeRoot = root;
+            return;
+        }
+        const surfaces = this.roots();
+        if (!surfaces.length) {
             this.currentPage = page;
             return;
         }
-        this.currentPage = page;
-        for (const surface of this.roots()) this.ensureRootContext(surface).page = page;
+        for (const surface of surfaces) {
+            if (this.ensureRootContext(surface).page === "review" && page !== "review") this.cancelReviewSummary(surface);
+            this.ensureRootContext(surface).page = page;
+            this.rootPages.navigate(surface, page);
+        }
     }
 
     public forgetSurfaceRoot(root: HTMLElement): void {

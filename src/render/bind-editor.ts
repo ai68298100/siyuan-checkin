@@ -1302,7 +1302,9 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
                     }
                 }
             }
-            void host.enqueueMutation(() => host.saveForm(data, editingId, submittedAt, expectedFingerprint, continueCreation, root)).then((savedId) => {
+            /* saveForm 自身负责进入存储变更队列；这里不能再套一层同一队列，
+               否则外层操作会等待内层，而内层又只能排在外层之后，导致提交永远卡在 submitting。 */
+            void host.saveForm(data, editingId, submittedAt, expectedFingerprint, continueCreation, root).then((savedId) => {
                 resetSubmitting();
                 if (continueCreation && typeof savedId === "string" && savedId && isCurrentSession()) {
                     const nameInput = root.querySelector<HTMLInputElement>("input[name='name']");

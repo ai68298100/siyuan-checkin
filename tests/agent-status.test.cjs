@@ -11,6 +11,32 @@ const projectRoot = path.join(__dirname, "..");
 const read = (...segments) => fs.readFileSync(path.join(projectRoot, ...segments), "utf8");
 
 function loadSettings() {
+    const loadFeature = (filename, dependencies = {}) => {
+        const source = read("src", "features", filename);
+        const output = ts.transpileModule(source, {
+            compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS},
+            fileName: `src/features/${filename}`,
+        }).outputText;
+        const module = {exports: {}};
+        vm.runInContext(output, vm.createContext({
+            module,
+            exports: module.exports,
+            require: (specifier) => {
+                if (Object.prototype.hasOwnProperty.call(dependencies, specifier)) return dependencies[specifier];
+                throw new Error(`feature dependency 未预期: ${specifier}`);
+            },
+            console,
+        }), {filename: `src/features/${filename}`});
+        return module.exports;
+    };
+    /* settings.ts 的候选/推荐渲染只读依赖保持真实实现，避免状态行守门因为
+       新增推荐卡片而在加载阶段失败。引擎的唯一相对依赖显式接同一份候选模块。 */
+    const wereadCandidates = loadFeature("weread-candidates.ts");
+    const healthCandidates = loadFeature("health-candidates.ts");
+    const recommendationEngine = loadFeature("recommendation-engine.ts", {
+        "./weread-candidates": wereadCandidates,
+    });
+    const recommendationRender = loadFeature("recommendation-render.ts");
     const output = ts.transpileModule(read("src/render/settings.ts"), {
         compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS},
         fileName: "src/render/settings.ts",
@@ -28,6 +54,10 @@ function loadSettings() {
                 "../features/docktomato-inbox": {},
                 "../features/note-anchor-picker": {collectAnchorChoices: () => []},
                 "../features/note-bindings": {bindingTargetLabel: (id) => id},
+                "../features/weread-candidates": wereadCandidates,
+                "../features/health-candidates": healthCandidates,
+                "../features/recommendation-engine": recommendationEngine,
+                "../features/recommendation-render": recommendationRender,
                 /* T-1576：页面壳头部构造点——此处断言不含头部，桩给最小形状即可。 */
                 "./page-shell": {renderPageShellHead: () => "<header></header>"},
                 "./yeguif-mappings": {renderYeguifMappings: () => '<div data-yeguif-mappings></div>'},

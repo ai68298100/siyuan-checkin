@@ -479,7 +479,18 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
                         try {
                             const recorded = await host.recordEvent(item, value, moment, expectedRevisionFingerprint, note, attachment);
                             if (!recorded) {
-                                restoreDraft();
+                                /* A second queued binary submit can arrive after the first
+                                   one has completed.  That is an intentional no-op, not a
+                                   failed write; do not resurrect the attachment/draft in
+                                   that case.  Real failures still restore the retry surface. */
+                                const current = getActiveItemById(host.store, itemId);
+                                const currentRevision = current ? getItemRevisionForDate(current, calendarDateFromKey(moment.localDate)) : undefined;
+                                const duplicate = Boolean(current && currentRevision?.kind === "binary" && (
+                                    current.direction === "atMost"
+                                        ? getEventsForDay(host.store, itemId, calendarDateFromKey(moment.localDate)).some((event) => !isSkipEvent(event))
+                                        : isComplete(host.store, current, calendarDateFromKey(moment.localDate))
+                                ));
+                                if (!duplicate) restoreDraft();
                                 return recorded;
                             }
                             pendingAttachments.delete(itemId);

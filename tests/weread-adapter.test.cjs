@@ -258,7 +258,11 @@ const settingsSource = fs.readFileSync(path.join(__dirname, "..", "src/render/se
 for (const hook of ["data-weread-integration", "data-weread-toggle", "data-weread-item", "data-weread-finish-item", "data-weread-notes-item", "data-weread-key", "data-weread-threshold", "save-weread", "weread-pull"]) {
     assert.ok(settingsSource.includes(hook), `settings markup must include ${hook}`);
 }
-assert.ok(!settingsSource.includes("apiKey"), "settings render must never embed the raw key");
+/* The settings renderer may pass a sanitized `apiKey: "configured"` marker to
+   recommendation projection; the raw credential must never be interpolated
+   into the rendered input or any visible attribute. */
+assert.ok(!settingsSource.includes('value="${weread.apiKey}"'), "settings render must never embed the raw key");
+assert.ok(!settingsSource.includes('value="${ctx.wereadIntegration.apiKey}"'), "settings render must never embed the raw key");
 const reviewSource = fs.readFileSync(path.join(__dirname, "..", "src/render/review.ts"), "utf8");
 assert.match(reviewSource, /\["weread", "source\.weread"\]/, "review report source filter offers weread");
 const typesSource = fs.readFileSync(path.join(__dirname, "..", "src/types.ts"), "utf8");

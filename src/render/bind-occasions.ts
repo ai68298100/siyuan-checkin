@@ -193,6 +193,9 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
         const originLabel = row.querySelector<HTMLElement>("[data-occasion-move-origin-label]");
         const originDate = confirmButton.dataset.occasionMoveOrigin || "";
         dateInput.addEventListener("change", () => {
+            /* 保留 root-local 改期草稿；确认前切换筛选或重绘不能吞掉所选日期。 */
+            const current = currentState();
+            writeState({occurrenceMoves: {...current.occurrenceMoves, [id]: {open: true, date: dateInput.value}}});
             confirmButton.disabled = !dateInput.value;
             if (originLabel && dateInput.value) originLabel.textContent = t("occ.moveTo", {from: originDate, to: dateInput.value});
             if (originLabel && !dateInput.value) originLabel.textContent = t("occ.moveFrom", {date: originDate});

@@ -13,7 +13,7 @@ assert.match(editorSource, /data-action="archive"[\s\S]*\$\{item\.archived \? t\
     "editor must expose a reversible archive/delete action");
 assert.match(i18n, /"editor\.restore": "恢复打卡项"/);
 assert.match(i18n, /"editor\.archive": "暂时归档"/);
-assert.match(source, /private async archiveEditingItem\(\)[\s\S]*setItemArchived\(current\.id, !current\.archived/,
+assert.match(source, /private async archiveEditingItem\(root\?: HTMLElement\)[\s\S]*setItemArchived\(current\.id, !current\.archived/,
     "archive action must use the persisted reversible operation");
 
 // Keyboard and touch users need a visible focus ring on every form control.

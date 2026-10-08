@@ -475,6 +475,16 @@ function assertActive(fixture, expectedId) {
     const inbox = loadTypeScriptModule("src/features/docktomato-inbox.ts", {"../model": {}}).exports;
     const anchorPicker = loadTypeScriptModule("src/features/note-anchor-picker.ts").exports;
     const noteBindings = loadTypeScriptModule("src/features/note-bindings.ts").exports;
+    /* Keep the settings renderer's pure recommendation/candidate helpers in the
+       VM harness as real modules.  settings.ts now imports these helpers for
+       the read-only recommendation preview; leaving them unstubbed makes this
+       focused test fail before it can exercise navigation markup. */
+    const wereadCandidates = loadTypeScriptModule("src/features/weread-candidates.ts").exports;
+    const healthCandidates = loadTypeScriptModule("src/features/health-candidates.ts").exports;
+    const recommendationEngine = loadTypeScriptModule("src/features/recommendation-engine.ts", {
+        "./weread-candidates": wereadCandidates,
+    }).exports;
+    const recommendationRender = loadTypeScriptModule("src/features/recommendation-render.ts").exports;
     const {exports} = loadTypeScriptModule("src/render/settings.ts", {
         "../i18n": {t: (key) => key},
         "../shared": {escapeHtml: (value) => String(value), formatNumber: String},
@@ -483,6 +493,10 @@ function assertActive(fixture, expectedId) {
         "../features/docktomato-inbox": inbox,
         "../features/note-anchor-picker": anchorPicker,
         "../features/note-bindings": noteBindings,
+        "../features/weread-candidates": wereadCandidates,
+        "../features/health-candidates": healthCandidates,
+        "../features/recommendation-engine": recommendationEngine,
+        "../features/recommendation-render": recommendationRender,
         /* T-1576：页面壳头部构造点——此处断言不含头部，桩给最小形状即可。 */
         "./page-shell": {renderPageShellHead: () => "<header></header>"},
         "./yeguif-mappings": loadTypeScriptModule("src/render/yeguif-mappings.ts", {

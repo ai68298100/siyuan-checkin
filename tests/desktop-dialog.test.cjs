@@ -300,7 +300,7 @@ assert.match(read("src", "render", "bind-page-navigation.ts"), /lc-checkin__catc
 const quickDialogT1597 = read("src", "render", "quick-dialog.ts");
 assert.match(quickDialogT1597, /QUICK_PRESERVED_PAGES/, "会话保留页集合在位（六页，编辑降级今日）");
 assert.match(quickDialogT1597, /rememberQuickPage\(closingPage\)/, "关闭时按弹窗 root 记录当前页（T-1621）");
-assert.match(quickDialogT1597, /host\.applyNavigation\(root, QUICK_PRESERVED_PAGES\.has\(lastQuickPage\) \? lastQuickPage : "today"\)/, "重开时把会话页签落到弹窗 root（T-1621）");
+assert.match(quickDialogT1597, /const nextPage = QUICK_PRESERVED_PAGES\.has\(lastQuickPage\) \? lastQuickPage : "today";[\s\S]*host\.applyNavigation\(root, nextPage\)/, "重开时把会话页签落到弹窗 root（T-1621）");
 assert.match(quickDialogT1597, /msg.quickCloseEditingConfirm/, "编辑页关闭先经确认提示");
 assert.match(quickDialogT1597, /stopImmediatePropagation/, "捕获拦截 SiYuan 关闭按钮监听");
 for (const key of ["msg.quickCloseEditingConfirm"]) {

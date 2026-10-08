@@ -14,7 +14,7 @@ assert.match(rulesSource, /const middle = \(low \+ high\) >>> 1/,
     "revision lookup must use an upper-bound binary search");
 assert.doesNotMatch(rulesSource, /const revisions = \[\.\.\.\(item\.revisions \|\| \[\]\)\][\s\S]{0,160}\.filter/,
     "each lookup must not copy and filter the complete revision history");
-assert.match(modelSource, /export \{getItemRevisionForDate\} from "\.\/rules"/,
+assert.match(modelSource, /export \{getItemDirectionForDate, getItemRevisionForDate\} from "\.\/rules"/,
     "model must preserve its public revision helper through a compatible re-export");
 
 const outputRoot = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-revision-index-"));
