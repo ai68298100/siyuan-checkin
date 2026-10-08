@@ -9,7 +9,7 @@ const ts = require("typescript");
 
 const root = path.join(__dirname, "..");
 const outputRoot = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-api-v5-"));
-for (const filename of ["types.ts", "i18n.ts", "shared.ts", "record-step.ts", "quota.ts", "rules.ts", "date-keys.ts", "model.ts", "model-helpers.ts", "features/record-notes.ts", "ui/labels.ts", "api-contract.ts", "features/api-v5.ts"]) {
+for (const filename of ["types.ts", "i18n.ts", "shared.ts", "record-step.ts", "quota.ts", "rules.ts", "date-keys.ts", "model.ts", "analytics.ts", "model-helpers.ts", "features/record-notes.ts", "ui/labels.ts", "api-contract.ts", "features/api-v5.ts"]) {
     const target = path.join(outputRoot, filename.replace(/\.ts$/, ".js"));
     fs.mkdirSync(path.dirname(target), {recursive: true});
     fs.writeFileSync(target, ts.transpileModule(fs.readFileSync(path.join(root, "src", filename), "utf8"), {
@@ -21,6 +21,7 @@ const apiV5 = require(path.join(outputRoot, "features", "api-v5.js"));
 const contract = require(path.join(outputRoot, "api-contract.js"));
 
 const {filterEventsInRange, projectItems, isValidEventSource, planBatchRecord} = apiV5;
+const {cloneItemValue} = require(path.join(outputRoot, "model-helpers.js"));
 const {CHECKIN_BATCH_RECORD_LIMITS} = contract;
 const event = (overrides = {}) => ({id: "e", itemId: "read", localDate: "2026-09-20", value: 1, unit: "次", source: "api", ...overrides});
 const makeItem = (overrides = {}) => ({
@@ -28,6 +29,32 @@ const makeItem = (overrides = {}) => ({
     createdAt: "2026-08-01T00:00:00.000Z", updatedAt: "2026-08-01T00:00:00.000Z", createdDate: "2026-08-01",
     revisions: [], archivePeriods: [], ...overrides,
 });
+
+/* Public item snapshots must detach all mutable nested fields, including
+   quota objects and optional arrays/records. A shallow quota clone would let
+   getItems()/getStore() consumers mutate the live host configuration. */
+{
+    const source = makeItem({
+        schedule: {type: "quota", weekdays: [1], quota: {period: "week", amount: 3, countMode: "dates"}},
+        revisions: [{effectiveDate: "2026-09-01", kind: "count", target: 2, unit: "次", schedule: {type: "quota", quota: {period: "month", amount: 5, countMode: "value"}}}],
+        quickSteps: [1, 2], autoArchive: {afterDays: 7}, noteAnchor: {blockId: "b1", appendNotes: true}, journal: {templateId: "daily"},
+    });
+    const copy = cloneItemValue(source);
+    assert.notEqual(copy.schedule, source.schedule);
+    assert.notEqual(copy.schedule.weekdays, source.schedule.weekdays);
+    assert.notEqual(copy.schedule.quota, source.schedule.quota);
+    assert.notEqual(copy.revisions[0].schedule.quota, source.revisions[0].schedule.quota);
+    assert.notEqual(copy.quickSteps, source.quickSteps);
+    assert.notEqual(copy.autoArchive, source.autoArchive);
+    assert.notEqual(copy.noteAnchor, source.noteAnchor);
+    assert.notEqual(copy.journal, source.journal);
+    copy.schedule.quota.amount = 99;
+    copy.revisions[0].schedule.quota.amount = 88;
+    copy.quickSteps.push(4);
+    assert.equal(source.schedule.quota.amount, 3);
+    assert.equal(source.revisions[0].schedule.quota.amount, 5);
+    assert.deepEqual(source.quickSteps, [1, 2]);
+}
 
 (async () => {
     /* ===== v5-1 事件范围读 ===== */

@@ -38,12 +38,19 @@ function cloneUserTemplateValue(template: UserTemplate): UserTemplate {
 export function cloneItemValue(item: CheckinItem): CheckinItem {
     return {
         ...item,
-        schedule: {...item.schedule, weekdays: item.schedule.weekdays ? [...item.schedule.weekdays] : undefined},
+        /* Public item snapshots must detach every nested schedule field. A
+           shallow quota object would let consumers mutate the host's live
+           quota amount/period through getItems()/getStore(). */
+        schedule: cloneScheduleValue(item.schedule),
         revisions: item.revisions.map((revision) => ({
             ...revision,
-            schedule: {...revision.schedule, weekdays: revision.schedule.weekdays ? [...revision.schedule.weekdays] : undefined},
+            schedule: cloneScheduleValue(revision.schedule),
         })),
         archivePeriods: item.archivePeriods.map((period) => ({...period})),
+        quickSteps: item.quickSteps ? [...item.quickSteps] : undefined,
+        autoArchive: item.autoArchive ? {...item.autoArchive} : undefined,
+        noteAnchor: item.noteAnchor ? {...item.noteAnchor} : undefined,
+        journal: item.journal ? {...item.journal} : undefined,
         /* 快照必须与 normalizeStore 同一字段集合（archived 缺省物化为 false），
            写后校验的 JSON 指纹对"缺键"与"值为 false"不等价。 */
         archived: item.archived === true,
@@ -58,7 +65,7 @@ export function revisionFingerprintValue(item: CheckinItem, date: Date): string 
     const revision = getItemRevisionForDate(item, date);
     return JSON.stringify({
         ...revision,
-        schedule: {...revision.schedule, weekdays: revision.schedule.weekdays ? [...revision.schedule.weekdays] : undefined},
+        schedule: cloneScheduleValue(revision.schedule),
     });
 }
 
@@ -71,7 +78,7 @@ export function cloneItemForDateValue(item: CheckinItem, date: Date): CheckinIte
         target: revision.target,
         unit: revision.unit,
         recordStep: revision.recordStep,
-        schedule: {...revision.schedule, weekdays: revision.schedule.weekdays ? [...revision.schedule.weekdays] : undefined},
+        schedule: cloneScheduleValue(revision.schedule),
     };
 }
 
