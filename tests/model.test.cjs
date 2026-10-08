@@ -66,6 +66,8 @@ assert.deepEqual(model.readStoreSnapshotHistory(snapshotHistory).map((entry) => 
 assert.equal(model.readStoreSnapshotHistory({version: 1, items: [], events: []})[0].legacy, true);
 assert.equal(model.readStoreSnapshotHistory({format: model.STORE_SNAPSHOT_HISTORY_FORMAT, version: 1, snapshots: Array.from({length: 20}, (_, index) => model.createStoreSnapshotEnvelope(model.createDefaultStore(), new Date(index * 1000).toISOString()))}).length, 3);
 assert.equal(model.readStoreSnapshotHistory({format: model.STORE_SNAPSHOT_HISTORY_FORMAT, version: 1, snapshots: [malformedSnapshot]}).length, 0, "malformed canonical history entries cannot become restore points");
+assert.deepEqual(model.inspectStoreSnapshotHistory({format: model.STORE_SNAPSHOT_HISTORY_FORMAT, version: 1, snapshots: [malformedSnapshot]}), {entries: [], recognized: true, invalidCount: 1}, "history inspection reports all-invalid canonical buckets");
+assert.deepEqual(model.inspectStoreSnapshotHistory({format: model.STORE_SNAPSHOT_HISTORY_FORMAT, version: 2, snapshots: []}), {entries: [], recognized: true, invalidCount: 1}, "malformed history metadata is not treated as a legacy store");
 assert.throws(() => model.createStoreSnapshotEnvelope(model.createDefaultStore(), "invalid"), /invalid-snapshot-time/);
 const snapshotExport = JSON.parse(model.serializeStoreSnapshotHistory(snapshotHistory, "2026-09-12T05:00:00.000Z"));
 assert.equal(snapshotExport.format, "siyuan-checkin-snapshot-export");

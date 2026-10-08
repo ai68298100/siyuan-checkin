@@ -33,6 +33,12 @@ export interface ReadStoreSnapshotResult {
     invalid?: boolean;
 }
 
+export interface StoreSnapshotHistoryInspection {
+    entries: ReadStoreSnapshotResult[];
+    recognized: boolean;
+    invalidCount: number;
+}
+
 export interface StoreSnapshotHistory {
     format: typeof STORE_SNAPSHOT_HISTORY_FORMAT;
     version: 1;
@@ -62,14 +68,24 @@ export function readStoreSnapshot(value: unknown): ReadStoreSnapshotResult {
 }
 
 export function readStoreSnapshotHistory(value: unknown, limit = 3): ReadStoreSnapshotResult[] {
+    return inspectStoreSnapshotHistory(value, limit).entries;
+}
+
+export function inspectStoreSnapshotHistory(value: unknown, limit = 3): StoreSnapshotHistoryInspection {
     const boundedLimit = Math.max(1, limit);
     if (value && typeof value === "object") {
         const candidate = value as Partial<StoreSnapshotHistory>;
-        if (candidate.format === STORE_SNAPSHOT_HISTORY_FORMAT && candidate.version === 1 && Array.isArray(candidate.snapshots)) {
-            return candidate.snapshots.map(readStoreSnapshot).filter((entry) => !entry.legacy && !entry.invalid).slice(-boundedLimit);
+        if (candidate.format === STORE_SNAPSHOT_HISTORY_FORMAT) {
+            if (candidate.version !== 1 || !Array.isArray(candidate.snapshots)) return {entries: [], recognized: true, invalidCount: 1};
+            const inspected = candidate.snapshots.map(readStoreSnapshot);
+            return {
+                entries: inspected.filter((entry) => !entry.legacy && !entry.invalid).slice(-boundedLimit),
+                recognized: true,
+                invalidCount: inspected.filter((entry) => entry.legacy || entry.invalid).length,
+            };
         }
     }
-    return value === undefined || value === null ? [] : [readStoreSnapshot(value)];
+    return {entries: value === undefined || value === null ? [] : [readStoreSnapshot(value)], recognized: false, invalidCount: 0};
 }
 
 export function appendStoreSnapshotHistory(value: unknown, snapshot: StoreSnapshotEnvelope, limit = 3): StoreSnapshotHistory {

@@ -26,7 +26,7 @@ import {buildHabitInsights} from "./features/insights";
 import {buildCoachingSuggestions} from "./features/coaching";
 import {buildReviewAnalysisKey, selectReviewAnalysis, type ReviewAssistantGoal} from "./features/review-assistant";
 import {CHECKIN_API_NAME, CHECKIN_EVENT_NAMES, DOCK_TOMATO_ADAPTER_ID, emitIntegrationEvent} from "./integrations";
-import {appendEvent, appendEvents, computeLongestStreaks, appendStoreAudit, appendStoreSnapshotHistory, createDefaultStore, createEmptyStoreSnapshotHistory, createStoreSnapshotEnvelope, countCompletedDays, dateKey, deleteItemCascade, deleteItemsCascade, evaluateItemRule, getActiveItemById, getEventById, getEventsForDay, getEventsInDateRange, getItemById, getItemRevisionForDate, getProgress, getSkipDatesForItem, isComplete, isItemAvailableOnDate, isScheduledToday, isSkipEvent, makeId, mergeNormalizedStores, mergeStoreAudits, normalizeItem as normalizeCheckinItem, normalizeStore, normalizeStoreAudit, parseStoreSnapshotHistoryExport, readStoreSnapshotHistory, removeEvents, type StoreAuditEntry} from "./model";
+import {appendEvent, appendEvents, computeLongestStreaks, appendStoreAudit, appendStoreSnapshotHistory, createDefaultStore, createEmptyStoreSnapshotHistory, createStoreSnapshotEnvelope, countCompletedDays, dateKey, deleteItemCascade, deleteItemsCascade, evaluateItemRule, getActiveItemById, getEventById, getEventsForDay, getEventsInDateRange, getItemById, getItemRevisionForDate, getProgress, getSkipDatesForItem, isComplete, isItemAvailableOnDate, isScheduledToday, isSkipEvent, makeId, mergeNormalizedStores, mergeStoreAudits, normalizeItem as normalizeCheckinItem, normalizeStore, normalizeStoreAudit, parseStoreSnapshotHistoryExport, inspectStoreSnapshotHistory, readStoreSnapshotHistory, removeEvents, type StoreAuditEntry} from "./model";
 import type {FocusAdapter, SummaryProvider} from "./integrations";
 import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinKind, CheckinPriority, CheckinSchedule, CheckinStore, CheckinTimeSlot, CompletionSource, ScheduleType, TomatoValueMode, TodayRootContext, UserTemplate} from "./types";
 import type {CustomSummaryRange, SummaryRange, EventRangeSummary, EventRangeSummaryOptions} from "./analytics";
@@ -2313,6 +2313,7 @@ private reviewCompatibilitySnapshot?: {
         });
         /* 闭包内更新阶段，使用受限字符串值避免 TypeScript 把外层变量错误收窄为初始字面量。 */
         let initializationFailurePhase: string = "load";
+        let snapshotHistoryCorruption: {invalidCount: number} | undefined;
         try {
             await this.withStorageLock(async () => {
                 const stored = await this.loadData(STORAGE_NAME);
@@ -2348,7 +2349,9 @@ private reviewCompatibilitySnapshot?: {
                 // when Review renders; the last saved entry may be unrelated.
                 this.summaryText = undefined;
                 this.auditEntries = normalizeStoreAudit(audit);
-                this.snapshotHistory = readStoreSnapshotHistory(storedSnapshots);
+                const snapshotInspection = inspectStoreSnapshotHistory(storedSnapshots);
+                this.snapshotHistory = snapshotInspection.entries;
+                if (snapshotInspection.recognized && snapshotInspection.invalidCount > 0) snapshotHistoryCorruption = {invalidCount: snapshotInspection.invalidCount};
                 this.occasionStore = occasions;
                 this.userTemplates = Array.isArray(storedTemplates) ? storedTemplates.map((item) => normalizeUserTemplate(item)).filter((item): item is UserTemplate => Boolean(item)) : [];
                 this.customIconLibrary = normalizeCustomIconLibrary(storedIconLibrary);
@@ -2374,6 +2377,12 @@ private reviewCompatibilitySnapshot?: {
             if (this.disposed || this.disposing) return;
             this.initializationState = "ready";
             this.settleReady(true);
+            if (snapshotHistoryCorruption) {
+                this.auditEntries = appendStoreAudit(this.auditEntries, {type: "restore", at: new Date().toISOString(), details: {status: "rejected", source: "local-snapshot", failureKind: "snapshot-history-corrupt", invalidCount: snapshotHistoryCorruption.invalidCount}});
+                this.recordDiagnostic("migration-rejected", "snapshot-history-corrupt");
+                void this.persistAuditBestEffort();
+                showMessage(t("msg.snapshotHistoryCorrupt", {n: snapshotHistoryCorruption.invalidCount}));
+            }
             if (this.isMobileFrontend) this.ensureMobileTopBarButton();
             this.ensureSpeedSwitchQuickActions();
             void this.reconcileDockTomatoInbox();
@@ -6874,9 +6883,16 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
             return;
         }
         if (!raw) { showMessage(t("msg.noSnapshot")); return; }
-        const snapshots = readStoreSnapshotHistory(raw);
+        const snapshotInspection = inspectStoreSnapshotHistory(raw);
+        const snapshots = snapshotInspection.entries;
         const snapshot = historyIndex === undefined ? snapshots[snapshots.length - 1] : snapshots[historyIndex];
-        if (!snapshot) { showMessage(t("msg.noSnapshot")); return; }
+        if (!snapshot) {
+            if (snapshotInspection.recognized && snapshotInspection.invalidCount > 0) {
+                this.recordDiagnostic("migration-rejected", "snapshot-history-corrupt");
+                showMessage(t("msg.snapshotHistoryCorrupt", {n: snapshotInspection.invalidCount}));
+            } else showMessage(t("msg.noSnapshot"));
+            return;
+        }
         if (snapshot.invalid) {
             this.recordDiagnostic("migration-rejected", "snapshot-history-corrupt");
             showMessage(t("msg.snapshotRestoreFail"));

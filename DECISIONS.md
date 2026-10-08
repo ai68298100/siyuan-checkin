@@ -2355,3 +2355,8 @@
 
 - 专注诊断清空按钮通过 `runSettingsAction` 调用既有锁内清除方法，等待期间统一暴露 `disabled`/`aria-busy` 并阻止重复写入；失败重渲染后回到可用清空入口，成功清空后回到设置返回入口。
 - 保留 `clearFocusDiagnostics` 的远端合并、清除水位、锁内保存和失败提示语义，不改变专注完成事实或问题归档规则。
+
+# D-444：恢复点历史 inspection 区分损坏 canonical 桶与 legacy raw store（2026-10-08）
+
+- `inspectStoreSnapshotHistory` 返回有效条目、是否识别 canonical history 以及坏条目计数；canonical 元数据或快照条目损坏时不再回退为 legacy 空 store。
+- 启动和直接恢复对坏桶记录 `migration-rejected/snapshot-history-corrupt` 与 restore 审计，并向用户说明跳过数量；旧版无格式 raw store 继续保持兼容。导出与追加路径暂不改变。

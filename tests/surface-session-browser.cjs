@@ -557,7 +557,6 @@ const artifactRoot = path.join(projectRoot, ".artifacts", "surface-session");
                 assert.deepEqual(auditClearLifecycle.success, {cleared: true, focusedBack: true}, "successful audit clear returns focus to a live settings control");
                 const focusClearLifecycle = await page.evaluate(async () => {
                     const plugin = window.__plugin, primary = plugin.dockElement;
-                    await plugin.onDataChanged();
                     plugin.showSettings(primary);
                     plugin.syncSettingsCompatibilityForRoot(primary);
                     plugin.render(primary);
