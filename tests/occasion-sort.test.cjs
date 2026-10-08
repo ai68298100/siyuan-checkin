@@ -132,6 +132,9 @@ assert.match(bindSource, /writeState\(\{occasionSortMode\}\)/, "the click applie
 assert.match(bindSource, /writeState\(\{occasionSortMode\}\);[\s\S]*renderRoot\(\)/, "sorting redraws only the owning root");
 const sessionSource = fs.readFileSync(path.join(__dirname, "..", "src", "render", "occasion-session.ts"), "utf8");
 assert.match(sessionSource, /occasionSortMode: "next" \| "name" \| "updated";/, "sort mode is part of root-local occasion state");
+const indexSource = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
+assert.match(indexSource, /occasionSortMode: this\.occasionSortMode/, "legacy compatibility seed carries the sort mode");
+assert.match(indexSource, /this\.occasionSortMode = state\.occasionSortMode/, "legacy compatibility mirror carries the root sort mode");
 const viewSource = fs.readFileSync(path.join(__dirname, "..", "src", "render", "occasions.ts"), "utf8");
 assert.match(viewSource, /const sortMode = ctx\.occasionSortMode \|\| "next";/, "the view reads the sort mode with the legacy default");
 assert.match(viewSource, /data-occasion-sort/, "the filter panel exposes the sort select");

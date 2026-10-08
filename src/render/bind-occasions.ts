@@ -97,7 +97,7 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
         if (key === "time") writeState({occasionTimeFilter: select.value as BindOccasionsHost["occasionTimeFilter"]});
         renderRoot();
     }));
-    /* T-1715：排序选择（宿主字段，往返自动恢复）。 */
+    /* T-1715：排序选择（root-local 会话态，往返自动恢复）。 */
     root.querySelector<HTMLSelectElement>("[data-occasion-sort]")?.addEventListener("change", (event) => {
         const occasionSortMode = (event.currentTarget as HTMLSelectElement).value as BindOccasionsHost["occasionSortMode"];
         writeState({occasionSortMode});
