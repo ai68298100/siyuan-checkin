@@ -4561,6 +4561,26 @@ this.scheduleMidnightRefresh();
             });
             this.render();
         });
+        /* T-1736（D-372）：推荐草案逐项应用——按 target 分发到对应偏好字段，走用户
+           显式 applyPreference 通道（建议≠启用）；绑定应用沿用分钟校验守卫。 */
+        root.querySelectorAll<HTMLElement>("[data-rec-apply]").forEach((button) => button.addEventListener("click", () => {
+            const target = button.dataset.recApply || "";
+            const value = button.dataset.recValue || "";
+            if (target === "wereadIntegration.itemId") {
+                this.applyPreference(() => {
+                    this.wereadIntegration = {...this.wereadIntegration, itemId: value, enabled: Boolean(value) && getActiveItemById(this.store, value) && this.hasMinuteTarget(value) && isWereadApiKey(this.wereadIntegration.apiKey) ? this.wereadIntegration.enabled : false};
+                });
+                this.render();
+                return;
+            }
+            if (target === "wereadIntegration.thresholdMinutes") {
+                const threshold = Math.max(1, Math.min(1440, Math.round(Number(value) || 30)));
+                this.applyPreference(() => {
+                    this.wereadIntegration = {...this.wereadIntegration, thresholdMinutes: threshold};
+                });
+                this.render();
+            }
+        }));
         root.querySelector<HTMLSelectElement>("[data-weread-finish-item]")?.addEventListener("change", (event) => {
             const finishItemId = (event.currentTarget as HTMLSelectElement).value;
             /* 完读绑定可选（空 = 关闭完读事件）；不影响时长联动与开关状态。 */
