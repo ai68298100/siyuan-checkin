@@ -12,6 +12,12 @@
 
 18.17.0 汇总两台电脑的开发成果，已同步到 GitHub 的 `main` 统一基线；这里介绍本次更新与已实现功能，后续开发进展见 [PROGRESS](PROGRESS.md)。
 
+[![最新 Release](https://img.shields.io/github/v/release/ai68298100/siyuan-checkin?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-checkin/releases/latest) [![CI](https://github.com/ai68298100/siyuan-checkin/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-checkin/actions/workflows/ci.yml) [![License](https://img.shields.io/github/license/ai68298100/siyuan-checkin)](LICENSE)
+
+[最新 Release](https://github.com/ai68298100/siyuan-checkin/releases/latest) · [18.17.0 发布说明](docs/releases/release-notes-18.17.0.md) · [问题反馈](https://github.com/ai68298100/siyuan-checkin/issues) · [开发文档](docs/)
+
+</div>
+
 ### 本次更新（18.17.0）
 
 新增：微信读书推荐引擎
@@ -30,11 +36,6 @@
 - 修复编辑器保存队列可能互相等待、日期事项草稿未持久化、重复提交失败时错误恢复草稿等问题。
 - 修复设置推荐预览的安全断言与多页面测试夹具，使生产 bundle 与真实功能契约保持一致。
 
-[![最新 Release](https://img.shields.io/github/v/release/ai68298100/siyuan-checkin?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-checkin/releases/latest) [![CI](https://github.com/ai68298100/siyuan-checkin/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-checkin/actions/workflows/ci.yml) [![License](https://img.shields.io/github/license/ai68298100/siyuan-checkin)](LICENSE)
-
-[最新 Release](https://github.com/ai68298100/siyuan-checkin/releases/latest) · [18.17.0 发布说明](docs/releases/release-notes-18.17.0.md) · [问题反馈](https://github.com/ai68298100/siyuan-checkin/issues) · [开发文档](docs/)
-
-</div>
 
 <div align="center">
 <img src="preview.png" alt="小驴打卡今日、回顾、新建和深色主题界面" width="920" />
