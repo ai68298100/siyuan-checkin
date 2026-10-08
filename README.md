@@ -10,7 +10,25 @@
 
 **当前版本：18.17.0**
 
-18.17.0 汇总两台电脑的开发成果，加入事项管理增强、微信读书推荐、提醒状态、跨页面关联和多表面可靠性改进。这里介绍已发布功能；后续开发进展见 [PROGRESS](PROGRESS.md)。
+18.17.0 汇总两台电脑的开发成果，已同步到 GitHub 的 `main` 统一基线；这里介绍本次更新与已实现功能，后续开发进展见 [PROGRESS](PROGRESS.md)。
+
+### 本次更新（18.17.0）
+
+新增：微信读书推荐引擎
+- 根据已读取的来源事实生成分钟项目与阈值建议。
+- 提供只读预览与逐项应用，只有用户明确点击后才写入设置。
+
+新增：日期事项工作台
+- 支持重复/相似名称确认、规则预览、排序、单次改期、冲突提示、逐次完成和提醒状态。
+- 支持从事项跳转到关联打卡项目，并保留事项与打卡之间的关联。
+
+优化：跨表面与多端可靠性
+- 事项、快速弹窗、今日记录和设置按 root 隔离，草稿、失败回执、提醒动作和导入回滚可恢复。
+- 补齐键盘日期导航、焦点恢复、移动端表单定位、读屏状态和多窗口生命周期保护。
+
+修复：编辑器、记录和提醒状态一致性
+- 修复编辑器保存队列可能互相等待、日期事项草稿未持久化、重复提交失败时错误恢复草稿等问题。
+- 修复设置推荐预览的安全断言与多页面测试夹具，使生产 bundle 与真实功能契约保持一致。
 
 [![最新 Release](https://img.shields.io/github/v/release/ai68298100/siyuan-checkin?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-checkin/releases/latest) [![CI](https://github.com/ai68298100/siyuan-checkin/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-checkin/actions/workflows/ci.yml) [![License](https://img.shields.io/github/license/ai68298100/siyuan-checkin)](LICENSE)
 
