@@ -38,6 +38,7 @@ export interface QuickDialogHost {
     renderInto(root: HTMLElement): void;
     reconcileStore(): Promise<void>;
     persistViewPreferences(): Promise<void>;
+    applyPreferenceMutation?(mutate: () => void): void;
     /* T-1621 步骤一：弹窗页独立于 dock/页签（root-page-store 代理层）。 */
     applyNavigation(root: HTMLElement | undefined, page: QuickDialogHost["currentPage"]): void;
     pageOfRoot(root: HTMLElement): QuickDialogHost["currentPage"];
@@ -182,10 +183,20 @@ export function bindQuickDialogFrameFor(host: QuickDialogHost, dialog: Dialog): 
         container.style.transform = offsetX || offsetY ? `translate(${offsetX}px, ${offsetY}px)` : "";
     };
     const persist = () => {
-        host.dialogRect = {width: Math.round(width), height: Math.round(height)};
-        host.dialogOffset = offsetX || offsetY ? {x: Math.round(offsetX), y: Math.round(offsetY)} : undefined;
-        host.dialogSizeMode = "auto";
-        void host.persistViewPreferences();
+        const rect = {width: Math.round(width), height: Math.round(height)};
+        const offset = offsetX || offsetY ? {x: Math.round(offsetX), y: Math.round(offsetY)} : undefined;
+        if (host.applyPreferenceMutation) {
+            host.applyPreferenceMutation(() => {
+                host.dialogRect = rect;
+                host.dialogOffset = offset;
+                host.dialogSizeMode = "auto";
+            });
+        } else {
+            host.dialogRect = rect;
+            host.dialogOffset = offset;
+            host.dialogSizeMode = "auto";
+            void host.persistViewPreferences();
+        }
     };
     const maxWidth = () => Math.max(FRAME_MIN_WIDTH, window.innerWidth - 24);
     const maxHeight = () => Math.max(FRAME_MIN_HEIGHT, window.innerHeight - 24);

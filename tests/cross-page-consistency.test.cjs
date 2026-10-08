@@ -356,6 +356,12 @@ try {
         /* 分发层：rail/底栏/顶栏导航只落在发起表面。 */
         assert.match(pluginOps, /if \(page === "today"\) host\.showToday\(root\);/, "底栏今日按发起表面");
         assert.match(pluginOps, /else if \(page === "add"\) host\.showEditor\(undefined, undefined, root\);/, "底栏新建按发起表面");
+        /* T-1805：后台来源必须按每个注册 surface 的页面刷新；最后活跃
+           currentPage 只是兼容代理，不能让 dock Today 与 tab Editor 串台。 */
+        assert.match(pluginOps, /const roots = host\.roots\?\.\(\) \|\| \[\];/, "后台刷新枚举已注册 surfaces");
+        assert.match(pluginOps, /roots\.filter\(\(root\) => pageForRoot\(root\) !== "editor"\)\.forEach\(\(root\) => host\.render\(root\)\)/, "后台刷新逐 root 跳过编辑器并重绘其他页面");
+        assert.match(pluginOps, /host\.render\(typingRoot\)/, "输入失焦只刷新触发该事件的 Today root");
+        assert.match(indexSrc, /public isTypingInTodayInputFor\(root: HTMLElement\)/, "宿主提供 root-aware Today 输入检测");
         /* bind 层抽查：返回/跳转携带 root。 */
         assert.match(todayBind, /host\.showSettings\(root\)/, "今日→设置按发起表面");
         assert.match(reviewBind, /host\.jumpToHistoryDate\(date, root\)/, "回顾日历跳转按发起表面");

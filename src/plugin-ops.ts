@@ -27,6 +27,11 @@ export interface PluginOpsHost {
     pendingRenderAfterTyping?: boolean;
     /** T-1445：今日页输入聚焦检测（填写数值/备注输入框），由宿主实现。 */
     isTypingInTodayInput?(): boolean;
+    /** T-1805：后台源刷新必须枚举已注册 surface，而不是读取最后活跃 root 的代理页。 */
+    roots?(): HTMLElement[];
+    pageForRoot?(root: HTMLElement): string;
+    /** T-1805：输入检测按所属 surface 判断，避免 editor root 活跃时误判 Today。 */
+    isTypingInTodayInputFor?(root: HTMLElement): boolean;
     dockElement?: HTMLElement;
     tabElement?: HTMLElement;
     quickDialogElement?: HTMLElement;
@@ -64,16 +69,33 @@ export function renderBackgroundUpdateFor(host: PluginOpsHost): void {
        整树重建会丢焦点导致输入法反复弹出（手机端不可输入）。
        数据已持久化，仅推迟视觉刷新；挂起时在当前输入框上登记一次性
        focusout 补渲染（T-1455：显式渲染通道不再被挂起，防止死锁）。 */
-    if (host.currentPage === "today" && host.isTypingInTodayInput?.()) {
+    const roots = host.roots?.() || [];
+    const pageForRoot = (root: HTMLElement) => host.pageForRoot?.(root) || host.currentPage;
+    const typingRoot = roots.find((root) => pageForRoot(root) === "today"
+        && (host.isTypingInTodayInputFor ? host.isTypingInTodayInputFor(root) : host.isTypingInTodayInput?.()));
+    if (typingRoot) {
         const active = document.activeElement as HTMLElement | null;
         if (active && !active.dataset.pendingRenderFlush) {
             active.dataset.pendingRenderFlush = "true";
             active.addEventListener("focusout", () => {
                 delete active.dataset.pendingRenderFlush;
-                host.render();
+                /* Flush the originating surface only; another root may be an
+                   editor with an unsaved form or a separately focused Today. */
+                if (!host.disposed && !host.disposing && pageForRoot(typingRoot) === "today") host.render(typingRoot);
             }, {once: true});
         }
         host.pendingRenderAfterTyping = true;
+        /* Keep unrelated Today surfaces live while the active input surface is
+           waiting for focusout. Editor roots remain protected independently. */
+        if (roots.length && host.pageForRoot) {
+            roots.filter((root) => root !== typingRoot && pageForRoot(root) === "today").forEach((root) => host.render(root));
+        }
+        return;
+    }
+    if (roots.length && host.pageForRoot) {
+        /* currentPage is a compatibility proxy for the last active surface.
+           Background sources must never use it as a broadcast page. */
+        roots.filter((root) => pageForRoot(root) !== "editor").forEach((root) => host.render(root));
         return;
     }
     if (host.currentPage !== "editor") {

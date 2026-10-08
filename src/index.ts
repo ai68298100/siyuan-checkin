@@ -3731,7 +3731,16 @@ this.scheduleMidnightRefresh();
             || active.dataset?.todaySearch !== undefined) && active.closest(".lc-checkin--today"));
     }
 
-    private roots(): HTMLElement[] {
+    /** T-1805：后台刷新按 root 判定输入焦点；另一个 Today/editor surface
+     * 必须继续接收自己的刷新，不得被最后活跃 root 的代理状态带偏。 */
+    public isTypingInTodayInputFor(root: HTMLElement): boolean {
+        const active = document.activeElement as HTMLElement | null;
+        return Boolean(active && root.contains(active) && (active.classList.contains("lc-checkin__amount")
+            || active.classList.contains("lc-checkin__record-note") || active.dataset?.todaySearch !== undefined)
+            && active.closest(".lc-checkin--today"));
+    }
+
+    public roots(): HTMLElement[] {
         return [this.dockElement, this.tabElement, this.quickDialogElement]
             .filter((root, index, all): root is HTMLElement => root !== undefined && root.isConnected && all.indexOf(root) === index);
     }
@@ -6385,7 +6394,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
         const report = buildHabitInsights(this.store, item.id, {days: rangeDays, startDate: customStart, endDate: customEnd, asOf: currentCalendarDate()});
         /* T-1295:全历史最长连续走模型单一实现(computeLongestStreaks),窗口最佳之外给用户马拉松视角。 */
         const longestEver = computeLongestStreaks(this.store, currentCalendarDate()).get(item.id) || 0;
-        const suggestions = buildCoachingSuggestions(report);
+        const suggestions = buildCoachingSuggestions(report, (key, params) => t(key, params));
         const rate = report.aggregates.completionRate === null ? t("review.quotaNone") : `${report.aggregates.completionRate}%`;
         const weekRows = report.weeklyTrend.slice(-6).map((week) => {
             const scheduledDays = week.eligibleScheduledDays || week.scheduledDays;
@@ -6915,7 +6924,7 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
         const calendar = form.querySelector<HTMLSelectElement>("[data-occasion-calendar]")?.value;
         if (calendar !== "lunar" || !isValidLocalDateInput(date)) { hint.hidden = true; return; }
         const lunar = solarToLunar(new Date(Number(date.slice(0, 4)), Number(date.slice(5, 7)) - 1, Number(date.slice(8, 10))));
-        hint.textContent = lunar ? `将按农历 ${formatLunar(lunar)} 循环` : "";
+        hint.textContent = lunar ? t("occ.lunarHint", {date: formatLunar(lunar)}) : "";
         hint.hidden = !lunar;
     }
 
@@ -8804,6 +8813,11 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
             this.render();
             showMessage(t("msg.prefSaveFail"));
         });
+    }
+
+    /** Render bindings use the same snapshot/rollback path as settings controls. */
+    public applyPreferenceMutation(mutate: () => void): void {
+        this.applyPreference(mutate);
     }
 
     private collectViewPreferences(avatarOverride?: {avatarImage: string | undefined}): CheckinViewPreferences {

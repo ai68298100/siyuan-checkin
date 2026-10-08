@@ -25,6 +25,8 @@ const report = (events) => buildHabitInsights(store(events), "reading", {days: 1
 const low = buildCoachingSuggestions(report([event("2026-09-01")]));
 assert.equal(low.some((suggestion) => suggestion.id === "reduce-friction"), true);
 assert.equal(low.every((suggestion) => suggestion.evidence.length > 0), true);
+const translated = buildCoachingSuggestions(report([event("2026-09-01")]), (key) => key);
+assert.equal(translated.every((suggestion) => !/[\u4e00-\u9fff]/.test(Object.values(suggestion).join(" "))), true, "coaching copy must use the injected locale translator");
 
 const partial = buildCoachingSuggestions(report([event("2026-09-07", 5)]));
 assert.equal(partial.some((suggestion) => suggestion.id === "finish-today"), true);

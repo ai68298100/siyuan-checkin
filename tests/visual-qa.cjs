@@ -617,10 +617,13 @@ const qaFrontend = process.env.CHECKIN_QA_FRONTEND || "desktop";
         const survivedDataChanged = nameInput.isConnected && nameInput.value === "尚未保存的草稿";
 
         form.dispatchEvent(new Event("submit", {bubbles: true, cancelable: true}));
+        /* T-1773/D-344：root-aware 编辑冲突会保留编辑器和草稿，
+           不跳回 Today；走查应等待冲突提示，而不是等待表单消失。 */
         await new Promise((resolve, reject) => {
             const startedAt = Date.now();
             const poll = () => {
-                if (document.querySelector("[data-action='add']") && !document.querySelector("form")) return resolve();
+                const conflictReported = (window.__messages || []).some((message) => message.includes("其他窗口更新"));
+                if (conflictReported && document.querySelector("form")) return resolve();
                 if (Date.now() - startedAt > 2_000) return reject(new Error("draft conflict submit did not finish"));
                 setTimeout(poll, 10);
             };

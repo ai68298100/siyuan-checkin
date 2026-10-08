@@ -50,6 +50,7 @@ export interface BindTodayHost {
     bindMobileNav(root: HTMLElement): void;
     render(root?: HTMLElement): void;
     persistViewPreferences(): Promise<void>;
+    applyPreferenceMutation?(mutate: () => void): void;
     focusTodaySearch(cursor?: number, root?: HTMLElement): void;
     undoRecentRecord(): void;
     retrySave(): Promise<void> | void;
@@ -103,6 +104,13 @@ const DOCK_TOMATO_MESSAGE_KEYS: Record<DockTomatoProviderState, string> = {
 };
 
 export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void {
+    const persistPreferenceMutation = (mutate: () => void): void => {
+        if (host.applyPreferenceMutation) host.applyPreferenceMutation(mutate);
+        else {
+            mutate();
+            void host.persistViewPreferences();
+        }
+    };
     const todayState = host.todayStateForRoot?.(root);
     const expandedExactEntries = () => todayState?.expandedExactEntries ?? host.expandedExactEntries;
     const setExpandedExactEntries = (entries: string[]) => {
@@ -241,8 +249,7 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
         host.enqueueMutation(() => host.recordEvent(item, revision.kind === "binary" ? 1 : getRecordStep(revision.kind, revision.unit, revision.recordStep), captureActionMoment(), host.revisionFingerprint(item, date)));
     }));
     root.querySelector<HTMLElement>("[data-action='toggle-pending-only']")?.addEventListener("click", () => {
-        host.pendingOnly = !host.pendingOnly;
-        void host.persistViewPreferences();
+        persistPreferenceMutation(() => { host.pendingOnly = !host.pendingOnly; });
         host.render();
     });
     root.querySelector<HTMLElement>("[data-action='history']")?.addEventListener("click", () => host.showHistory(root));
@@ -304,21 +311,19 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
     root.querySelector<HTMLSelectElement>("[data-group-mode]")?.addEventListener("change", (event) => {
         const value = (event.currentTarget as HTMLSelectElement).value;
         if (value === "none" || value === "group" || value === "time" || value === "priority") {
-            host.todayGroupMode = value;
-            void host.persistViewPreferences();
+            persistPreferenceMutation(() => { host.todayGroupMode = value; });
             host.render();
         }
     });
     root.querySelector<HTMLSelectElement>("[data-sort-mode]")?.addEventListener("change", (event) => {
         const value = (event.currentTarget as HTMLSelectElement).value;
         if (value === "manual" || value === "priority" || value === "name" || value === "createdAt" || value === "updatedAt") {
-            host.todaySortMode = value;
-            void host.persistViewPreferences();
+            persistPreferenceMutation(() => { host.todaySortMode = value; });
             host.render();
         }
     });
     root.querySelector<HTMLElement>("[data-action='toggle-completed']")?.addEventListener("click", (event) => {
-        host.completedCollapsed = !host.completedCollapsed;
+        persistPreferenceMutation(() => { host.completedCollapsed = !host.completedCollapsed; });
         const toggle = event.currentTarget as HTMLElement;
         const section = toggle.closest<HTMLElement>(".lc-checkin__completed-section");
         const items = section?.querySelector<HTMLElement>(":scope > .lc-checkin__group-items");
@@ -327,14 +332,14 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
         items?.toggleAttribute("hidden", host.completedCollapsed);
         const chevron = toggle.querySelector<HTMLElement>(".lc-checkin__chevron");
         if (chevron) chevron.textContent = host.completedCollapsed ? "⌄" : "⌃";
-        void host.persistViewPreferences();
     });
     root.querySelectorAll<HTMLElement>("[data-group-toggle]").forEach((button) => button.addEventListener("click", () => {
         const key = button.dataset.groupToggle;
         if (!key) return;
-        if (host.collapsedTodayGroups.has(key)) host.collapsedTodayGroups.delete(key);
-        else host.collapsedTodayGroups.add(key);
-        void host.persistViewPreferences();
+        persistPreferenceMutation(() => {
+            if (host.collapsedTodayGroups.has(key)) host.collapsedTodayGroups.delete(key);
+            else host.collapsedTodayGroups.add(key);
+        });
         host.render();
     }));
     root.querySelectorAll<HTMLElement>("[data-action='add']").forEach((element) => element.addEventListener("click", () => host.showEditor(undefined, undefined, root)));

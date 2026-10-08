@@ -1,5 +1,12 @@
 # 2026-10-08 v18.17.0 已正式发布：双机合并后的本机 `main`、`dev/thispc-1002` 和 GitHub 两条同名分支已对齐；发布提交为 `af9caf9b`，tag/Release 为 `v18.17.0`。GitHub 默认分支为 `main`，Release 资产 `package.zip` 的 SHA-256 为 `4f82233ae8c1adb15bb23b572eaf1b5df72168c1a172f4b7fb1a998ca82be717`。完整质量链、发布资产和回滚演练均通过；真实思源/Android/外部来源现场验收仍单独保留，不推送集市。另一台机器只需按 README/同步说明的 `fetch` + `switch main` + `pull --ff-only` 同步。
 
+# 2026-10-09 全插件功能与 UI 复核第三轮
+
+- 本轮按“功能、按钮、设置、表述、显示、逻辑、反馈、点击反应和使用体验”继续逐入口复核，发现并修复三类可复现问题：Today/quick 视图偏好保存失败时界面与存储可能分叉；后台刷新使用最后活跃页面代理导致跨 root 误刷新或漏刷新；英文界面洞察教练、编辑器图标错误、事项农历提示和完成来源摘要存在中文混入。
+- 修复方式：公开 `applyPreferenceMutation` 复用既有快照/回滚/失败提示；`renderBackgroundUpdateFor` 枚举注册 root，输入中的 Today 只延后自身 root，editor 永不被来源刷新覆盖；教练建议和新增错误提示全部走双语 i18n，纯逻辑调用保留中文 fallback。
+- 定向证据：`tests/preference-rollback.test.cjs`、`tests/cross-page-consistency.test.cjs`、`tests/coaching.test.cjs`、`tests/i18n-parity.test.cjs` 已通过；完整 `check`、构建、主链和 UI 链在本轮结束前复跑并记录。
+- 完整证据：`pnpm run check`、`pnpm run build`、`pnpm test`、`pnpm run test:ui`、`test:mobile`、`test:ecosystem`、`test:extended`、`test:perf`、`node tests/width-walkthrough.cjs` 和 `node tests/visual-qa.cjs` 均 EXIT 0；visual-qa 的 draft conflict 场景已按“保留编辑器草稿并显示冲突提示”的既定契约修正走查等待条件。
+
 # 2026-10-09 全插件功能与 UI 复核第二轮
 
 - 任务：全量复核功能、按钮、设置、表述、显示、逻辑、反馈、点击反应和响应式体验；继续沿用真实宿主/真机证据边界，不把模拟通过写成现场通过。

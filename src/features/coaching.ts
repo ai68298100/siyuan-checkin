@@ -10,8 +10,14 @@ export interface CoachingSuggestion {
     evidence: string;
 }
 
+export type CoachingTranslate = (key: string, params?: Record<string, string | number>) => string;
+
+function text(translate: CoachingTranslate | undefined, key: string, fallback: string, params?: Record<string, string | number>): string {
+    return translate ? translate(key, params) : fallback;
+}
+
 /** Builds local, deterministic suggestions. It never invokes AI or sends data. */
-export function buildCoachingSuggestions(report: HabitInsights): CoachingSuggestion[] {
+export function buildCoachingSuggestions(report: HabitInsights, translate?: CoachingTranslate): CoachingSuggestion[] {
     if (!report.item) return [];
     const suggestions: CoachingSuggestion[] = [];
     const rate = report.aggregates.completionRate;
@@ -22,33 +28,33 @@ export function buildCoachingSuggestions(report: HabitInsights): CoachingSuggest
         suggestions.push({
             id: "build-baseline",
             tone: "neutral",
-            title: "先积累可比较的数据",
-            detail: "继续按当前安排记录几次，形成完成率和趋势基线后再判断是否需要调整目标。",
-            evidence: `当前窗口有 ${eligibleDays} 个可评估计划日`,
+            title: text(translate, "insights.coach.buildBaselineTitle", "先积累可比较的数据"),
+            detail: text(translate, "insights.coach.buildBaselineDetail", "继续按当前安排记录几次，形成完成率和趋势基线后再判断是否需要调整目标。"),
+            evidence: text(translate, "insights.coach.buildBaselineEvidence", `当前窗口有 ${eligibleDays} 个可评估计划日`, {n: eligibleDays}),
         });
     } else if (rate >= 85 && report.currentStreak >= 3) {
         suggestions.push({
             id: "keep-rhythm",
             tone: "positive",
-            title: "保持现在的节奏",
-            detail: "当前安排与目标基本可持续，先维持频率，避免在连续记录期间突然提高目标。",
-            evidence: `完成率 ${rate}%，当前连续 ${report.currentStreak} 天`,
+            title: text(translate, "insights.coach.keepRhythmTitle", "保持现在的节奏"),
+            detail: text(translate, "insights.coach.keepRhythmDetail", "当前安排与目标基本可持续，先维持频率，避免在连续记录期间突然提高目标。"),
+            evidence: text(translate, "insights.coach.keepRhythmEvidence", `完成率 ${rate}%，当前连续 ${report.currentStreak} 天`, {rate, n: report.currentStreak}),
         });
     } else if (rate < 50) {
         suggestions.push({
             id: "reduce-friction",
             tone: "attention",
-            title: "降低下一次行动门槛",
-            detail: "近期完成机会较少，可以先缩小单次目标或减少安排频率，稳定后再逐步增加。",
-            evidence: `完成率 ${rate}%，完成 ${report.aggregates.completedDays}/${eligibleDays} 个计划日`,
+            title: text(translate, "insights.coach.reduceFrictionTitle", "降低下一次行动门槛"),
+            detail: text(translate, "insights.coach.reduceFrictionDetail", "近期完成机会较少，可以先缩小单次目标或减少安排频率，稳定后再逐步增加。"),
+            evidence: text(translate, "insights.coach.reduceFrictionEvidence", `完成率 ${rate}%，完成 ${report.aggregates.completedDays}/${eligibleDays} 个计划日`, {rate, done: report.aggregates.completedDays, total: eligibleDays}),
         });
     } else {
         suggestions.push({
             id: "stabilize-rhythm",
             tone: "neutral",
-            title: "优先稳定计划节奏",
-            detail: "当前已有一定基础，先减少连续中断，再考虑增加目标量。",
-            evidence: `完成率 ${rate}%，当前连续 ${report.currentStreak} 天`,
+            title: text(translate, "insights.coach.stabilizeRhythmTitle", "优先稳定计划节奏"),
+            detail: text(translate, "insights.coach.stabilizeRhythmDetail", "当前已有一定基础，先减少连续中断，再考虑增加目标量。"),
+            evidence: text(translate, "insights.coach.stabilizeRhythmEvidence", `完成率 ${rate}%，当前连续 ${report.currentStreak} 天`, {rate, n: report.currentStreak}),
         });
     }
 
@@ -59,9 +65,9 @@ export function buildCoachingSuggestions(report: HabitInsights): CoachingSuggest
         suggestions.push({
             id: "skip-streak",
             tone: "attention",
-            title: `连续跳过了 ${report.recentSkipDays} 天`,
-            detail: "连续跳过通常意味着频率偏高：可以把排期改为弹性目标（例如每周 N 次）或调低单次目标。跳过不会断开连续记录，也不计入完成率。",
-            evidence: `最近连续跳过 ${report.recentSkipDays} 个计划日`,
+            title: text(translate, "insights.coach.skipStreakTitle", `连续跳过了 ${report.recentSkipDays} 天`, {n: report.recentSkipDays}),
+            detail: text(translate, "insights.coach.skipStreakDetail", "连续跳过通常意味着频率偏高：可以把排期改为弹性目标（例如每周 N 次）或调低单次目标。跳过不会断开连续记录，也不计入完成率。"),
+            evidence: text(translate, "insights.coach.skipStreakEvidence", `最近连续跳过 ${report.recentSkipDays} 个计划日`, {n: report.recentSkipDays}),
         });
     }
     /* T-1227：强度分数下滑——恢复最小可完成节奏，强度随完成重新积累。 */
@@ -69,26 +75,26 @@ export function buildCoachingSuggestions(report: HabitInsights): CoachingSuggest
         suggestions.push({
             id: "strength-decline",
             tone: "attention",
-            title: "习惯强度正在下滑",
-            detail: "强度分数反映近期完成节奏：先恢复最小可完成的一步，强度会随完成重新积累，不必追求立刻回到峰值。",
-            evidence: `30 天强度 ${report.strengthScore} 分，较两周前下降 ${Math.abs(report.strengthDelta)} 分`,
+            title: text(translate, "insights.coach.strengthDeclineTitle", "习惯强度正在下滑"),
+            detail: text(translate, "insights.coach.strengthDeclineDetail", "强度分数反映近期完成节奏：先恢复最小可完成的一步，强度会随完成重新积累，不必追求立刻回到峰值。"),
+            evidence: text(translate, "insights.coach.strengthDeclineEvidence", `30 天强度 ${report.strengthScore} 分，较两周前下降 ${Math.abs(report.strengthDelta)} 分`, {score: report.strengthScore, delta: Math.abs(report.strengthDelta)}),
         });
     }
     if (trend && trend.latestRate <= trend.previousRate - 20) {
         suggestions.push({
             id: "trend-decline",
             tone: "attention",
-            title: "留意最近一周的下降",
-            detail: "先回看日程、精力或目标是否发生变化，再决定调整频率还是目标值。",
-            evidence: `最近可比周 ${trend.latestRate}%，此前一周 ${trend.previousRate}%`,
+            title: text(translate, "insights.coach.trendDeclineTitle", "留意最近一周的下降"),
+            detail: text(translate, "insights.coach.trendDeclineDetail", "先回看日程、精力或目标是否发生变化，再决定调整频率还是目标值。"),
+            evidence: text(translate, "insights.coach.trendDeclineEvidence", `最近可比周 ${trend.latestRate}%，此前一周 ${trend.previousRate}%`, {latest: trend.latestRate, previous: trend.previousRate}),
         });
     } else if (trend && trend.latestRate >= trend.previousRate + 20) {
         suggestions.push({
             id: "trend-improving",
             tone: "positive",
-            title: "近期节奏正在改善",
-            detail: "最近一周比此前更稳定，可以记录有效做法，继续观察一周后再调整目标。",
-            evidence: `最近可比周 ${trend.latestRate}%，此前一周 ${trend.previousRate}%`,
+            title: text(translate, "insights.coach.trendImprovingTitle", "近期节奏正在改善"),
+            detail: text(translate, "insights.coach.trendImprovingDetail", "最近一周比此前更稳定，可以记录有效做法，继续观察一周后再调整目标。"),
+            evidence: text(translate, "insights.coach.trendImprovingEvidence", `最近可比周 ${trend.latestRate}%，此前一周 ${trend.previousRate}%`, {latest: trend.latestRate, previous: trend.previousRate}),
         });
     }
 
@@ -97,9 +103,9 @@ export function buildCoachingSuggestions(report: HabitInsights): CoachingSuggest
         suggestions.push({
             id: "finish-today",
             tone: "neutral",
-            title: "今天已经开始",
-            detail: `距离今日目标还差 ${formatNumber(remaining)}${today.unit}，可以安排一个短时段完成。`,
-            evidence: `今日进度 ${formatNumber(today.progress)}/${formatNumber(today.target)}${today.unit}`,
+            title: text(translate, "insights.coach.finishTodayTitle", "今天已经开始"),
+            detail: text(translate, "insights.coach.finishTodayDetail", `距离今日目标还差 ${formatNumber(remaining)}${today.unit}，可以安排一个短时段完成。`, {remaining: formatNumber(remaining), unit: today.unit}),
+            evidence: text(translate, "insights.coach.finishTodayEvidence", `今日进度 ${formatNumber(today.progress)}/${formatNumber(today.target)}${today.unit}`, {progress: formatNumber(today.progress), target: formatNumber(today.target), unit: today.unit}),
         });
     } else if (today?.status === "pending" && report.item.direction !== "atMost") {
         /* T-1609：戒除类没有「还差多少」——今日 pending 只出现在跳过日，
@@ -107,9 +113,9 @@ export function buildCoachingSuggestions(report: HabitInsights): CoachingSuggest
         suggestions.push({
             id: "start-today",
             tone: "neutral",
-            title: "从最小一步开始今天的计划",
-            detail: "先完成一次可记录的最小行动，减少开始成本，再根据状态决定是否继续。",
-            evidence: `今日目标 ${formatNumber(today.target)}${today.unit}`,
+            title: text(translate, "insights.coach.startTodayTitle", "从最小一步开始今天的计划"),
+            detail: text(translate, "insights.coach.startTodayDetail", "先完成一次可记录的最小行动，减少开始成本，再根据状态决定是否继续。"),
+            evidence: text(translate, "insights.coach.startTodayEvidence", `今日目标 ${formatNumber(today.target)}${today.unit}`, {target: formatNumber(today.target), unit: today.unit}),
         });
     }
 

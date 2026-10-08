@@ -6,6 +6,11 @@
 - 本文件中 v18.16.0 及更早版本号属于任务登记时的历史基线，保留用于追溯；新任务统一以源码、`PROGRESS.md`、`BLOCKERS.md` 和 `docs/releases/` 的最新版本为准。
 - 仍开放的产品决策、真实宿主/Android 现场验收和外部来源依赖继续保留，不因版本号升级自动标记完成。
 
+## 2026-10-09 全插件复核第三轮增量
+
+- 本轮已落地：Today/quick 的视图偏好改动统一进入快照、失败回滚和失败提示链路；后台来源刷新按注册 root 隔离并保护编辑器草稿；洞察教练、编辑器图标错误和事项农历提示补齐双语文案。
+- 本轮证据：偏好回滚、跨页 root 一致性、coaching、i18n parity、类型检查、主链、UI 链、移动/生态/扩展/perf 和双主题宽度/视觉矩阵均已复跑通过；真实思源宿主、Android/TalkBack、第三方账号和缩放现场仍需验收。
+
 最新产品定位与原型决策：[产品定位与下一阶段路线](docs/product-positioning-and-roadmap-2026-10.md) · [UI 原型 v3](docs/prototypes/checkin-ui-v3.html) · [完整设计规范](docs/ui-prototype-spec-v3-2026-10.md)（D-374～D-376）。当前索引以源码、详细任务和本轮实际证据为准；本次梳理只更新计划与文档，运行代码改造分阶段领取。
 
 <!-- merge note: retained origin/main entries for conflict 1; both sides preserved -->
@@ -68,7 +73,7 @@
 - [ ] T-1802 渲染块 today 时段统计的本地日期/时区契约（P2，事实复核）——`src/features/checkin-block.ts:380-390` 以 `new Date(event.occurredAt).getHours()` 分早/午/晚，而事件日期事实以 `localDate` 归属；跨时区、跨午夜和 DST 时可能把同一记录显示到错误时段。先明确时段应随记录发生时区还是插件本地时区，再按注入时区/记录日夹具对账 Today、记录详情、导出和来源事件；与 T-1619 的日期键统计不同，这里专门锁定日内时刻展示。
 - [ ] T-1803 API v5 批量写入的 occurredAt/localDate 时区契约（P1，生态契约研究）——`src/features/api-v5.ts:105-109,169-180` 用 `Date.parse` 接受时刻并归一 ISO，随后用宿主 `dateKey(new Date(occurredAt))` 推导记录日，输入没有显式 `localDate`/时区字段；跨地区消费者可能得到与其业务日不一致的事件，文档“严格 ISO”与宽松解析也需对账。先明确“宿主本地日”或显式业务日的兼容边界，验证偏移、无偏移/仅日期/非日历输入、夏令时、跨午夜、fallback 时钟和重复身份；不凭空扩展公开 API，关联 T-1670。
 - [ ] T-1804 多 root Today 搜索、焦点与 pendingFocus 隔离（P1，跨表面交互复核）——`plugin-ops.ts:216-224` 的 `focusTodaySearchFor` 从 dock/tab/quick 取第一个匹配输入，`bind-today.ts` 调用不带发起 root；`index.ts:3527-3535` 的 `pendingFocusItemId` 也是宿主单槽，quick/tab 记录后可能把焦点交给 dock 或被首个 root 消费。按 root 保存 query、selection、滚动和 pendingFocus，覆盖三表面同屏、IME、清空/重绘和销毁；作为 T-1621/T-1663 步骤二具体接线，不重复 T-1784 局部 patch 竞态。
-- [ ] T-1805 后台刷新按 root 隔离并保护编辑页草稿（P1，跨表面交互复核）——`src/plugin-ops.ts:59-79` 的 `renderBackgroundUpdateFor` 依宿主 `currentPage` 判断是否跳过或刷新所有 root；D-325 后最后活跃 root 为 editor 时可能跳过其它 Today，反之又可能刷新另一个 editor 并吞未保存草稿。改为逐 root 读取 `pageOfRoot`/dirty 状态，来源刷新只触发所属非编辑页，覆盖 dock/tab/quick 不同页面、焦点和慢响应；并入 T-1621/T-1663 的第二步验收。
+- [x] T-1805 后台刷新按 root 隔离并保护编辑页草稿（P1，已交付 2026-10-09）——`renderBackgroundUpdateFor` 逐 root 读取页面并只刷新非 editor surface；Today 输入中的 root 仅在失焦后刷新，其他 Today root 继续更新，避免最后活跃 root 代理状态误伤编辑器草稿。新增跨页一致性结构守门并通过 check/UI 定向回归；真实多表面宿主同屏仍归现场验收。
 - [ ] T-1806 Today 上下文菜单的 owning root 几何与焦点（P2，UI/移动复核）——`src/render/today-bindings.ts:252-265` 生成菜单，SCSS `position:fixed`；定位却统一使用 `window.innerWidth/innerHeight`，dock/quick 内嵌滚动、缩放和移动 WebView 可能越界或被宿主裁切。按所属 root 的 visual viewport/transform 计算，覆盖窄面板、安全区、键盘、Esc/点外关闭和关闭后触发按钮焦点；不把 T-1778/T-1788 的静态状态矩阵当几何验收。
 - [ ] T-1807 主 Store 快照写放大与大历史保存预算（P2，性能/持久化复核）——`docs/codebase-walkthrough.md:214` 已记录 `persist()` 每次写入先追加三份全量快照；`appendStoreSnapshotHistory` 需要读回并序列化完整 Store，长事件/墓碑历史下每次打卡都有额外全量 JSON 往返。用 1k/10k/100k 事件、附件、墓碑和并发写测量耗时/内存/失败恢复，确认快照压缩、分层或节流不会破坏 T-1622、T-1647 的恢复点语义；不以提高上限代替测量。
 - [ ] T-1808 初始化失败状态的可执行修复入口（P1，错误流程复核）——`src/index.ts:2155-2166` 失败只设 `initializationState='failed'`、弹消息后渲染，`src/index.ts:3425-3432` 仅输出 `role=alert` 和静态 `init.failedHint`，没有重试、复制诊断或聚焦修复控件。明确生命周期重启是否是唯一动作；至少提供可达的重试/诊断链接与失败焦点，覆盖存储损坏、权限、移动端和读屏，不与 T-1604 的状态语义或 T-1788 的视觉矩阵重复。

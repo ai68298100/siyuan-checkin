@@ -11,6 +11,8 @@ const read = (...parts) => fs.readFileSync(path.join(__dirname, "..", ...parts),
 
 const plugin = read("src", "index.ts");
 const navigation = read("src", "render", "bind-page-navigation.ts");
+const today = read("src", "render", "bind-today.ts");
+const quickDialog = read("src", "render", "quick-dialog.ts");
 const i18n = read("src", "i18n.ts");
 const changeList = read("src", "features", "settings-change-list.ts");
 const registryDoc = read("docs", "settings-field-registry-2026-09-28.md");
@@ -32,6 +34,17 @@ assert.doesNotMatch(plugin, /void this\.persistViewPreferences\(\);/,
     "fire-and-forget persists must be gone from index.ts (all B-class handlers go through applyPreference)");
 assert.doesNotMatch(plugin, /const savePreference = \(\) =>/,
     "the legacy savePreference wrapper must stay retired");
+
+/* Today/quick surfaces must use the same rollback-aware entry point. */
+assert.match(plugin, /public applyPreferenceMutation\(mutate: \(\) => void\): void/,
+    "render bindings need a public rollback-aware preference mutation bridge");
+assert.match(today, /applyPreferenceMutation\?\(mutate: \(\) => void\): void/,
+    "today preference bindings must expose the rollback-aware mutation bridge");
+const pendingOnlyBlock = today.slice(today.indexOf("data-action='toggle-pending-only'"), today.indexOf("data-setting-group"));
+assert.match(pendingOnlyBlock, /persistPreferenceMutation\(\(\) => \{ host\.pendingOnly = !host\.pendingOnly; \}\)/,
+    "today pending-only action must use the rollback-aware mutation helper");
+assert.match(quickDialog, /host\.applyPreferenceMutation\(\(\) => \{/,
+    "quick dialog geometry must use rollback-aware preference persistence");
 
 /* 迁移面抽查（按字段精确签名，防回退到裸 persist） */
 const migratedSelectors = [

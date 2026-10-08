@@ -451,9 +451,9 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         if (!url || !/^https:\/\//i.test(url)) { showMessage(t("msg.iconUrlNeeded")); input?.focus(); return; }
         try {
             const response = await fetch(url, {credentials: "omit"});
-            if (!response.ok) throw new Error(`下载失败（${response.status}）`);
+            if (!response.ok) throw new Error(t("editor.errDownloadFailed", {status: response.status}));
             const blob = await response.blob();
-            if (!blob.type.startsWith("image/")) throw new Error("地址返回的不是图片");
+            if (!blob.type.startsWith("image/")) throw new Error(t("editor.errNotImage"));
             const icon = await readImageBlob(blob);
             if (!isCurrentSession()) return;
             applyLocalIcon(icon, t("msg.download"));
@@ -474,10 +474,10 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         if (!file) return;
         try {
             const parsed = parseCustomIconLibrary(await file.text());
-            if (!parsed.length) throw new Error("没有找到可用图标");
+            if (!parsed.length) throw new Error(t("editor.errNoIcons"));
             const merged = normalizeCustomIconLibrary([...host.customIconLibrary, ...parsed]);
             const added = merged.length - host.customIconLibrary.length;
-            if (!added) throw new Error("图标库中没有新的图标");
+            if (!added) throw new Error(t("editor.errNoNewIcons"));
             const sizeKb = Math.max(1, Math.round(merged.reduce((sum, icon) => sum + icon.length, 0) * 0.75 / 1024));
             if (!window.confirm(t("msg.iconImportConfirm", {n: added, kb: sizeKb}))) return;
             const previous = host.customIconLibrary;
@@ -1175,7 +1175,9 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         const priority = normalizePriorityInput(root.querySelector<HTMLSelectElement>("select[name='priority']")?.value || null);
         const timeSlot = normalizeTimeSlotInput(root.querySelector<HTMLSelectElement>("select[name='timeSlot']")?.value || null);
         const linkedToTomato = root.querySelector<HTMLSelectElement>("select[name='completionSource']")?.value === "tomato";
-        const completionSource = linkedToTomato ? `番茄钟·${root.querySelector<HTMLSelectElement>("select[name='tomatoMode']")?.value === "sessions" ? "次数" : "分钟"}` : "手动记录";
+        const completionSource = linkedToTomato
+            ? t(root.querySelector<HTMLSelectElement>("select[name='tomatoMode']")?.value === "sessions" ? "item.tomatoSessions" : "item.tomatoMinutes")
+            : t("source.manual");
         const schedule = root.querySelector<HTMLSelectElement>("select[name='schedule']")?.value as ScheduleType || "daily";
         const interval = Number(root.querySelector<HTMLInputElement>("input[name='intervalDays']")?.value || 1);
         const scheduleLabel = schedule === "interval" ? t("schedule.intervalN", {n: Math.max(1, Math.round(interval))}) : t(SCHEDULE_LABELS[schedule]);

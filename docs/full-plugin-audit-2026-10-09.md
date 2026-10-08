@@ -4,15 +4,18 @@
 
 ## 结论
 
-核心功能的本地自动化证据完整，类型检查、生产构建、主测试链、UI/移动端/生态/扩展/perf 链均通过。无障碍静态审计没有缺名、正向 tabindex、键盘不可达或对比度违规。真实思源宿主、第三方账号、Android/TalkBack、缩放和保存面板现场仍未验收。
+核心功能的本地自动化证据完整，类型检查、生产构建、主测试链、UI/移动端/生态/扩展/perf 链和双主题视觉/宽度矩阵均通过。无障碍静态审计没有缺名、正向 tabindex、键盘不可达或对比度违规。真实思源宿主、第三方账号、Android/TalkBack、缩放和保存面板现场仍未验收。
 
-本轮修复了四处可复现问题，并补齐了两项审计契约：
+本轮修复了前一轮的四处问题，并在第三轮补齐三类可复现问题：
 
 - 日历投影、排期预演和周负荷统一使用 `date-keys.ts:isValidDateKey`，不再接受 `2026-02-30`、`2026-02-31` 并被 `Date` 归一到下月；对应 T-1793/T-1811 已回写完成。
 - 设置页窄屏分类点击不再在平滑滚动首帧被旧几何覆盖 `aria-current`；滚动事件和观察器继续负责最终同步。
 - 日历公开投影的数值 `atMost` 项改用模型同源的 `isComplete`，并按当天生效的修订单位计算进度；旧单位事件仍保留原始读数但不污染当前规则完成态。
 - 640px 紧凑桌面 Today 将仪表盘与提醒条间距收紧 8px，首个任务卡回到首屏预算，按钮触控高度不变。
 - 宽度走查的主题切换在每个场景清空 root Today 展开态，Ocean/Sunset 的 exact-entry 点击反馈不再受前一主题残留状态影响。
+- Today/quick 的 pending、分组、排序、完成折叠、分组折叠和 quick 几何偏好统一走快照、失败回滚和失败提示入口，避免点击后内存值与持久值分叉。
+- 后台来源刷新按注册 root 读取页面；输入中的 Today 只延后自己的 root，editor root 不参与来源刷新，避免跨 surface 丢草稿或漏更新。
+- 洞察教练建议、编辑器图标导入错误、事项农历提示和完成来源摘要改为双语 i18n，英文界面不再混入硬编码中文。
 
 ## 页面与能力
 
@@ -36,9 +39,10 @@
 - `responsive-layout`、`ui-theme`、`mobile-release-quality`、`css-hygiene`：通过。CSS 655,090 bytes，高于 620KB 软线、低于 640KiB 硬线；Webpack 保留既有体积提示。
 - `node tests/cross-surface-matrix.test.cjs`：12.1–12.6 全部通过；同步修正了一个落后于 root-aware 实现的静态断言。
 
-## 未闭合的视觉证据
+## 视觉与现场边界
 
-- `node tests/visual-qa.cjs` 在 draft conflict submit 等待阶段失败，错误为 `draft conflict submit did not finish`，因此不能宣称全量视觉通过。
+- `node tests/visual-qa.cjs`：通过。draft conflict 场景按 T-1773 契约等待“表单保留 + 冲突提示”，并验证远端编辑、外部记录、适配器注册/销毁和数据刷新不会吞草稿。
 - `node tests/width-walkthrough.cjs`：全矩阵通过（49 个尺寸表面、32 个交互状态、8 个主题/动作色场景、10 个混合习惯布局、录入表单、30 项 Today 双主题和长内容场景）。
 - `node tests/calendar-projection.test.cjs`、`node tests/settings-navigation.test.cjs`：通过；分别覆盖数值戒除/修订单位投影和设置导航竞态守门。
-- `node tests/visual-qa.cjs` 仍在 draft conflict submit 等待阶段失败（`draft conflict submit did not finish`）；CSS 软线、T-1778/T-1788 视觉状态矩阵及 T-1813～T-1829 视觉系统治理继续保留，不能用静态通过替代真实宿主验收。
+- 本轮新增定向守门：`preference-rollback`、`cross-page-consistency`、`coaching`、`i18n-parity`，覆盖偏好失败回滚、root 隔离和双语输出。
+- CSS 软线、T-1778/T-1788 视觉状态矩阵及 T-1813～T-1829 视觉系统治理继续保留；本地视觉通过不能替代真实思源宿主、Android/TalkBack、第三方来源和缩放现场验收。
