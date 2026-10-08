@@ -105,12 +105,13 @@ for (const mode of ["next", "name", "updated"]) {
 }
 
 /* —— 夹具 2：小集合排序语义（转译视图 + 小数据）。 —— */
+const todayWeekday = new Date().getDay();
 const small = [
-    occasion("s1", "乙事项", {weekday: 3, updatedAt: "2026-09-10T00:00:00.000Z"}),
-    occasion("s2", "甲事项", {weekday: 4, updatedAt: "2026-09-20T00:00:00.000Z"}),
-    occasion("s3", "丙事项", {weekday: 3, updatedAt: "2026-09-15T00:00:00.000Z", enabled: false}),
+    occasion("s1", "乙事项", {weekday: (todayWeekday + 1) % 7, updatedAt: "2026-09-10T00:00:00.000Z"}),
+    occasion("s2", "甲事项", {weekday: todayWeekday, updatedAt: "2026-09-20T00:00:00.000Z"}),
+    occasion("s3", "丙事项", {weekday: (todayWeekday + 1) % 7, updatedAt: "2026-09-15T00:00:00.000Z", enabled: false}),
 ];
-/* 同周几造成 next 相同时按名称回落——用不同 weekday 制造 next 差异。 */
+/* 同周几造成 next 相同时按名称回落；用相对今天的 weekday 制造稳定的今天/下一天差异。 */
 const orderOf = (mode) => {
     const markup = renderOccasions.renderOccasionsView(makeCtx(small, mode));
     return [...markup.matchAll(/<strong>([^<]*)<\/strong>/g)].map((m) => m[1]).filter((name) => name.includes("事项"));

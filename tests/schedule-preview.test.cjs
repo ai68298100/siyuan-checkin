@@ -12,10 +12,12 @@ const root = path.join(__dirname, "..");
 const compilerOptions = {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS};
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-schedule-preview-"));
 const load = (relative) => {
-    const target = path.join(dir, relative.replace(/[\\/]/g, "_"));
+    const target = path.join(dir, "src", relative.replace(/\.ts$/, ".js"));
+    fs.mkdirSync(path.dirname(target), {recursive: true});
     fs.writeFileSync(target, ts.transpileModule(fs.readFileSync(path.join(root, "src", relative), "utf8"), {compilerOptions}).outputText);
     return require(target);
 };
+load("date-keys.ts");
 const preview = load("features/schedule-preview.ts");
 
 /* —— 1. 工作日：2026-09-21 是周一；周末为非应做日。 —— */
@@ -73,6 +75,8 @@ const preview = load("features/schedule-preview.ts");
     assert.deepEqual(daily, preview.buildSchedulePreview({type: "daily"}, "2026-09-21"));
     assert.equal(daily.days[29].date, "2026-10-20");
     assert.equal(preview.buildSchedulePreview({type: "daily"}, "2026/09/21").invalidReasonKey, "editor.schedulePreviewInvalid");
+    assert.equal(preview.buildSchedulePreview({type: "daily"}, "2026-02-30").invalidReasonKey, "editor.schedulePreviewInvalid", "impossible dates fail closed instead of rolling into March");
+    assert.equal(preview.buildSchedulePreview({type: "interval", intervalDays: 2, anchorDate: "2026-02-31"}, "2026-02-28").invalidReasonKey, "editor.schedulePreviewInvalid", "impossible interval anchors fail closed");
 }
 
 /* —— 6. 编辑器接线与双语。 —— */

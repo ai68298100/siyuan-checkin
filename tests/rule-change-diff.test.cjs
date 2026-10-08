@@ -12,12 +12,14 @@ const root = path.join(__dirname, "..");
 const compilerOptions = {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS};
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-rule-change-"));
 const load = (relative) => {
-    /* 按 basename 落盘，保持模块间相对 require（./schedule-preview）可解析。 */
-    const target = path.join(dir, path.basename(relative).replace(/\.ts$/, ".js"));
+    /* 按源码相对路径落盘，保持 ./schedule-preview 与 ../date-keys 可解析。 */
+    const target = path.join(dir, "src", relative.replace(/\.ts$/, ".js"));
+    fs.mkdirSync(path.dirname(target), {recursive: true});
     fs.writeFileSync(target, ts.transpileModule(fs.readFileSync(path.join(root, "src", relative), "utf8"), {compilerOptions}).outputText);
     return require(target);
 };
 /* rule-change-diff 在模块加载时 require ./schedule-preview，须先落盘。 */
+load("date-keys.ts");
 load("features/schedule-preview.ts");
 const diff = load("features/rule-change-diff.ts");
 

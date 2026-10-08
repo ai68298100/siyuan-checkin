@@ -6,6 +6,7 @@
    - 配额只展示周期窗口与剩余次数——窗口内不编造固定执行日；
    - 非法草稿 fail-closed：显示错误原因，绝不静默回落默认排期。 */
 import type {QuotaPeriod, ScheduleType} from "../types";
+import {isValidDateKey} from "../date-keys";
 
 export interface SchedulePreviewDraft {
     type: ScheduleType;
@@ -50,12 +51,6 @@ const REASON_REST = "editor.scheduleReason.rest";
 const INVALID = "editor.schedulePreviewInvalid";
 
 const MAX_PREVIEW_DAYS = 30;
-
-function isValidDateKey(value: unknown): value is string {
-    if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-    const [year, month, day] = value.split("-").map(Number);
-    return month >= 1 && month <= 12 && day >= 1 && day <= 31 && Number.isFinite(Date.UTC(year, month - 1, day));
-}
 
 function dateFromKey(value: string): Date {
     const [year, month, day] = value.split("-").map(Number);

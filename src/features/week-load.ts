@@ -6,6 +6,7 @@
    - 配额单列：灵活周期任务不重复摊派到每天，单独列出其周期与额度；
    - 归档项目不参与；排期草稿非法的项目如实排除（不伪造应做日）。 */
 import {buildSchedulePreview, type SchedulePreviewDraft} from "./schedule-preview";
+import {isValidDateKey} from "../date-keys";
 import type {CheckinItem, CheckinKind, QuotaPeriod} from "../types";
 
 export interface WeekLoadQuotaInfo {
@@ -39,12 +40,6 @@ export interface WeekLoadPreview {
 
 const WINDOW_DAYS = 7;
 const MAX_ITEMS = 30;
-
-function isValidDateKey(value: string): boolean {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-    const [year, month, day] = value.split("-").map(Number);
-    return month >= 1 && month <= 12 && day >= 1 && day <= 31 && Number.isFinite(Date.UTC(year, month - 1, day));
-}
 
 /** 未来一周负荷：从 startDate 起按日投影全部活跃项目的排期（含 startDate，7 天）。 */
 export function buildWeekLoadPreview(items: readonly CheckinItem[], startDate: string): WeekLoadPreview {

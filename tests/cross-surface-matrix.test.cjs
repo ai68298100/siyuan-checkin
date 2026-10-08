@@ -98,7 +98,10 @@ assert.match(occasionView, /renderOccasionsView\(ctx: OccasionsViewContext, root
 assert.match(occasionView, /const presetId = `lc-occasion-remind-presets-\$\{renderId\}`/);
 assert.match(occasionView, /data-occasion-root-instance/);
 assert.match(occasionBinding, /const state = readOccasionsRootContext\(host, root\)/);
-assert.match(occasionBinding, /const renderRoot = \(\) => host\.render\(root\)/);
+// Root-aware bindings may guard redraws after the surface is detached or the
+// page changes. Keep the contract focused on rendering the originating root
+// while allowing that lifecycle guard around the host call.
+assert.match(occasionBinding, /const renderRoot = \(\) => \{ if \(isCurrentSurface\(\)\) host\.render\(root\); \}|const renderRoot = \(\) => host\.render\(root\)/);
 assert.match(occasionBinding, /isCurrentOccasionFormSession\(host, root, session\)/);
 assert.match(occasionBinding, /host\.showToday\(root\)/);
 console.log("Cross-surface 12.5 occasion-state checks passed.");

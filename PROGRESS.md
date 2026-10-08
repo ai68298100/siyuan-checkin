@@ -2638,5 +2638,25 @@ Today 条目附件的 `FileReader.onload/onerror` 现在复核绑定时页面、
 
 <!-- merge note: retained origin/main entries for conflict 2; both sides preserved -->
 
+# 2026-10-09 全插件功能与 UI 本地审计（T-1778 增量，D-446）
+
+本轮按 Today、Review、Insights、Editor、Occasions、Archived、Settings、联动/API、quick/dock/tab/dialog/渲染块和移动表面复核现有功能与 UI。生产构建与自动化行为证据显示主路径可用；本轮同时修复两处真实缺陷：日期校验统一复用 `date-keys.ts:isValidDateKey`（T-1793/T-1811），设置页窄屏分类点击不再被平滑滚动首帧的旧几何覆盖 `aria-current`（`src/render/settings-navigation.ts`）。
+
+功能分区结果：Today 的空态/首成、手动/精确/快捷记录、跳过/撤销、提醒、专注、搜索和多 root 状态通过；Review 的概览/记录/分析、折叠、筛选、批量与长内容通过；Insights 的日历/热图、钻取、方向键和无障碍结构通过；Editor 的预览、记录方式、保存栏、模板/导入冲突与移动结构通过；Occasions 的新建、编辑、改期、完成、搜索、日历、历史和关联通过；Archived 的搜索/恢复结构通过；Settings 的总览、搜索、来源卡、导入冲突、审计/恢复点动作与导航通过；生态/API、来源适配器和 quick/dock/tab/dialog 结构链通过。真实思源宿主、第三方账号、Android/TalkBack 和缩放现场仍未在本机验收。
+
+验证证据：
+
+- `pnpm run check`：通过。
+- `pnpm run build`：通过；Webpack 仅有既有体积提示（`dist/index.js` 1.45 MiB、`dist/index.css` 640 KiB、`package.zip` 843 KiB）。
+- `pnpm test`、`pnpm run test:ui`、`pnpm run test:mobile`、`pnpm run test:ecosystem`、`pnpm run test:extended`、`pnpm run test:perf`、`pnpm run check:environment`：通过。
+- `node tests/accessibility-audit.test.cjs`：0 缺名、0 正向 tabindex、0 键盘不可达、0 对比度违规；10 个密集列表控件低于 44px，但满足 24px 下限及包围标签规则。
+- `node tests/ui-sweep.cjs`：69 张截图生成并完成。
+- `node tests/responsive-layout.test.cjs`、`ui-theme`、`mobile-release-quality`、`css-hygiene`：通过；CSS 655,090 bytes，高于 620KB 软线、低于 640KiB 硬线。
+- `node tests/width-walkthrough.cjs`：仍失败 6 项：Ocean/Sunset 浅深主题共 4 个 action-colors 场景在 exact-entry 控件被异步重绘隐藏后定位超时；30 项 Today 在 640px 的首卡 top=483，超过现有 475px 首屏预算 8px。其余宽度、长内容、短高 dock、混合记录和交互场景通过。设置长内容 320px 的导航竞态已因本轮修复消失。
+- `node tests/visual-qa.cjs`：在 draft conflict submit 场景等待超时（`draft conflict submit did not finish`），未宣称全量视觉通过。
+- `node tests/cross-surface-matrix.test.cjs`：修复过时的 12.5 静态断言后 12.1–12.6 全部通过；断言仍要求 root-aware `host.render(root)`。
+
+本轮剩余项回链 T-1778/T-1788/T-1813～T-1829：视觉测试夹具的异步重绘竞态、640px 首屏密度和 draft conflict 浏览器夹具需单独修正/复测；CSS 软线和真实宿主证据保持开放，不把本地自动化通过写成现场验收。
+
 
 2026-09-30 T-1621 步骤一交付：多 root 独立页面（RootContext Map + currentPage 代理层 + 导航可选 root）（local-auto，架构级专职轮；口径 D-324/D-325）：①新纯模块 features/root-page-store.ts——RootContext Map（HTMLElement→{page}）+孤儿页（承接早于 root 注册的启动写入，新 root 继承）+最后活跃标记；②index.ts currentPage 字段改读写代理：读=最后活跃 root 页、写=全局同步全部 root+孤儿页（既有宿主级写入零语义变化）；applyNavigation/pageOfRoot/releaseRootContext 宿主方法 + primaryRoot（dock 优先页签回落）；renderInto 按 root ensure 注册取页——页面选择/绑定分派/滚动恢复/renderedPages/导航 chrome（topnav/rail/底栏/移动顶栏/getPageTitle）全部按 root 页；回顾快照按任一回顾 root 判定、renderInto 直调（弹窗全屏切换）快照回落兜底；③navigation.ts 全 showXFor+showEditorReturnFor 可选 root 参数经 applyNavigation 单一落点，洞察返回页按发起表面判定；④分发接线：bindMobileNavFor（rail/底栏/顶栏统一分发）、bind-today/bind-page-navigation/bind-editor 动作、设置卡跳转五点、saveForm→saveEditorForm options.root、渲染块跳转 primaryRoot、BPN 草案编辑器；⑤快速弹窗页记忆归弹窗 root：关闭按 pageOfRoot 记取+释放上下文，退役「关闭写回宿主 currentPage」（旧实现 dock/页签跟随弹窗跳页=跨表面串页，D-325 纠正）；⑥dock/页签 destroy 释放上下文+最后活跃释放回落 dock→页签。守门：tests/root-page-store.test.cjs 入主链（223 文件，行为级 7 组：per-root 独立/代理读回落/全局写同步/孤儿页继承/释放回落）；cross-page-consistency 新增 T-1621 步骤一块 18 断言（含导航函数仅 openTabPageFor 保留宿主级写、反代理页断言）；mobile-dialog/desktop-dialog/responsive-layout/stability-9_8/checkin-block/template-gallery/priority-reminder/insight-a11y/stat-denominators/recording-history-structure/project-draft 十文件旧形态断言随签名现代化。**剩余**：编辑器归档/删除后 showToday（异步无 root）仍全局；步骤二折叠态/步骤三滚动复合键另批；真机多 root 同屏走查归 T-1608。验证：check、pnpm test 主链（223 文件）、build、test:ui、test:quality（CSS 635929B 不变）、双主题 visual-qa、宽度走查全 EXIT=0；未 push。

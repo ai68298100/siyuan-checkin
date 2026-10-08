@@ -11,6 +11,7 @@
 
 import {getItemDirectionForDate, getItemRevisionForDate, getEventsForDay, isComplete, isItemAvailableOnDate, isScheduledToday, isSkipEvent} from "../model";
 import {evaluateQuotaSchedule} from "../rules";
+import {daysBetweenHalfOpen, isValidDateKey} from "../date-keys";
 import type {CheckinStore} from "../types";
 
 /** 单日状态：complete/pending=普通与至少型；skipped=显式跳过（中性）；
@@ -59,8 +60,6 @@ export const CALENDAR_PROJECTION_LIMITS = Object.freeze({
     maxItems: 200,
 }) as Readonly<{maxDays: number; maxItems: number}>;
 
-const DATE_PATTERN = /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/;
-
 function nextDayKey(key: string): string {
     const [year, month, day] = key.split("-").map(Number);
     return `${new Date(Date.UTC(year, month - 1, day + 1)).toISOString().slice(0, 10)}`;
@@ -84,7 +83,7 @@ export function buildCalendarProjection(
     store: CheckinStore,
     range: CalendarProjectionInput,
 ): CalendarProjection {
-    if (!range || !DATE_PATTERN.test(range.startDate || "") || !DATE_PATTERN.test(range.endDateExclusive || "")) {
+    if (!range || !isValidDateKey(range.startDate) || !isValidDateKey(range.endDateExclusive)) {
         throw new TypeError("range 必须提供合法的 startDate 与 endDateExclusive（YYYY-MM-DD）");
     }
     if (range.startDate >= range.endDateExclusive) {
@@ -169,7 +168,5 @@ export function buildCalendarProjection(
 }
 
 function eachDayCount(startDate: string, endDateExclusive: string): number {
-    let count = 0;
-    for (let cursor = startDate; cursor < endDateExclusive; cursor = nextDayKey(cursor)) count += 1;
-    return count;
+    return daysBetweenHalfOpen(startDate, endDateExclusive) ?? 0;
 }

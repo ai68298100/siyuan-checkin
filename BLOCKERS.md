@@ -6,6 +6,8 @@
 - GitHub `main` 已是默认分支和稳定同步入口；`dev/thispc-1002` 保留为开发记录，两条远端分支与本机均已对齐。
 - 下文出现的 v18.16.0、开发窗口冻结或“未 push/未发版”均是当时历史记录，不覆盖本节当前事实。
 
+- **B-UI-AUDIT-20261009（观察中）**：本轮本地全插件走查中，`visual-qa.cjs` 在 draft conflict submit 等待阶段失败（`draft conflict submit did not finish`）；`width-walkthrough.cjs` 另有 Ocean/Sunset 四个 action-colors 场景因 exact-entry 异步重绘后控件不可见而超时，以及 30 项 Today 在 640px 首卡 top=483 超出现有 475px 首屏预算 8px。其余宽度、长内容、短高 dock、混合记录和交互场景通过；设置长内容 320px 的导航竞态已修复。未修改测试阈值或把这些场景宣称通过，后续分别修正夹具竞态与 640px 首屏密度后复测。
+
 2026-10-06 当前执行入口更新：[产品评审与下一阶段待办](docs/product-review-and-backlog-2026-10-06.md) / TODO 顶部 D-354。T-1623/1624/1625/1626 已完成，旧计划不再用作待开发清单。T-1622 与 T-1621 的剩余切片、T-1654 搜索/T-1646 空态等本地任务可继续；两机合并前的发布冻结和受保护文件按 BRANCH-PROTOCOL 保持。文档/候选准备可并行，不新增设备等待阻塞。
 
 本轮 `check`、`build:check`、`pnpm test`、`test:ui` 均 EXIT 0（主/UI日志见 `.artifacts/product-review-2026-10-06-*.log`）。这增加当前完整 UI 链通过证据；下方性能波动记录保留为历史观察，不因单次通过宣称长期稳定，也不放宽门禁。诊断已解决条目的持久墓碑仍归 T-1622，未解决问题不因本轮审计关闭。

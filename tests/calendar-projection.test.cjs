@@ -80,6 +80,8 @@ assert.equal(logged.items[0].points[0].date, "2026-09-10", "date attribution use
 assert.throws(() => buildCalendarProjection(store(), {startDate: "2026-09-10", endDateExclusive: "2026-09-10"}), TypeError, "empty range must throw");
 assert.throws(() => buildCalendarProjection(store(), {startDate: "2026-09-10", endDateExclusive: "2026-09-01"}), TypeError, "inverted range must throw");
 assert.throws(() => buildCalendarProjection(store(), {startDate: "bad", endDateExclusive: "2026-09-13"}), TypeError, "invalid dates must throw");
+assert.throws(() => buildCalendarProjection(store(), {startDate: "2026-02-30", endDateExclusive: "2026-03-03"}), TypeError, "impossible calendar dates must throw instead of normalizing into March");
+assert.throws(() => buildCalendarProjection(store(), {startDate: "2026-02-28", endDateExclusive: "2026-02-31"}), TypeError, "impossible exclusive bounds must throw");
 const manyItems = Array.from({length: CALENDAR_PROJECTION_LIMITS.maxItems + 5}, (_, index) => makeItem({id: `item-${index}`, name: `P${index}`}));
 const truncatedProjection = buildCalendarProjection(model.normalizeStore({version: 3, items: manyItems, events: []}), {startDate: "2026-09-10", endDateExclusive: "2026-09-12"});
 assert.equal(truncatedProjection.items.length, CALENDAR_PROJECTION_LIMITS.maxItems, "items are bounded");

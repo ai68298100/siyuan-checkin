@@ -12,11 +12,13 @@ const root = path.join(__dirname, "..");
 const compilerOptions = {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS};
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-week-load-"));
 const load = (relative) => {
-    const target = path.join(dir, path.basename(relative).replace(/\.ts$/, ".js"));
+    const target = path.join(dir, "src", relative.replace(/\.ts$/, ".js"));
+    fs.mkdirSync(path.dirname(target), {recursive: true});
     fs.writeFileSync(target, ts.transpileModule(fs.readFileSync(path.join(root, "src", relative), "utf8"), {compilerOptions}).outputText);
     return require(target);
 };
 /* 先落盘依赖，保持模块间相对 require 可解析。 */
+load("date-keys.ts");
 load("features/schedule-preview.ts");
 const weekLoad = load("features/week-load.ts");
 
@@ -30,6 +32,7 @@ const item = (overrides = {}) => ({id: "a", name: "拉伸", kind: "duration", un
     assert.equal(result.dates[6], "2026-09-29", "cross-week window spans into next week");
     assert.equal(result.items.length, 1);
     assert.equal(result.items[0].days.filter((day) => day.scheduled).length, 7);
+    assert.deepEqual(weekLoad.buildWeekLoadPreview([item()], "2026-02-30"), {startDate: "2026-02-30", dates: [], items: [], quotaItems: [], invalidCount: 0}, "impossible dates fail closed without generating a normalized week");
     const workdays = weekLoad.buildWeekLoadPreview([item({id: "b", name: "健身", schedule: {type: "workdays"}})], "2026-09-23");
     assert.deepEqual(workdays.items[0].days.filter((day) => day.scheduled).map((day) => day.date), ["2026-09-23", "2026-09-24", "2026-09-25", "2026-09-28", "2026-09-29"]);
 }

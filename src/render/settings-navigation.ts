@@ -314,7 +314,12 @@ export function bindSettingsNavigationFor(root: HTMLElement, options: SettingsNa
         const nextTop = scroller.scrollTop + groupRect.top - scrollRect.top - offset;
         const maxTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
         scrollElement(scroller, scroller.scrollLeft, Math.max(0, Math.min(maxTop, nextTop)), options.reducedMotion ? "auto" : "smooth");
-        scheduleSync();
+        /* Do not synchronise immediately after starting a smooth scroll.  At
+           narrow widths the old section is still above the threshold during
+           the first animation frame; an eager sync would overwrite the
+           clicked aria-current state before the target section is reached.
+           The scroller's scroll event and observers perform the authoritative
+           follow-up sync once geometry has actually changed. */
     };
 
     scroller.addEventListener("scroll", onScroll, {passive: true});
