@@ -46,7 +46,7 @@
 
 ## 视觉与现场边界
 
-- `node tests/visual-qa.cjs`：通过。draft conflict 场景按 T-1773 契约等待“表单保留 + 冲突提示”，并验证远端编辑、外部记录、适配器注册/销毁和数据刷新不会吞草稿。
+- `node tests/visual-qa.cjs`：当前环境未设置 `CHECKIN_BROWSER`，浏览器场景未完成；此前具备浏览器环境的历史轮次曾通过 draft conflict 等场景，本轮不重复宣称。
 - `node tests/width-walkthrough.cjs`：全矩阵通过（49 个尺寸表面、32 个交互状态、8 个主题/动作色场景、10 个混合习惯布局、录入表单、30 项 Today 双主题和长内容场景）。
 - `node tests/calendar-projection.test.cjs`、`node tests/settings-navigation.test.cjs`：通过；分别覆盖数值戒除/修订单位投影和设置导航竞态守门。
 - 本轮新增定向守门：`preference-rollback`、`cross-page-consistency`、`coaching`、`i18n-parity`，覆盖偏好失败回滚、root 隔离和双语输出。
@@ -55,5 +55,5 @@
 - 初始化恢复定向守门：`ui-state-ledger` 验证失败页按钮、重试入口与一次性监听安装；`settings-migration` 验证 `init.retry` 双语键；`agent-status` 验证失败后能力注册仍保持原有解耦。
 - 数据与交互定向守门：`diagnostics`、`model`、`restore-audit`、`privacy-scope`、`today-search-ime`、`cross-surface-matrix`、`checkin-toast`、`occasion-store`、`api-v5-docs` 验证敏感字段边界、快照隔离、选区恢复、跨 root 聚焦和局部回执行为。
 - 数据与交互定向守门：`diagnostics`、`model`、`restore-audit`、`privacy-scope`、`today-search-ime`、`cross-surface-matrix`、`checkin-toast`、`occasion-store`、`api-v5-docs` 验证敏感字段边界、快照隔离、选区恢复、跨 root 聚焦和局部回执行为。
-- 第五轮合并前完整证据：`pnpm test`、`test:ui`、`test:mobile`、`test:ecosystem`、`test:extended`、`test:perf`、`width-walkthrough`、`visual-qa`、`build` 均通过；本切片另通过 `pnpm run check`、`ui-state-ledger`、`settings-migration`、`agent-status`；`check:release` 的固定发布 SHA 差异继续按发布边界记录。
+- 第五轮合并前完整证据：`pnpm test`、`test:ui`、`test:mobile`、`test:ecosystem`、`test:extended`、`test:perf`、`width-walkthrough`、`build` 均通过；本切片另通过 `pnpm run check`、`ui-state-ledger`、`settings-migration`、`agent-status`、`diagnostics`、`model`、`restore-audit`、`privacy-scope`、`occasion-store`、`api-v5-docs`。`visual-qa` 需配置 `CHECKIN_BROWSER`，`check:release` 的固定发布 SHA 差异继续按发布边界记录。
 - CSS 软线、T-1778/T-1788 视觉状态矩阵及 T-1813～T-1829 视觉系统治理继续保留；本地视觉通过不能替代真实思源宿主、Android/TalkBack、第三方来源和缩放现场验收。
