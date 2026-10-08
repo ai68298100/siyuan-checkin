@@ -128,7 +128,10 @@ assert.ok(byNext.includes("丙事项"), "disabled rows still render (in the disa
 /* —— 夹具 3：接线结构钉 + 红证对照（钉修复前提交 f65e118→最新 282a622 链上的 09786ca）。 —— */
 const bindSource = fs.readFileSync(path.join(__dirname, "..", "src", "render", "bind-occasions.ts"), "utf8");
 assert.match(bindSource, /\[data-occasion-sort\]/, "the sort select is wired");
-assert.match(bindSource, /host\.occasionSortMode = \(event\.currentTarget as HTMLSelectElement\)\.value/, "the click applies the sort mode");
+assert.match(bindSource, /writeState\(\{occasionSortMode\}\)/, "the click applies the sort mode to the owning root");
+assert.match(bindSource, /writeState\(\{occasionSortMode\}\);[\s\S]*renderRoot\(\)/, "sorting redraws only the owning root");
+const sessionSource = fs.readFileSync(path.join(__dirname, "..", "src", "render", "occasion-session.ts"), "utf8");
+assert.match(sessionSource, /occasionSortMode: "next" \| "name" \| "updated";/, "sort mode is part of root-local occasion state");
 const viewSource = fs.readFileSync(path.join(__dirname, "..", "src", "render", "occasions.ts"), "utf8");
 assert.match(viewSource, /const sortMode = ctx\.occasionSortMode \|\| "next";/, "the view reads the sort mode with the legacy default");
 assert.match(viewSource, /data-occasion-sort/, "the filter panel exposes the sort select");

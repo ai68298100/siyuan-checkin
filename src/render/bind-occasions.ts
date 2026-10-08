@@ -99,8 +99,11 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
     }));
     /* T-1715：排序选择（宿主字段，往返自动恢复）。 */
     root.querySelector<HTMLSelectElement>("[data-occasion-sort]")?.addEventListener("change", (event) => {
-        host.occasionSortMode = (event.currentTarget as HTMLSelectElement).value as BindOccasionsHost["occasionSortMode"];
-        host.render();
+        const occasionSortMode = (event.currentTarget as HTMLSelectElement).value as BindOccasionsHost["occasionSortMode"];
+        writeState({occasionSortMode});
+        /* Sort is root-local like the other occasion filters; avoid rendering
+           every visible surface when one root changes its order. */
+        renderRoot();
     });
     root.querySelector<HTMLElement>("[data-occasion-clear-filters]")?.addEventListener("click", () => {
         writeState({occasionSearchQuery: "", occasionStatusFilter: "all", occasionKindFilter: "all", occasionTimeFilter: "all"}); renderRoot();

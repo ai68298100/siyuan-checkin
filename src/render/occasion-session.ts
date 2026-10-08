@@ -11,6 +11,7 @@ export interface OccasionsRootContext {
     occasionStatusFilter: "all" | "enabled" | "disabled";
     occasionKindFilter: "all" | OccasionKind;
     occasionTimeFilter: "all" | "today" | "missed" | "upcoming" | "ended";
+    occasionSortMode: "next" | "name" | "updated";
     occasionTemplatesOpen: boolean;
     occasionTemplateCategory: "recommended" | OccasionTemplateCategory;
     formOpen?: boolean;
@@ -38,13 +39,14 @@ export interface OccasionsRootStateHost {
     occasionStatusFilter?: OccasionsRootContext["occasionStatusFilter"];
     occasionKindFilter?: OccasionsRootContext["occasionKindFilter"];
     occasionTimeFilter?: OccasionsRootContext["occasionTimeFilter"];
+    occasionSortMode?: OccasionsRootContext["occasionSortMode"];
     occasionTemplatesOpen?: boolean;
     occasionTemplateCategory?: OccasionsRootContext["occasionTemplateCategory"];
 }
 
 export function createOccasionsRootContext(seed: Partial<OccasionsRootContext> = {}): OccasionsRootContext {
     return {
-        occasionSearchQuery: "", occasionStatusFilter: "all", occasionKindFilter: "all", occasionTimeFilter: "all",
+        occasionSearchQuery: "", occasionStatusFilter: "all", occasionKindFilter: "all", occasionTimeFilter: "all", occasionSortMode: "next",
         occasionTemplatesOpen: false, occasionTemplateCategory: "recommended", helpOpen: false, actionsHelpOpen: false,
         formSession: 0, submitting: false, ...seed,
         noteExpandedIds: new Set(seed.noteExpandedIds),
@@ -92,6 +94,7 @@ export function readOccasionsRootContext(host: OccasionsRootStateHost, root: HTM
         occasionStatusFilter: host.occasionStatusFilter,
         occasionKindFilter: host.occasionKindFilter,
         occasionTimeFilter: host.occasionTimeFilter,
+        occasionSortMode: host.occasionSortMode,
         occasionTemplatesOpen: host.occasionTemplatesOpen,
         occasionTemplateCategory: host.occasionTemplateCategory,
     });
