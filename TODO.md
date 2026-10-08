@@ -12,6 +12,12 @@
 - 本轮保留边界：真实宿主/移动端失败恢复、TalkBack、第三方来源和诊断导出完整矩阵继续开放，不以本地夹具提前关闭。
 - 本轮证据：类型检查、主链、UI、移动、生态、扩展、性能、宽度矩阵及来源/诊断/Today/API 定向测试通过；视觉浏览器检查因当前环境未设置 CHECKIN_BROWSER 未完成；发布资产 SHA 固定值差异仍按既有边界保留。
 
+## 2026-10-09 全插件复核第六轮增量
+
+- 本轮已落地：编辑器 root 委托 click 监听改为单次安装并在重绘前清理，避免模板/组合包/联动按钮重复执行；设置配色保存接入统一快照回滚，失败时内存、持久化和专属提示一致；Today 七日条局部刷新同步状态文案、at-most 破戒后缀、tooltip 与 aria-label。
+- 本轮证据：`pnpm run check`、editor-sections、preference-rollback、settings-navigation、accessibility、week-strip、cross-page-consistency 通过；真实宿主和浏览器视觉环境仍按既有边界保留。
+- API 文档纠偏：`getEventsInRange` 实际按 `limit` 截断、接受合法跨年日期区间；366 天上限仅适用于摘要/日历点位投影，已同步 `docs/api-v5.md`，避免生态调用者把大区间误判为空结果。
+
 ## 2026-10-09 全插件复核第四轮增量
 
 - 本轮已落地：Review/洞察/报告页面级偏好失败回滚；事项关联项目入口按发起 root 打开编辑器；年度热力图的月份、星期、日期与周标题双语化并统一 XML 转义。

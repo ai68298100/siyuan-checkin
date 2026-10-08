@@ -3076,7 +3076,10 @@ this.scheduleMidnightRefresh();
         if (this.disposed || this.disposing || !this.acceptingOperations || this.initializationState !== "ready" || !this.storageReady) {
             throw new Error("checkin: storage is not ready for batch recording");
         }
-        if (!Array.isArray(inputs) || !inputs.length) throw new TypeError("inputs 必须是非空数组");
+        if (!Array.isArray(inputs)) throw new TypeError("inputs 必须是数组");
+        /* 空批次是合法的能力探测/无变化操作：不入队、不触碰存储，
+           与 contracts/siyuan-checkin-contract 的公共契约保持一致。 */
+        if (!inputs.length) return Promise.resolve([]);
         if (inputs.length > CHECKIN_BATCH_RECORD_LIMITS.maxItems) throw new TypeError("单批不得超过 " + CHECKIN_BATCH_RECORD_LIMITS.maxItems + " 条");
         return this.enqueueMutation(async (): Promise<BatchEntryResult[]> => {
             if (this.disposed || this.disposing || this.initializationState !== "ready" || !this.storageReady) throw new Error("checkin: storage is not ready");
@@ -3761,7 +3764,17 @@ this.scheduleMidnightRefresh();
             const status = !dayItems.length ? "empty" : done === dayItems.length ? "complete" : done ? "partial" : "pending";
             const chip = chips[index];
             chip.className = `lc-checkin__day-chip is-${status} ${dateKey(day) === dateKey(now) ? "is-today" : ""}`.trim();
-            chip.title = t("date.chipTitle", {date: day.toLocaleDateString(getPluginLocale(), {month: "long", day: "numeric"}), done, total: dayItems.length});
+            /* Keep the live patch in lockstep with renderTodayView: the
+               accessible name and tooltip must retain the status (including
+               an at-most lapse) after a record updates the strip in place.
+               Previously only the class/count title changed, leaving button
+               aria-labels stale and dropping the status wording entirely. */
+            const hasLapse = status !== "empty" && dayItems.some((item) => getItemDirectionForDate(item, day) === "atMost"
+                && getEventsForDay(this.store, item.id, day).some((event) => !isSkipEvent(event)));
+            const stateText = `${t(`today.chipStatus.${status}`)}${hasLapse ? ` · ${t("today.chipLapse")}` : ""}`;
+            const chipTitle = `${t("date.chipTitle", {date: day.toLocaleDateString(getPluginLocale(), {month: "long", day: "numeric"}), done, total: dayItems.length})} · ${stateText}`;
+            chip.title = chipTitle;
+            if (chip.matches("button")) chip.setAttribute("aria-label", chipTitle);
         }
     }
 
@@ -6059,8 +6072,11 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
         root.querySelector<HTMLSelectElement>("[data-setting-palette]")?.addEventListener("change", (event) => {
             const value = (event.currentTarget as HTMLSelectElement).value;
             if (value === "lavender" || value === "ocean" || value === "forest" || value === "sunset") {
-                this.palette = value;
-                void this.persistViewPreferences().then(() => showMessage(t("msg.accentSaved"))).catch(() => showMessage(t("msg.accentSaveFail")));
+                this.applyPreference(
+                    () => { this.palette = value; },
+                    () => showMessage(t("msg.accentSaved")),
+                    () => showMessage(t("msg.accentSaveFail")),
+                );
                 this.render();
             }
         });
@@ -8904,9 +8920,11 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
         void this.persistViewPreferences().then(() => { success?.(); }).catch(() => {
             if (this.disposed || this.disposing) return;
             this.applyViewPreferences(snapshot);
-            failure?.();
+            /* Keep a field-specific failure message when supplied; otherwise
+               every preference still gets the generic visible error toast. */
+            if (failure) failure();
+            else showMessage(t("msg.prefSaveFail"));
             this.render();
-            showMessage(t("msg.prefSaveFail"));
         });
     }
 

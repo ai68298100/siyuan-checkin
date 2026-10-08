@@ -28,6 +28,7 @@ import type {CheckinItem, CheckinKind, CheckinSchedule, CheckinStore, ScheduleTy
 const CUSTOM_ICON_LIBRARY_NAME = "checkin-custom-icon-library";
 const USER_TEMPLATES_NAME = "checkin-user-templates";
 const MAX_CUSTOM_ICON_BYTES = 240_000;
+const editorRootBindingCleanups = new WeakMap<HTMLElement, () => void>();
 
 export interface BindEditorHost {
     store: CheckinStore;
@@ -138,6 +139,25 @@ function setLinkagePlanPlanned(root: HTMLElement, planned: boolean): void {
 }
 
 export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): void {
+    /* The editor root survives page redraws while its children are replaced.
+       Tear down root-level delegated listeners before installing the current
+       session closures, otherwise one click runs once per redraw and stale
+       editor state can win. */
+    let inferenceTimer: ReturnType<typeof setTimeout> | undefined;
+    const previousCleanup = editorRootBindingCleanups.get(root);
+    previousCleanup?.();
+    const cleanups: Array<() => void> = [];
+    const cleanup = () => {
+        if (inferenceTimer) clearTimeout(inferenceTimer);
+        inferenceTimer = undefined;
+        for (const dispose of cleanups.splice(0)) dispose();
+        if (editorRootBindingCleanups.get(root) === cleanup) editorRootBindingCleanups.delete(root);
+    };
+    editorRootBindingCleanups.set(root, cleanup);
+    const listenRootClick = (listener: (event: MouseEvent) => void) => {
+        root.addEventListener("click", listener);
+        cleanups.push(() => root.removeEventListener("click", listener));
+    };
     const editor = host.editorStateForRoot?.(root);
     const isCurrentSession = () => editor && host.isCurrentEditorSession ? host.isCurrentEditorSession(root, editor) : root.isConnected;
     if (editor?.submitting) root.querySelectorAll<HTMLButtonElement>("button[type='submit']").forEach(button => { button.disabled = true; });
@@ -807,14 +827,13 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         row.hidden = false;
         row.innerHTML = `<span>${escapeHtml(t("editor.nameSuggestFields", {summary: summary.join(" · ")}))}</span><button type="button" class="lc-checkin__text-button" data-name-inference-fields>${escapeHtml(t("editor.nameSuggestApply"))}</button><button type="button" class="lc-checkin__text-button" data-name-inference-dismiss aria-label="${escapeHtml(t("editor.nameSuggestDismiss"))}">×</button>`;
     };
-    let inferenceTimer: ReturnType<typeof setTimeout> | undefined;
     root.querySelector<HTMLInputElement>("input[name='name']")?.addEventListener("input", () => {
         if (inferenceTimer) clearTimeout(inferenceTimer);
         inferenceTimer = setTimeout(() => {
             if (isCurrentSession()) renderNameInference();
         }, 250);
     });
-    root.addEventListener("click", (event) => {
+    listenRootClick((event) => {
         const target = event.target instanceof HTMLElement ? event.target : null;
         if (!target) return;
         const applyTemplate = target.closest<HTMLButtonElement>("[data-name-inference-template]");
@@ -866,7 +885,7 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
     });
 
     /* T-1349/T-1357：委托绑定——应用钩子 data-template-apply 同时命中主列表与最近使用/精选行。 */
-    root.addEventListener("click", (event) => {
+    listenRootClick((event) => {
         /* T-1454/T-1632：场景组合包芯片——展开可选择预览；同名项目显示规则差异。
            逐条套用仍复用 data-template-apply，批量应用只提交勾选的「新增」条目。 */
         const packChip = event.target instanceof HTMLElement ? event.target.closest<HTMLElement>("[data-pack-chip]") : null;
@@ -1204,7 +1223,7 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
     updateTomatoFields();
     updateAdvancedSummary();
     /* T-1486：联动建议卡片的确认/取消/去配置动作（委托，卡片内容为动态渲染）。 */
-    root.addEventListener("click", (event) => {
+    listenRootClick((event) => {
         const target = event.target instanceof HTMLElement ? event.target : null;
         if (!target) return;
         if (target.closest("[data-linkage-focus-journal]")) {

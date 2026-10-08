@@ -13,11 +13,13 @@ const cp = require("node:child_process");
 
 /* —— 渲染结构钉：fragments 的七日条生成 button 入口与文字状态。 —— */
 const fragmentsSource = fs.readFileSync(path.join(__dirname, "..", "src", "render", "fragments.ts"), "utf8");
+const indexSource = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
 assert.match(fragmentsSource, /data-week-strip-date="\$\{escapeHtml\(dateKey\(day\)\)\}"/, "content days render as date-entry buttons");
 assert.match(fragmentsSource, /aria-label="\$\{chipTitle\}"/, "chips expose an accessible name with the day status");
 assert.match(fragmentsSource, /today\.chipStatus\.\$\{status\}/, "the status text is i18n-driven per day state");
 assert.match(fragmentsSource, /today\.chipLapse/, "abstinence lapses get an explicit suffix");
 assert.match(fragmentsSource, /if \(!dayItems\.length\) \{\s*\r?\n?\s*return `<span class="lc-checkin__day-chip/, "empty days stay non-interactive spans");
+assert.match(indexSource, /updateTodayWeekStrip[\s\S]*?today\.chipStatus\.\$\{status\}[\s\S]*?today\.chipLapse[\s\S]*?chip\.setAttribute\("aria-label", chipTitle\)/, "local strip refresh keeps status and accessible labels in sync");
 
 /* —— 接线结构钉：复用回顾按日钻取状态并同 root 跳转。 —— */
 const bindSource = fs.readFileSync(path.join(__dirname, "..", "src", "render", "bind-today.ts"), "utf8");

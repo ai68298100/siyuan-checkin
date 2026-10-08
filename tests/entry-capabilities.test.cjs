@@ -3,6 +3,7 @@ const fs = require("node:fs");
 const vm = require("node:vm");
 const ts = require("typescript");
 const source = fs.readFileSync("src/index.ts", "utf8");
+const modelHelpersSource = fs.readFileSync("src/model-helpers.ts", "utf8");
 const sharedSource = fs.readFileSync("src/shared.ts", "utf8");
 const agentSource = fs.readFileSync("src/agent-capabilities.ts", "utf8");
 const apiSource = fs.readFileSync("src/api.ts", "utf8");
@@ -27,6 +28,12 @@ assert.match(apiSource, /CHECKIN_API_VERSION/);
 assert.match(apiSource, /summarizeCustom: \(range, providerId\) => summarizeWithProvider\("day", range, providerId\)/);
 assert.match(apiSource, /getAnalyticsSnapshot: \(asOf = currentCalendarDate\(\)\)/);
 assert.match(apiSource, /getAnalyticsSummary: \(asOf = currentCalendarDate\(\)\)/);
+assert.match(source, /if \(!Array\.isArray\(inputs\)\) throw new TypeError\("inputs 必须是数组"\);[\s\S]{0,180}if \(!inputs\.length\) return Promise\.resolve\(\[\]\)/,
+    "batch capability probes and no-op callers must receive an empty result instead of an exception");
+assert.match(modelHelpersSource, /store\.templates\.map\(cloneUserTemplateValue\)/,
+    "public store/export clones must preserve user templates");
+assert.match(modelHelpersSource, /quota: schedule\.quota \? \{\.\.\.schedule\.quota\}/,
+    "template schedule quota must be detached from the host store");
 assert.match(source, /customRange \? buildCustomSummaryContext/);
 // Provider request range and copy isolation are exercised below against the
 // actual generateSummary method, independent of its chosen range helper.

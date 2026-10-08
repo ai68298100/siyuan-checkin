@@ -51,7 +51,7 @@ assert.match(quickDialog, /host\.applyPreferenceMutation\(\(\) => \{/,
 /* 迁移面抽查（按字段精确签名，防回退到裸 persist） */
 const migratedSelectors = [
     "[data-setting-group]", "[data-setting-sort]", "[data-setting-completed]", "[data-setting-weekstrip]",
-    "[data-setting-appearance]", "[data-setting-language]", "[data-setting-open-mode]",
+    "[data-setting-appearance]", "[data-setting-language]", "[data-setting-palette]", "[data-setting-open-mode]",
     "[data-setting-quick-entry-nlp]", "[data-setting-motion]", "[data-setting-haptic]",
     "[data-setting-quiet]", "[data-setting-reminder-toggle]", "[data-setting-occasion-once]",
     "[data-setting-focus-timer]", "[data-summary-toggle]", "[data-sireader-toggle]", "[data-sireader-item]",

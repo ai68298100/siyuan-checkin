@@ -86,7 +86,7 @@ getEventsInRange(
 ): {events: CheckinEvent[]; truncated: boolean};
 ```
 
-`truncated === true` 表示达到 limit 被截断，调用方应缩小区间或提高过滤精度，而不是假设拿到了全量。区间跨度超过 366 天时拒绝并返回空结果（与摘要 API 同一保护语义）。
+`truncated === true` 表示达到 limit 被截断，调用方应缩小区间或提高过滤精度，而不是假设拿到了全量。该读取方法接受任意合法的本地日期半开区间；`limit`（默认 1000、上限 5000）是事件返回的硬边界。366 天上限仅适用于 `getEventRangeSummary`、`getCalendarProjection` 等按日点位投影，不套用到此事件明细读取，避免把跨年查询误读为“空结果”。
 
 ### events.record.batch → `recordEventsBatch(inputs)`
 
@@ -156,7 +156,7 @@ T-1391：有界「项目 × 日期」只读日历投影，面向日历类消费�
 
 | 接口 | 上限 |
 | --- | --- |
-| `getEventsInRange` 区间跨度 | ≤ 366 天 |
+| `getEventsInRange` 区间跨度 | 任意合法本地日期半开区间 |
 | `getEventsInRange` itemIds | ≤ 200 个 |
 | `getEventsInRange` limit | 默认 1000 / ≤ 5000 |
 | `recordEventsBatch` 单批 | ≤ 200 条 |

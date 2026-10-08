@@ -3,7 +3,7 @@
 import {computeEventStreaks, getItemRevisionForDate, makeId, normalizeAttachmentDataUrl} from "./model";
 import {currentCalendarDate, captureActionMoment} from "./shared";
 import {getEventsInRange, type SummaryRange} from "./analytics";
-import type {CheckinEvent, CheckinItem, CheckinStore} from "./types";
+import type {CheckinEvent, CheckinItem, CheckinSchedule, CheckinStore, UserTemplate} from "./types";
 
 export function cloneStoreValue(store: CheckinStore): CheckinStore {
     return {
@@ -13,6 +13,25 @@ export function cloneStoreValue(store: CheckinStore): CheckinStore {
         eventTombstones: store.eventTombstones.map((tombstone) => ({...tombstone})),
         /* T-1765：克隆必须携带项目删除墓碑，否则写后校验按 JSON 指纹会把丢墓碑判为差异。 */
         itemTombstones: (store.itemTombstones || []).map((tombstone) => ({...tombstone})),
+        /* User templates are part of the public store/export snapshot.  Keep
+           their nested schedule/quota detached as well; a shallow omission
+           here silently dropped templates from getStore()/exportJson(). */
+        ...(store.templates ? {templates: store.templates.map(cloneUserTemplateValue)} : {}),
+    };
+}
+
+function cloneScheduleValue(schedule: CheckinSchedule): CheckinSchedule {
+    return {
+        ...schedule,
+        weekdays: schedule.weekdays ? [...schedule.weekdays] : undefined,
+        quota: schedule.quota ? {...schedule.quota} : undefined,
+    };
+}
+
+function cloneUserTemplateValue(template: UserTemplate): UserTemplate {
+    return {
+        ...template,
+        schedule: cloneScheduleValue(template.schedule),
     };
 }
 

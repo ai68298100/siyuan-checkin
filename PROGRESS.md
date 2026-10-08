@@ -1,6 +1,12 @@
 # 2026-10-08 v18.17.0 已正式发布：双机合并后的本机 `main`、`dev/thispc-1002` 和 GitHub 两条同名分支已对齐；发布提交为 `af9caf9b`，tag/Release 为 `v18.17.0`。GitHub 默认分支为 `main`，Release 资产 `package.zip` 的 SHA-256 为 `4f82233ae8c1adb15bb23b572eaf1b5df72168c1a172f4b7fb1a998ca82be717`。完整质量链、发布资产和回滚演练均通过；真实思源/Android/外部来源现场验收仍单独保留，不推送集市。另一台机器只需按 README/同步说明的 `fetch` + `switch main` + `pull --ff-only` 同步。
 
-# 2026-10-09 全插件功能与 UI 复核第三轮
+# 2026-10-09 全插件功能与 UI 复核第六轮
+
+- 编辑器重绘生命周期：同一 root 的模板推断、组合包和联动委托 click 监听在重绑前统一清理，避免一次点击多次执行；名称推断 timer 同步取消。
+- 设置保存反馈：配色选择改走统一偏好快照/回滚链，持久化失败时恢复内存值并保留配色专属错误提示。
+- Today 局部反馈：七日条局部刷新现在同步状态、at-most 破戒后缀、tooltip 和 aria-label，避免视觉与读屏残留旧状态。
+- 定向证据：`editor-sections`、`preference-rollback`、`settings-navigation`、`accessibility-audit`、`week-strip`、`cross-page-consistency` 与 `pnpm run check` 通过。
+- API 文档边界：核对真实实现与契约后，将 `getEventsInRange` 文档改为合法日期区间 + `limit` 硬上限；366 天仅保留给摘要/日历投影，E2E 的跨年读取示例与实现保持一致。
 
 - 本轮按“功能、按钮、设置、表述、显示、逻辑、反馈、点击反应和使用体验”继续逐入口复核，发现并修复三类可复现问题：Today/quick 视图偏好保存失败时界面与存储可能分叉；后台刷新使用最后活跃页面代理导致跨 root 误刷新或漏刷新；英文界面洞察教练、编辑器图标错误、事项农历提示和完成来源摘要存在中文混入。
 - 修复方式：公开 `applyPreferenceMutation` 复用既有快照/回滚/失败提示；`renderBackgroundUpdateFor` 枚举注册 root，输入中的 Today 只延后自身 root，editor 永不被来源刷新覆盖；教练建议和新增错误提示全部走双语 i18n，纯逻辑调用保留中文 fallback。

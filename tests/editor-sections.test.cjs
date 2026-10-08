@@ -28,6 +28,13 @@ function check(name, run) {
 }
 
 try {
+check("editor root delegated handlers are single-install and cleaned before redraw", () => {
+    assert.match(bindEditor, /editorRootBindingCleanups = new WeakMap/);
+    assert.match(bindEditor, /const previousCleanup = editorRootBindingCleanups\.get\(root\)/);
+    assert.match(bindEditor, /previousCleanup\?\.\(\)/);
+    assert.match(bindEditor, /root\.removeEventListener\("click", listener\)/);
+    assert.equal((bindEditor.match(/listenRootClick\(/g) || []).length, 3, "three delegated handlers use the single-install helper");
+});
     check("main-flow section order: when block after value fields, how block after direction", () => {
         const valueFields = editor.indexOf("data-value-fields");
         const whenHeader = editor.indexOf('data-editor-section="when"');

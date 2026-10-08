@@ -5,7 +5,7 @@ import {daysBetweenHalfOpen} from "../date-keys";
 import {buildTodayDashboard, type TodayDashboard} from "../features/today-dashboard";
 import {buildTodayItemFact} from "../features/today-fact";
 import {abstinenceMilestones} from "../features/pace-projection";
-import {dateKey, evaluateItemRule, getEventById, getEventDateKey, getEventsForDay, getItemRevisionForDate, getProgress, getSkipDatesForItem, isComplete, isItemAvailableOnDate, isScheduledToday, isSkipEvent, sortCheckinItems} from "../model";
+import {dateKey, evaluateItemRule, getEventById, getEventDateKey, getEventsForDay, getItemDirectionForDate, getItemRevisionForDate, getProgress, getSkipDatesForItem, isComplete, isItemAvailableOnDate, isScheduledToday, isSkipEvent, sortCheckinItems} from "../model";
 import {currentCalendarDate, escapeHtml, formatHistoryDate, formatNumber, parseLocalDateKey, renderIconMarkup, getRecordStep, formatScheduleLabel, safeAttachmentUrl} from "../shared";
 import {describeOccasionMilestone, getOccurrenceDate, getVisibleOccasions, isOccasionCompleted, nextOccasionMilestones} from "../occasions";
 import {buildThisDayHistory} from "../features/this-day-history";
@@ -512,7 +512,7 @@ export function renderTodayView(ctx: TodayViewContext): string {
            返回保留今日筛选与滚动；空日格保持不可交互。文字状态对齐审计口径：
            无排期日/待记录/部分达成/全部完成 + 戒除破戒后缀。 */
         const statusKey = `today.chipStatus.${status}`;
-        const hasLapse = status !== "empty" && dayItems.some((item) => item.direction === "atMost"
+        const hasLapse = status !== "empty" && dayItems.some((item) => getItemDirectionForDate(item, day) === "atMost"
             && getEventsForDay(ctx.store, item.id, day).some((event) => !isSkipEvent(event)));
         const stateText = `${t(statusKey)}${hasLapse ? ` · ${t("today.chipLapse")}` : ""}`;
         const chipTitle = `${escapeHtml(t("date.chipTitle", {date: day.toLocaleDateString(getPluginLocale(), {month: "long", day: "numeric"}), done, total: dayItems.length}))} · ${escapeHtml(stateText)}`;
