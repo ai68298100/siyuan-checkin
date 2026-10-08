@@ -53,18 +53,39 @@ export function resolveImportConflictName(base: string, taken: ReadonlySet<strin
 
 /** 为同名迁移来源生成逐项决策：合入默认（兼容时）/跳过默认（不兼容时），另建名称确定性派生。 */
 export function planImportConflicts(sourceItems: readonly ImportSourceItem[], existingItems: readonly ImportExistingSnapshot[]): ImportConflictDecision[] {
-    const decisions: ImportConflictDecision[] = [];
+    /* plugin-ops and the settings session already use the source name as their
+       stable decision key. Aggregate duplicate parser rows before creating the
+       decision so radio groups and the confirmation Map cannot overwrite one
+       row with another. Mixed kind/unit duplicates fail closed below. */
+    const grouped = new Map<string, {source: ImportSourceItem; dateCount: number; kinds: Set<string>; units: Set<string>}>();
     for (const source of sourceItems) {
+        const current = grouped.get(source.name);
+        if (current) {
+            current.dateCount += Number.isFinite(source.dateCount) ? Math.max(0, source.dateCount) : 0;
+            current.kinds.add(source.kind);
+            current.units.add(source.unit);
+        } else {
+            grouped.set(source.name, {
+                source: {...source, dateCount: Number.isFinite(source.dateCount) ? Math.max(0, source.dateCount) : 0},
+                dateCount: Number.isFinite(source.dateCount) ? Math.max(0, source.dateCount) : 0,
+                kinds: new Set([source.kind]),
+                units: new Set([source.unit]),
+            });
+        }
+    }
+    const decisions: ImportConflictDecision[] = [];
+    for (const group of grouped.values()) {
+        const source = group.source;
         const existing = existingItems.find((candidate) => !candidate.archived && candidate.name === source.name);
         if (!existing) continue;
-        const kindCompatible = existing.kind === source.kind;
-        const unitCompatible = existing.unit === source.unit;
+        const kindCompatible = group.kinds.size === 1 && existing.kind === source.kind;
+        const unitCompatible = group.units.size === 1 && existing.unit === source.unit;
         const mergeCompatible = kindCompatible && unitCompatible;
         decisions.push({
             name: source.name,
             sourceKind: source.kind,
             sourceUnit: source.unit,
-            dateCount: source.dateCount,
+            dateCount: group.dateCount,
             existingId: existing.id,
             existingKind: existing.kind,
             existingUnit: existing.unit,

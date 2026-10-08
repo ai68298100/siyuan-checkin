@@ -2360,3 +2360,8 @@
 
 - `inspectStoreSnapshotHistory` 返回有效条目、是否识别 canonical history 以及坏条目计数；canonical 元数据或快照条目损坏时不再回退为 legacy 空 store。
 - 启动和直接恢复对坏桶记录 `migration-rejected/snapshot-history-corrupt` 与 restore 审计，并向用户说明跳过数量；旧版无格式 raw store 继续保持兼容。导出与追加路径暂不改变。
+
+# D-445：导入冲突按来源名称聚合重复行（2026-10-08）
+
+- 冲突计划先按来源名称聚合重复 parser 行，`dateCount` 求和后只生成一个决策；这样与现有设置 radio 分组、session 决策和 plugin-ops 的 name Map 保持同一身份口径。
+- 同名来源若出现多个类型或单位，决策按不兼容处理并默认跳过，避免把不同语义静默合并；逐文件独立决策需要稳定 sourceKey 全链路改造，暂不引入。

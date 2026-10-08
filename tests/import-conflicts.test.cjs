@@ -63,6 +63,13 @@ const existing = (overrides = {}) => ({id: "e1", name: "拉伸", kind: "duration
     assert.equal(kindDiff[0].incompatibility, "kind");
     assert.equal(conflicts.planImportConflicts([source({name: "喝水"})], [existing()]).length, 0, "non-conflicting names produce no decisions");
     assert.equal(conflicts.planImportConflicts([source()], [existing({archived: true})]).length, 0, "archived items are not conflict targets");
+    const duplicateRows = conflicts.planImportConflicts([source({dateCount: 3}), source({dateCount: 4})], [existing()]);
+    assert.equal(duplicateRows.length, 1, "duplicate source names produce one decision keyed by name");
+    assert.equal(duplicateRows[0].dateCount, 7, "duplicate source rows aggregate their dates before rendering");
+    const mixedRows = conflicts.planImportConflicts([source(), source({kind: "binary", dateCount: 2})], [existing()]);
+    assert.equal(mixedRows.length, 1, "mixed duplicate names remain one decision");
+    assert.equal(mixedRows[0].incompatibility, "kind", "mixed duplicate kinds fail closed instead of silently merging");
+    assert.equal(mixedRows[0].disposition, "skip", "mixed duplicate source rows default to skip");
 }
 
 /* —— 2. 另建名称确定性且不与现有重名；连续另建自动递增。 —— */
@@ -105,6 +112,7 @@ function baseItem() {
 const settingsSource = fs.readFileSync(path.join(root, "src", "render", "settings.ts"), "utf8");
 assert.match(settingsSource, /data-import-conflict-panel/, "settings hosts the conflict decision panel");
 assert.match(settingsSource, /data-conflict-name=/, "per-conflict radios render");
+assert.match(settingsSource, /name="conflict-\$\{escapeHtml\(decision\.name\)\}"/, "one radio group is rendered per aggregated source name");
 assert.match(settingsSource, /set\.importIncompatibleUnit/, "unit incompatibility reason is rendered");
 const indexSource = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
 assert.match(indexSource, /private importConflictSession/, "host holds the conflict session");
