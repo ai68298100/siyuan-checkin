@@ -64,6 +64,14 @@ try {
         assert.match(reviewBind, /reviewMoreMenuToggleListeners\.set\(root, toggleListener\)/);
     });
 
+    check("today drag keyboard binding stays one-per-root across redraws", () => {
+        /* Today root 复用而卡片节点替换；Alt+方向键委托监听必须有一次性守门，
+           否则一次重排会重复写入顺序。 */
+        assert.match(todayBindings, /if \(root\.dataset\.itemDragKeyboardBound === "true"\) return;/);
+        assert.match(todayBindings, /root\.dataset\.itemDragKeyboardBound = "true";/);
+        assert.match(todayBindings, /root\.addEventListener\("keydown", \(event\) => \{[\s\S]*host\.todaySortMode !== "manual"/);
+    });
+
     check("reduced-motion reaches occasion drawer scrolling", () => {
         /* T-1613：滚动改 instant 消除 smooth 动画感知（方案 A），reducedMotion 仍在宿主接口。 */
         assert.match(occasionsBind, /behavior: "instant"/, "事项表单滚动使用 instant（消除 smooth 位移感知）");

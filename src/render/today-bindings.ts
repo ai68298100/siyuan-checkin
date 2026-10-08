@@ -403,6 +403,11 @@ export function bindItemDragFor(host: TodayBindingsHost, root: HTMLElement): voi
             window.addEventListener("pointercancel", finish);
         });
     });
+    /* The Today root survives redraws while card markup is replaced. Keep the
+       delegated keyboard reorder listener one-per-root; binding it on every
+       render makes one Alt+Arrow action enqueue the mutation repeatedly. */
+    if (root.dataset.itemDragKeyboardBound === "true") return;
+    root.dataset.itemDragKeyboardBound = "true";
     root.addEventListener("keydown", (event) => {
         if (!event.altKey || (event.key !== "ArrowUp" && event.key !== "ArrowDown")) return;
         const target = event.target as HTMLElement | null;
