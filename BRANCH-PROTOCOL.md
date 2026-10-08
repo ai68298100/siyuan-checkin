@@ -34,4 +34,4 @@
 
 - 合并提交：`135ff336`（`merge: integrate main computer progress`）。
 - 主线上传提交：`38843cd1`（另一台电脑的 53 个本地提交）。
-- 版本提交后，远端 `main` 将成为 GitHub 默认浏览和其他机器同步入口；`dev/thispc-1002` 不删除，作为开发历史保留。
+- 最终同步提交：`1babd179`（版本与 README 更新规范已同步到两条远端分支）。GitHub 默认分支已是 `main`；`dev/thispc-1002` 不删除，作为开发历史保留。
