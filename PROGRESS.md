@@ -1,5 +1,12 @@
 # 2026-10-08 v18.17.0 已正式发布：双机合并后的本机 `main`、`dev/thispc-1002` 和 GitHub 两条同名分支已对齐；发布提交为 `af9caf9b`，tag/Release 为 `v18.17.0`。GitHub 默认分支为 `main`，Release 资产 `package.zip` 的 SHA-256 为 `4f82233ae8c1adb15bb23b572eaf1b5df72168c1a172f4b7fb1a998ca82be717`。完整质量链、发布资产和回滚演练均通过；真实思源/Android/外部来源现场验收仍单独保留，不推送集市。另一台机器只需按 README/同步说明的 `fetch` + `switch main` + `pull --ff-only` 同步。
 
+# 2026-10-09 全插件功能与 UI 复核第八轮
+
+- 快速弹窗：首次渲染后再绑定标题拖拽/双击，改为稳定容器委托并在销毁时清理；编辑器关闭、重开和路由切换统一检查 dirty 草稿，取消会保留原表单。
+- 日期与公开 API：配额周期末日改用 `addDays` 民历日算术，新增 America/New_York DST 回归；API v5 批量 `occurredAt` 拒绝仅日期或无时区时间，显式偏移归一为 UTC，并同步中英文契约文档。
+- 渲染块与导航：日期格沿用 Enter/Space 委托和共享 focus-visible 语义；Today 超过五项时通过双语 `role=status` 宣布可见/隐藏数量；事项、历史和 Today 入口完成 root 传递核对。Today 时段统计暂维持 `occurredAt` 时刻分桶、`localDate` 业务日过滤的既有契约，T-1802 仍等待产品明确显示时区。
+- 验证：`pnpm run check`、`pnpm test`、`pnpm run build`、`pnpm run test:ui`、`pnpm run test:mobile`、`pnpm run test:ecosystem`、`pnpm run test:extended`、`pnpm run test:perf` 及相关定向测试均通过；CSS 655284 bytes，高于 620KB soft 线但低于 640KiB hard 线。当前未设置 `CHECKIN_BROWSER`，故浏览器视觉、真实思源/Android/TalkBack、第三方来源、缩放和保存面板仍未现场关闭。
+
 # 2026-10-09 全插件功能与 UI 复核第六轮
 
 - 编辑器重绘生命周期：同一 root 的模板推断、组合包和联动委托 click 监听在重绑前统一清理，避免一次点击多次执行；名称推断 timer 同步取消。

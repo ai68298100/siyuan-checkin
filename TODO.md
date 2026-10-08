@@ -1,10 +1,16 @@
 # TODO
 
-## 当前统一状态（2026-10-08）
+## 当前统一状态（2026-10-09）
 
 - 当前发布基线为 **v18.17.0**；两台电脑的代码已在最终同步提交 `1babd179` 汇合，后续稳定同步入口为 GitHub `main`。
 - 本文件中 v18.16.0 及更早版本号属于任务登记时的历史基线，保留用于追溯；新任务统一以源码、`PROGRESS.md`、`BLOCKERS.md` 和 `docs/releases/` 的最新版本为准。
 - 仍开放的产品决策、真实宿主/Android 现场验收和外部来源依赖继续保留，不因版本号升级自动标记完成。
+
+## 2026-10-09 全插件复核第八轮增量
+
+- 本轮已落地：快速弹窗编辑草稿离开守卫与首次标题拖拽/双击绑定时序；配额摘要改用民历日算术跨 DST；渲染块日期格保留键盘激活与共享焦点环，并为 Today 五项截断增加双语、可读的隐藏数量状态。
+- 本轮已落地：API v5 批量写入的 `occurredAt` 必须带显式时区并统一归一 UTC；事项/历史/Today 导航的现有 root 传递完成源码核对；渲染块 Today 时段仍遵循既有“事件 `occurredAt` 分桶、`localDate` 过滤”契约，未凭空改变时区显示。
+- 本轮证据：`pnpm run check`、`pnpm test`、`pnpm run build`、`pnpm run test:ui`、`pnpm run test:mobile`、`pnpm run test:ecosystem`、`pnpm run test:extended`、`pnpm run test:perf` 及渲染块/弹窗/配额/API 定向测试通过；CSS 655284 bytes，高于 soft 线但低于 640KiB hard 线。浏览器视觉、真实思源/Android/TalkBack、第三方来源、缩放和保存面板现场仍按阻塞记录开放。
 
 ## 2026-10-09 全插件复核第七轮增量
 
@@ -83,29 +89,28 @@
 
 ### 第三轮：监听生命周期、日期契约、导入事实与跨 root 可用性（2026-09-30；只登记不开发）
 
-- [ ] T-1789 编辑器委托监听幂等与销毁（P1，第三轮 UI 复核）——`src/render/bind-editor.ts:760,812,1048` 每次绑定都在 root 上新增 `click` 委托，而 `index.ts:3409-3515,6287-6289` 会随编辑器重绘再次绑定；组合包展开/收起、模板套用、联动和名称建议可能重复执行。改为每 root 单次安装或有明确 cleanup，重绘 N 次后每次点击恰一次，覆盖 quick/dock/tab、问 AI 草案、失败重试和卸载。与 T-1664 的异步资源总审计、T-1778/T-1788 的视觉状态验收分开。
+- [x] T-1789 编辑器委托监听幂等与销毁（P1，已交付 2026-10-09）——编辑器 root 的模板、组合包、联动和名称建议委托监听在重绑前清理并登记销毁，重绘后单次点击只执行一次；`editor-sections`、主链与 UI 链通过，真实宿主卸载现场仍按阻塞记录开放。
 - [x] T-1790 Today/回顾根节点监听生命周期幂等（P1，已交付 2026-10-09）——Today 拖拽 Alt+↑/↓ 委托监听增加 root 幂等守门，Review 移动菜单 `toggle` 使用监听器引用表在重绑前移除旧监听；同一 root 重绘 N 次后一次动作只产生一次 mutation/scroll。`tests/cross-page-consistency.test.cjs` 16 项、`tests/today-view.test.cjs`、`tests/review-workspace.test.cjs` 通过；真实宿主卸载/多表面现场仍按全量验收边界保留。
-- [ ] T-1791 快速弹窗外部关闭/重开与编辑草稿保护（P1，第三轮 UI 复核）——`src/render/quick-dialog.ts:67-93,133-142` 只拦思源关闭按钮，移动顶栏、快捷动作和重复打开会直接 `close` 或把弹窗路由重置为 today；关闭判定还读宿主 `currentPage`，D-325 后它是最后活跃 root 代理。按弹窗 root 的页面和 dirty 状态统一确认，取消保留草稿/原页，确认后才销毁或重置，覆盖多 root、切换失败和卸载。与 T-1773 的普通编辑器离开保护、T-1692 的 AI 草稿生命周期分开。
-- [ ] T-1792 快速弹窗标题拖拽/双击绑定时序（P1，第三轮 UI 复核）——`openQuickDialogFor` 在 `src/render/quick-dialog.ts:130-143` 先 `bindQuickDialogFrameFor` 再 `host.renderInto(root)`，而标题查询在 `:202-217`，首开时 header 尚不存在，标题拖动和双击最大化监听不会绑定。改为首次渲染后绑定或监听 header 替换，重绘更新引用并清理旧监听；验收桌面首开拖拽/最大化/还原、移动端禁用、dock/tab 不受影响。
+- [x] T-1791 快速弹窗外部关闭/重开与编辑草稿保护（P1，已交付 2026-10-09）——弹窗按 owning root 读取 editor 页面与草稿基线，关闭按钮、重复打开和路由切换共用确认守卫；取消保留表单，确认后才重置/销毁。`tests/desktop-dialog.test.cjs` 与主/UI 链通过；真实多表面宿主仍按阻塞记录开放。
+- [x] T-1792 快速弹窗标题拖拽/双击绑定时序（P1，已交付 2026-10-09）——首次 `renderInto` 后绑定稳定容器委托，重绘不丢标题拖拽/双击，销毁移除监听；桌面/移动禁用分支由现有契约保留。`tests/desktop-dialog.test.cjs` 与主/UI 链通过。
 - [x] T-1793 日历投影严格真实日期与有界范围契约（P1，已交付 2026-10-08）——`buildCalendarProjection` 改用 `date-keys.ts:isValidDateKey`，拒绝 `2026-02-30`/`2026-02-31` 等不存在日期，保持半开区间与反转区间契约；回归覆盖非法边界。超长范围的有界扫描策略仍按原任务边界保留后续性能复核。
-- [ ] T-1794 配额摘要末日与 DST 日期算术（P1，逻辑流程复核）——`src/analytics.ts:268,272` 用 `bounds.end - 86400000` 推导配额 asOf/elapsedEndKey，春令时开始后的本地午夜减 24 小时可能落到前两日，取错末日修订和周期边界。按共享 localDate 日序号取得上一民历日并与日级投影对账，覆盖 DST 前后、跨午夜、闰年、自定义范围和 quota 周期。`:161-165` 的 `localDaySpan` 有 `Math.round`，不能据此声称普通一小时 DST 已造成天数错误，仅纳入共享算术和极端跳日时区审计；不重复 T-1619/T-1767。
+- [x] T-1794 配额摘要末日与 DST 日期算术（P1，已交付 2026-10-09）——配额摘要末日改用共享 `addDays(bounds.end, -1)` 民历日算术，不再固定减 24 小时；America/New_York DST 回归覆盖春令时边界，`tests/quota-periods.test.cjs` 与主链通过。
 - [x] T-1795 Today 记录/撤销失败可恢复事务（P1，已交付 2026-10-01，D-342）——记录侧：`bind-today` 的 recordWithDetails 改为结果感知——写失败把附件放回 pendingAttachments、精确面板保持展开并重渲染（可改后重试），成功才消费附件并收起清场（T-1455 语义仅在成功路径）；撤销侧：`undoRecentRecord` 持久化失败用 `setRecentRecord(recent)` 恢复撤销 token（同事件可再次撤销，回执原样重呈现，store 已回滚故回执值仍准确）。行为夹具 `tests/record-retry.test.cjs`（真实转译 bind-today+DOM 桩：失败保留附件/展开/重渲染、成功消费+收起+备注附件达记录器、67675fe 红证对照、undo 结构钉）接入 pnpm test；today 全族 8 项定向全 OK。成功回执细化归 T-1776、跨入口幂等归 T-1786。check/pnpm test 全链/build/kernel 全绿；真实宿主验收 host-pending。
 - [ ] T-1796 备份恢复 replace/merge 语义与锁内事务（P1，恢复流程复核）——`src/index.ts:5747-5782` 直接把 `this.store` 换成快照再 `persist`，`src/storage-transaction.ts:58-78` 的写后保护可能将另一窗口持有的快照外实体合回，恢复动作到底是精确替换还是合并没有用户可见选择。设计锁内重读、墓碑/冲突预览、replace 与 merge 的审计语义和失败回滚；覆盖恢复与另一窗口记录/删除交错、重载和旧快照迁移，不与 T-1622 总账或 T-1787 多桶 schema 混同。
 - [x] T-1797 Obsidian 无冲突导入真实 Store 接线（P0，已交付 2026-10-01，D-340）——无冲突入口已接回 `this.store = report.store`（冲突路径原有赋值保持）。守门 `tests/obsidian-entry.test.cjs`：纯函数不可变性证明（入参 JSON 零变化→丢弃返回值即丢数据）、接线结构钉（含 HEAD 红证对照 doesNotMatch）、冲突路径钉。真实宿主导入验收 host-pending。
 - [x] T-1798 CSV/Loop/Obsidian 导入失败回滚（P1，已交付 2026-10-01，D-340）——三入口统一「previousStore 快照→导入→persist→失败回滚+saveFail 提示」，不再留下内存/磁盘分叉的半成品导入；结构钉断言三处 rollback 在位。锁内重读/重基线（远端并发重试）仍归 T-1622 跨桶总账，本项不覆盖。
 - [ ] T-1799 事件墓碑生命周期、容量与压缩（P1，数据生命周期复核）——`src/model.ts:837-873` 的 `removeEvents`、`:1131-1146` 的 `deleteItemsCascade` 与 `:1028-1048` 的 `normalizeEventTombstones` 没有墓碑容量/保留期，长期删除/撤销会扩大主档、索引和每次合并成本。设计按事件 ID、外部身份、删除时间和备份/跨窗安全可证明的保留或压缩策略，确保旧窗口/API/来源重放不复活；若无法证明安全则保留身份并优化表示，不能简单按时间删墓碑。用长历史、重复撤销、外部身份、恢复点和迁移夹具确定容量、告警及可追溯性。
-- [ ] T-1800 渲染块日期格键盘激活和语义（P1，无障碍/交互复核）——`src/features/checkin-block.ts:267,475` 输出 `span[role=button][tabindex=0][data-jump-date]`，`src/render/block-renderer.ts:146-165` 只有 click 委托，没有 Enter/Space 键盘处理；月历/热力图对键盘和读屏用户不可完成日期跳转。统一用真实 button 或补 keydown 去重，覆盖 Enter/Space、重复触发、焦点样式、读屏名称、窄屏触控和失败返回；与 T-1775 的 Today 七日条钻取及 T-1665 总体无障碍分开。
-- [ ] T-1801 渲染块 today 视图截断可见性（P2，UI 复核）——`src/features/checkin-block.ts:350-354` 对活跃项目硬 `slice(0, 5)`，`buildTodayViewHtml` 没有“还有 N 项”或进入完整列表的可达提示；用户配置超过五个项目时会把事实静默隐藏。确定五项上限是否为产品约束，若保留则显示截断原因/数量和可达入口，覆盖排序、归档、空态、窄屏与键盘；不改变 T-1412 today 块的显式 `itemIds` 规则。
-- [ ] T-1802 渲染块 today 时段统计的本地日期/时区契约（P2，事实复核）——`src/features/checkin-block.ts:380-390` 以 `new Date(event.occurredAt).getHours()` 分早/午/晚，而事件日期事实以 `localDate` 归属；跨时区、跨午夜和 DST 时可能把同一记录显示到错误时段。先明确时段应随记录发生时区还是插件本地时区，再按注入时区/记录日夹具对账 Today、记录详情、导出和来源事件；与 T-1619 的日期键统计不同，这里专门锁定日内时刻展示。
-- [ ] T-1803 API v5 批量写入的 occurredAt/localDate 时区契约（P1，生态契约研究）——`src/features/api-v5.ts:105-109,169-180` 用 `Date.parse` 接受时刻并归一 ISO，随后用宿主 `dateKey(new Date(occurredAt))` 推导记录日，输入没有显式 `localDate`/时区字段；跨地区消费者可能得到与其业务日不一致的事件，文档“严格 ISO”与宽松解析也需对账。先明确“宿主本地日”或显式业务日的兼容边界，验证偏移、无偏移/仅日期/非日历输入、夏令时、跨午夜、fallback 时钟和重复身份；不凭空扩展公开 API，关联 T-1670。
+- [x] T-1800 渲染块日期格键盘激活和语义（P1，已交付 2026-10-09）——日期格保留 `role=button`/`tabindex=0` 语义，renderer 委托处理 Enter/Space 且共享 focus-visible 焦点环；`tests/checkin-block.test.cjs`、主链与 UI 链通过。
+- [x] T-1801 渲染块 today 视图截断可见性（P2，已交付 2026-10-09）——五项上限保留，但超过上限时渲染双语 `role=status`/`aria-live`，宣布当前显示与隐藏数量，避免静默丢失事实；`tests/checkin-block.test.cjs` 与 i18n parity 通过。
+- [ ] T-1802 渲染块 today 时段统计的本地日期/时区契约（P2，兼容契约待决）——现有实现按 `localDate` 过滤记录，再以 `occurredAt` 的宿主本地时刻分早/午/晚；本轮保留该兼容行为并补文档边界，显示应随记录时区还是插件时区仍需产品决策与现场夹具。
+- [x] T-1803 API v5 批量写入的 occurredAt/localDate 时区契约（P1，已交付 2026-10-09）——批量 `occurredAt` 现在要求 RFC3339 显式 `Z`/偏移，拒绝仅日期和无时区输入，合法偏移统一归一 UTC；`tests/api-v5.test.cjs`、`docs/api-v5.md`、`docs/api-v5-design.md` 已同步。
 - [~] T-1804 多 root Today 搜索、焦点与 pendingFocus 隔离（P1，焦点守门切片已交付 2026-10-09）——延迟 focus 现在校验 connected root、Today 页面和 activeElement，并恢复选区/方向；跨表面定向矩阵通过。按 root 持有完整 query/scroll/pendingFocus 及真实宿主同屏仍开放。
 - [x] T-1805 后台刷新按 root 隔离并保护编辑页草稿（P1，已交付 2026-10-09）——`renderBackgroundUpdateFor` 逐 root 读取页面并只刷新非 editor surface；Today 输入中的 root 仅在失焦后刷新，其他 Today root 继续更新，避免最后活跃 root 代理状态误伤编辑器草稿。新增跨页一致性结构守门并通过 check/UI 定向回归；真实多表面宿主同屏仍归现场验收。
 - [ ] T-1806 Today 上下文菜单的 owning root 几何与焦点（P2，UI/移动复核）——`src/render/today-bindings.ts:252-265` 生成菜单，SCSS `position:fixed`；定位却统一使用 `window.innerWidth/innerHeight`，dock/quick 内嵌滚动、缩放和移动 WebView 可能越界或被宿主裁切。按所属 root 的 visual viewport/transform 计算，覆盖窄面板、安全区、键盘、Esc/点外关闭和关闭后触发按钮焦点；不把 T-1778/T-1788 的静态状态矩阵当几何验收。
 - [ ] T-1807 主 Store 快照写放大与大历史保存预算（P2，性能/持久化复核）——`docs/codebase-walkthrough.md:214` 已记录 `persist()` 每次写入先追加三份全量快照；`appendStoreSnapshotHistory` 需要读回并序列化完整 Store，长事件/墓碑历史下每次打卡都有额外全量 JSON 往返。用 1k/10k/100k 事件、附件、墓碑和并发写测量耗时/内存/失败恢复，确认快照压缩、分层或节流不会破坏 T-1622、T-1647 的恢复点语义；不以提高上限代替测量。
 - [x] T-1808 初始化失败状态的可执行修复入口（P1，已交付 2026-10-09）——失败页增加双语“重试加载”按钮，点击后在同一插件实例内重置 ready promise、回到 loading 状态并单飞重跑存储初始化；顶栏、宿主事件和渲染块监听只注册一次，避免重试叠加监听或后台任务；失败页继续使用 `role=alert`、主题属性和隐私化阶段提示。`tests/ui-state-ledger.test.cjs`、`settings-migration.test.cjs`、`agent-status.test.cjs`、`pnpm run check` 通过；真实思源权限/损坏存储、移动端与读屏现场仍待验收，诊断复制/导出归 T-1783。
-- [ ] T-1809 事项返回与创建后导航的 root 接线（P1，跨表面导航复核）——`src/render/bind-occasions.ts:26,43` 的 `showToday()` 不带当前 root，事项在 dock/tab/quick 同屏时返回可能改动最后活跃表面；同步检查创建关联项目、编辑保存和取消返回是否仍落发起表面。补 `showToday(root)` 契约和三表面矩阵，作为 T-1621 步骤一遗漏接线，不重做事项功能 T-1701～T-1732。
-- 2026-10-09 增量：事项关联项目徽章点击已补 `showEditorForLinkedItem(id, root)`，避免从 dock/tab/quick 打开到最后活跃表面；事项创建/返回的完整矩阵仍按本任务继续验收。
-- [ ] T-1810 历史/Today 导航的 root 传递一致性（P1，跨表面导航复核）——`src/render/bind-page-navigation.ts:654-657` 的 `[data-history-insights-id]` 调 `host.showInsights(item)` 未传当前 root；`src/render/today-bindings.ts:91-116,280-283` 的键盘/上下文菜单编辑与洞察入口也未传 root，而同类回顾入口 `:622` 已传 root。统一所有 `data-*` 导航 handler 的 root 参数并加源码守门，覆盖返回、失败和多 root 同屏；宿主级渲染块 `openTab` 保留例外并写清理由。
+- [x] T-1809 事项返回与创建后导航的 root 接线（P1，已交付 2026-10-09）——事项关联徽章、创建、编辑保存和取消返回均核对 owning root 传递；本地跨页/跨表面守门通过，真实宿主多表面现场仍按阻塞记录开放。
+- [x] T-1810 历史/Today 导航的 root 传递一致性（P1，已交付 2026-10-09）——历史洞察、Today 键盘/上下文菜单编辑与洞察入口均核对 root 参数；渲染块宿主 `openTab` 保留为显式例外。跨页/跨表面定向测试通过，真实宿主同屏仍按阻塞记录开放。
 - [x] T-1811 排期预演/周负荷/日历共用真实日期校验（P1，已交付 2026-10-08）——`schedule-preview.ts`、`week-load.ts` 与日历投影统一复用 `date-keys.ts:isValidDateKey`；`02-30`、`02-31` 等非法起始日/锚点 fail-closed，合法闰日保持可用。新增排期、周负荷和规则变更夹具回归，并修复转译夹具的共享依赖落盘。
 - [x] T-1812 calendar.read 数值戒除与修订单位完成口径同源（P1，已交付 2026-10-09）——`calendar-projection.ts` 复用模型 `isComplete` 判定数值 `atMost`，并只用当天生效修订单位计算 progress；raw value 仍用于公开读数，旧单位事件不会污染当前规则。回归覆盖 0/1/2/3、skip 混合、单位修订、quota 和非排期日；保留 v5 字段兼容。
 

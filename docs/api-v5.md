@@ -98,7 +98,7 @@ recordEventsBatch(inputs: Array<{
     source: "api";
     externalRef?: string;
     note?: string;
-    occurredAt?: string;         // ISO；缺省回退调用时刻
+    occurredAt?: string;         // RFC3339/ISO instant，必须带 Z 或 ±HH:MM；缺省回退调用时刻
 }>): Promise<Array<{
     kind: "recorded" | "duplicate" | "discarded" | "blocked" | "rejected";
     eventId?: string;
@@ -109,7 +109,7 @@ recordEventsBatch(inputs: Array<{
 
 - **一次入队、一次持久化**；结果与输入一一对应（同序同长）。
 - 判定顺序固定：幂等身份（`duplicate`）→ 墓碑（`discarded`）→ 项目可用性/映射/跳过日/at-most（`blocked`，`reason` 说明）→ 写入（`recorded`）；`rejected` 仅表示输入未过结构校验，不进入持久化。
-- `occurredAt` 缺省回退调用时刻是唯一允许的缺省，且结果以 `usedFallbackTime: true` 标注供审计。
+- `occurredAt` 必须是带显式时区的 ISO/RFC3339 时刻（如 `2026-09-20T08:00:00+08:00` 或 `...Z`）；日期-only 与无时区时间会以 `invalid-occurred-at` 拒绝，避免不同宿主地区把同一输入归到不同业务日。缺省回退调用时刻是唯一允许的缺省，且结果以 `usedFallbackTime: true` 标注供审计。`localDate` 按插件宿主本地日历推导。
 - 单批上限 200；单条 `recordEvent()` 行为完全不变（兼容承诺），其返回语义：新事件返回事件副本、重复返回已有事件副本、非法/拒绝返回 `undefined`——`undefined` 一律表示「未写入」，需以原始 `externalRef` 重试。
 
 ### metrics.read → `getStreaks(itemIds?)`

@@ -59,6 +59,9 @@ assert.match(quickDialog, /RESIZE_EDGES = \["n", "s", "e", "w", "ne", "nw", "se"
 assert.match(quickDialog, /addEventListener\("dblclick", onHeaderDoubleClick\)/, "double-clicking the header must toggle fullscreen");
 assert.match(quickDialog, /export function toggleQuickDialogFullscreenFor/, "fullscreen must have a single shared implementation");
 assert.match(quickDialog, /host\.quickDialogFrameCleanup\?\.\(\)/, "frame listeners must be released when the dialog closes");
+assert.match(quickDialog, /host\.renderInto\(root\);[\s\S]*?bindQuickDialogFrameFor\(host, dialog\);/, "first-open frame binding must happen after the header is rendered");
+assert.match(quickDialog, /const headerSelector = "\.lc-checkin__header, \.lc-checkin__editor-header, \.lc-checkin__settings-header"[\s\S]*?container\.addEventListener\("pointerdown", onHeaderDown\)/, "dialog frame handlers must delegate from the stable container so page re-renders keep dragging available");
+assert.match(quickDialog, /function confirmQuickDialogEditorLeave\(host: QuickDialogHost, root: HTMLElement\)/, "all quick-dialog close/reopen paths must share the editor draft guard");
 assert.match(components, /\.lc-checkin-dialog__resize-handle\.is-se \{/, "resize handles need corner hit areas");
 assert.match(components, /\.lc-checkin-dialog--fullscreen \.lc-checkin-dialog__resize-handle \{ display: none; \}/,
     "fullscreen must not expose resize handles");

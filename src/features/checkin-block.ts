@@ -409,7 +409,15 @@ export function buildTodayViewHtml(store: CheckinStore, config: CheckinBlockConf
         const slots = row.slots ? `<span class="lc-checkin__renderblock-today-slots" aria-label="${escapeHtml(t("block.todaySlotsAria"))}">${t("block.slotMorning")} ${row.slots.morning} · ${t("block.slotAfternoon")} ${row.slots.afternoon} · ${t("block.slotEvening")} ${row.slots.evening}</span>` : "";
         return `<div class="lc-checkin__renderblock-today-row" data-item-id="${escapeHtml(row.itemId)}"><span class="lc-checkin__renderblock-today-icon" aria-hidden="true">${escapeHtml(row.icon)}</span><span class="lc-checkin__renderblock-today-name">${escapeHtml(row.name)}</span><span class="lc-checkin__renderblock-today-status">${escapeHtml(row.progressText)}</span><span class="lc-checkin__renderblock-today-streak">${escapeHtml(t("block.todayStreak", {n: row.streak}))}</span>${missed}${slots}${action}</div>`;
     }).join("");
-    return `<div class="lc-checkin__renderblock lc-checkin__renderblock-today">${body}</div>`;
+    /* T-1801：today 渲染块保留轻量的五行上限，但必须把被截断的事实公开，
+       否则显式 itemIds 配置超过五项时会静默隐藏项目。归档项已由 resolve/buildTodayRows
+       过滤，计数只针对当前作用域内真正可呈现的活跃项目。 */
+    const activeCount = items.filter((item) => !item.archived).length;
+    const hiddenCount = Math.max(0, activeCount - rows.length);
+    const overflow = hiddenCount > 0
+        ? `<p class="lc-checkin__renderblock-today-truncated" role="status" aria-live="polite">${escapeHtml(t("block.todayTruncated", {shown: rows.length, n: hiddenCount}))}</p>`
+        : "";
+    return `<div class="lc-checkin__renderblock lc-checkin__renderblock-today">${overflow}${body}</div>`;
 }
 
 /** groups 视图（T-1351）：按分组聚合的今日完成率汇总；minRate 过滤低完成率分组。 */

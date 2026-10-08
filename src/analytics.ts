@@ -272,7 +272,10 @@ const EMPTY_EVENTS: CheckinEvent[] = [];
    周期跨界不双计；非配额纪元的事件不进入配额结算）；周期只要在范围内存在任一
    可用日即计入（部分可用周期仍按一个周期计）；周期标签取最后一个配额桶的周期类型。 */
 function summarizeQuota(store: CheckinStore, item: CheckinItem, bounds: DateRange, events: CheckinEvent[]): QuotaSummary | undefined {
-    const elapsedEndKey = dateKey(new Date(bounds.end.getTime() - 86400000));
+    /* Use calendar-day arithmetic here. Subtracting 24 hours from a local
+       midnight crosses the wrong civil day when DST changes (for example,
+       2026-03-10 00:00 EDT minus 24h is 2026-03-08 23:00 EST). */
+    const elapsedEndKey = dateKey(addDays(bounds.end, -1));
     interface QuotaPeriodBucket {
         representative: Date;
         schedule: CheckinSchedule;

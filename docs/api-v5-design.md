@@ -42,7 +42,7 @@ getEventsInRange(range: {startDate: string; endDateExclusive: string}, options?:
 recordEventsBatch(inputs: Array<{
     itemId: string; value?: number; unit?: string; source: "api";
     externalRef?: string; note?: string;
-    occurredAt?: string;       // ISO;缺省按调用时刻(与单条一致)
+    occurredAt?: string;       // RFC3339/ISO instant with explicit Z or offset;缺省按调用时刻(与单条一致)
 }>): Promise<Array<{
     kind: "recorded" | "duplicate" | "discarded" | "blocked" | "rejected";
     eventId?: string; reason?: string;
@@ -50,7 +50,7 @@ recordEventsBatch(inputs: Array<{
 ```
 
 - **一次 `enqueueMutation`、一次持久化**,结果逐条返回;判定顺序固定:幂等身份(duplicate)→ 墓碑(discarded)→ 项目/映射(blocked)→ 写入(recorded);`rejected` 仅表示输入未过结构校验(不进入持久化)。
-- `occurredAt` 显式注入沿用 D-227 的 completionClock 纪律:严格 ISO 校验,缺失回退为调用时刻是**唯一**允许的缺省,但必须在结果里以 `usedFallbackTime: true` 标注,供消费端审计。
+- `occurredAt` 显式注入沿用 D-227 的 completionClock 纪律：必须带显式时区的 RFC3339/ISO instant，日期-only 与无时区时间拒绝；缺失回退为调用时刻是**唯一**允许的缺省，但必须在结果里以 `usedFallbackTime: true` 标注，供消费端审计。
 - 上限单批 200 条;`atMost` 项目照旧 blocked(与番茄桥同一拒绝语义,不特判)。
 - 直接复用 `recordDockTomatoCompletionUnlocked` 的分类骨架,抽为通用 `classifyExternalCompletion`-式内部边界——**单条 `recordEvent()` 的现有行为不变**(兼容承诺)。
 

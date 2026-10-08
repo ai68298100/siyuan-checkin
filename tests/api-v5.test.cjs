@@ -150,6 +150,12 @@ const makeItem = (overrides = {}) => ({
     assert.equal(plan.planned[0].localDate, "2026-09-20");
     assert.deepEqual(plan.recordedIndices, [0, 13], "recorded indices map back to input order");
 
+    /* ISO 入口必须携带显式时区；Date.parse 可接受的日期-only 与无偏移
+       字符串会随宿主地区漂移业务日，必须拒绝而不是静默归一化。 */
+    assert.equal(planBatchRecord(store, [{itemId: "read", occurredAt: "2026-09-20"}], nowIso).results[0].reason, "invalid-occurred-at");
+    assert.equal(planBatchRecord(store, [{itemId: "read", occurredAt: "2026-09-20T08:00"}], nowIso).results[0].reason, "invalid-occurred-at");
+    assert.equal(planBatchRecord(store, [{itemId: "read", occurredAt: "2026-09-20T08:00:00+08:00"}], nowIso).results[0].kind, "recorded");
+
     /* 跨午夜:occurredAt 在 9 月 18 日 23:59 后(本地),写入发生在次日——localDate 固定完成日。 */
     const crossMidnight = planBatchRecord(store, [{itemId: "read", occurredAt: "2026-09-18T15:59:59.000Z"}], nowIso);
     assert.equal(/2026-09-1[89]/.test(crossMidnight.planned[0].localDate), true, "local date derives from the completion moment");

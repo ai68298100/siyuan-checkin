@@ -6,6 +6,7 @@
    - 周期在范围内存在任一可用日即计入（部分可用仍按一个周期）；
    - 单一周期的既有口径逐值不变（T-1516 对照）；跳过事件不贡献进度不变。 */
 const assert = require("node:assert/strict");
+const {spawnSync} = require("node:child_process");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
@@ -120,5 +121,28 @@ assert.ok(singleQuota.current && singleQuota.current.complete && singleQuota.cur
     "the current week settles with six real dates and ignores the skip event");
 const singleDay = summarizeItem(singleSummary, "q1");
 assert.equal(singleDay.scheduledDays, 0, "quota items keep the no-day-denominator contract (T-1516)");
+
+/* DST 回归：结束边界是本地午夜时，按 24 小时回退会在春令时周落到前一日
+   23:00，导致已闭合周被误报为 current。按民历日回退后，2026-03-02..08
+   在 2026-03-10 的摘要中必须计入 elapsedPeriods。 */
+if (process.argv.includes("--dst")) {
+    const dst = {
+        version: 3,
+        items: [item({createdDate: "2026-03-01", createdAt: "2026-03-01T08:00:00.000Z", schedule: {type: "quota", quota: {period: "week", amount: 2, countMode: "dates", weekStartsOn: 1}}})],
+        events: ["2026-03-02", "2026-03-03"].map((key) => event("q1", key)),
+        eventTombstones: [],
+        itemTombstones: [],
+    };
+    const summary = analytics.buildCustomSummaryContext(model.normalizeStore(dst), {startDate: "2026-03-02", endDate: "2026-03-10"}, new Date(2026, 2, 10, 12));
+    const quota = summarizeItem(summary, "q1").quota;
+    assert.equal(quota.elapsedPeriods, 1, "DST spring-forward must still close the preceding local week");
+    assert.equal(quota.completedPeriods, 1, "the closed DST week keeps its completion result");
+    assert.equal(quota.current?.periodKey, "2026-03-09", "the next local week remains the current period");
+}
+
+if (!process.argv.includes("--dst")) {
+    const result = spawnSync(process.execPath, [__filename, "--dst"], {env: {...process.env, TZ: "America/New_York"}, encoding: "utf8"});
+    assert.equal(result.status, 0, `quota DST fixture must pass in America/New_York: ${result.stderr || result.stdout}`);
+}
 
 console.log("quota-periods: all assertions passed");

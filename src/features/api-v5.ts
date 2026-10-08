@@ -102,8 +102,13 @@ export interface BatchEntryResult {
     usedFallbackTime?: boolean;
 }
 
+/* Public batch writes use an explicit instant. Date.parse also accepts
+   date-only and timezone-less strings, which silently turns an integration's
+   business day into the host's local day. Keep the documented ISO contract
+   deterministic: date + time + explicit Z/offset, then normalize to UTC. */
 function normalizeValidIso(value: unknown): string | undefined {
-    if (typeof value !== "string" || !value || value.length > 40) return undefined;
+    if (typeof value !== "string" || !value || value.length > 40
+        || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?(?:Z|[+-]\d{2}:\d{2})$/.test(value)) return undefined;
     const parsed = Date.parse(value);
     return Number.isFinite(parsed) ? new Date(parsed).toISOString() : undefined;
 }

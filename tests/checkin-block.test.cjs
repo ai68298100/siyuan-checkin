@@ -112,6 +112,17 @@ const singleRow = block.buildTodayRows(store, [store.items[0]], asOf)[0];
 assert.equal(singleRow.lastMissedDate, "2026-09-18", "yesterday's missed scheduled day is the last miss even though today is done");
 const pendingSingle = block.buildTodayRows(store, [store.items[1]], asOf)[0];
 assert.equal(pendingSingle.lastMissedDate, "2026-09-18", "scan starts from yesterday: today's incompleteness is the status cell's job");
+/* T-1801：today 渲染块最多展示五行，但超出作用域必须公开剩余数量，不能静默吞掉。 */
+const manyItems = Array.from({length: 7}, (_, index) => dailyItem(`today-${index}`, `项目${index}`));
+const manyStore = model.createDefaultStore();
+manyStore.items = manyItems;
+const manyTodayHtml = block.buildTodayViewHtml(manyStore, {view: "today", itemIds: manyItems.map((item) => item.id)}, asOf);
+assert.match(manyTodayHtml, /data-item-id="today-0"/);
+assert.match(manyTodayHtml, /data-item-id="today-4"/);
+assert.doesNotMatch(manyTodayHtml, /data-item-id="today-5"/);
+assert.match(manyTodayHtml, /role="status"[^>]*aria-live="polite"[^>]*>[^<]*5[^<]*2[^<]*/, "truncation must be announced with shown and hidden counts");
+assert.match(read("i18n.ts"), /"block\.todayTruncated":/);
+assert.match(read("ui", "components.scss"), /\.lc-checkin__renderblock-today-truncated/);
 /* 接线：胶水节流 + 宿主回调 + i18n。 */
 assert.match(glueSource, /data-block-record/, "glue routes today record buttons");
 assert.match(glueSource, /data-record-pending/, "record button throttles double clicks");
@@ -120,9 +131,10 @@ assert.match(glueSource, /preview\.addEventListener\("keydown"/, "semantic rende
 assert.match(glueSource, /event\.key !== "Enter" && event\.key !== " "/, "render-block keyboard jumps accept Enter and Space");
 assert.match(glueSource, /event\.preventDefault\(\);\s*\(target as HTMLElement\)\.click\(\);/, "render-block keyboard jumps reuse click behavior and prevent Space scrolling");
 assert.match(glueSource, /\[role='button'\]\[tabindex='0'\]\[data-jump-date\], \[role='listitem'\]\[tabindex='0'\]\[data-jump-item\]/, "keyboard delegation excludes native record buttons");
+assert.match(read("ui", "components.scss"), /\[tabindex="0"\]:focus-visible/, "render-block semantic targets inherit the shared visible keyboard focus ring");
 assert.match(read("index.ts"), /onBlockTodayRecord: \(itemId: string, amount\?: number\) => void this\.recordBlockToday\(itemId, amount\)/, "host must wire the block record callback (T-1462: optional chip amount)");
 assert.match(read("index.ts"), /private async recordBlockToday/, "host implements the block record path via recordEvent");
-for (const key of ["block.todayDone", "block.todayStreak", "block.todayLastMissed", "block.todayCongrats", "block.todayRecord"]) {
+for (const key of ["block.todayDone", "block.todayStreak", "block.todayLastMissed", "block.todayCongrats", "block.todayRecord", "block.todayTruncated"]) {
     assert.equal(read("i18n.ts").split(`"${key}"`).length - 1, 2, `${key} must exist in both zh and en`);
 }
 

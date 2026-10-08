@@ -5,6 +5,7 @@ import {getFrontend, showMessage, Dialog} from "siyuan";
 import type {DialogSizeMode} from "../view-preferences";
 import type {EditorRootContext} from "../types";
 import {disposeResponsiveCharts} from "../ui/responsive-charts";
+import {formSignatureFromData, isEditorFormDirty} from "../features/editor-draft";
 
 export interface QuickDialogHost {
     disposed: boolean;
@@ -91,14 +92,23 @@ function rememberQuickPage(page: QuickPage): void {
 export function openQuickDialogFor(host: QuickDialogHost): void {
     if (host.disposed || host.disposing) return;
     if (host.quickDialog) {
-        if (host.quickDialogElement) host.applyNavigation(host.quickDialogElement, "today");
+        const root = host.quickDialogElement;
+        if (root && !confirmQuickDialogEditorLeave(host, root)) return;
+        if (root) {
+            /* applyNavigation has its own generic draft guard. Once this
+               entry point already confirmed the quick-dialog copy, refresh
+               the baseline so the same action never asks twice. */
+            markQuickDialogDraftAccepted(root);
+            host.applyNavigation(host.quickDialogElement, "today");
+            if ((host.pageForRoot ? host.pageForRoot(root) : host.currentPage) === "editor") return;
+        }
         else host.currentPage = "today";
-        if (host.quickDialogElement && host.setEditorStateForRoot) host.setEditorStateForRoot(host.quickDialogElement, {editingId: undefined, editingFingerprint: undefined, editorReturnPage: undefined, appliedTemplateNote: undefined, submitting: false}, true);
+        if (root && host.setEditorStateForRoot) host.setEditorStateForRoot(root, {editingId: undefined, editingFingerprint: undefined, editorReturnPage: undefined, appliedTemplateNote: undefined, submitting: false}, true);
         else {
             host.editingId = undefined;
             host.editingFingerprint = undefined;
         }
-        host.render(host.quickDialogElement);
+        host.render(root);
         return;
     }
 
@@ -139,7 +149,6 @@ export function openQuickDialogFor(host: QuickDialogHost): void {
     /* T-1597 + T-1621：会话页只落在弹窗自己的 root——重开回放，其余表面不动。 */
     host.applyNavigation(root, nextPage);
     bindQuickDialogViewportFor(host, dialog);
-    bindQuickDialogFrameFor(host, dialog);
     /* T-1597：编辑页未保存先提示——捕获阶段拦截 SiYuan 关闭按钮（祖先 capture 先于
        目标监听器触发），确认后才真正销毁；取消则弹窗与表单草稿原样保留。 */
     dialog.element.addEventListener("click", (event) => {
@@ -148,9 +157,13 @@ export function openQuickDialogFor(host: QuickDialogHost): void {
         if (!target || !target.closest(".b3-dialog__close")) return;
         event.stopImmediatePropagation();
         event.preventDefault();
-        if (window.confirm(t("msg.quickCloseEditingConfirm"))) dialog.destroy();
+        if (confirmQuickDialogEditorLeave(host, root)) dialog.destroy();
     }, true);
     host.renderInto(root);
+    /* The header is rendered by renderInto. Bind the frame only afterwards so
+       first-open dragging/double-click works, and use delegated listeners so a
+       later page render cannot detach the handlers from the new header. */
+    bindQuickDialogFrameFor(host, dialog);
 }
 
 const FRAME_MIN_WIDTH = 520;
@@ -219,9 +232,10 @@ export function bindQuickDialogFrameFor(host: QuickDialogHost, dialog: Dialog): 
         window.removeEventListener("pointercancel", onDragEnd);
         persist();
     };
-    const header = container.querySelector<HTMLElement>(".lc-checkin__header, .lc-checkin__editor-header, .lc-checkin__settings-header");
+    const headerSelector = ".lc-checkin__header, .lc-checkin__editor-header, .lc-checkin__settings-header";
     const isInteractive = (target: EventTarget | null) => Boolean((target as HTMLElement | null)?.closest?.("button, input, select, textarea, a, label, [role='button'], [contenteditable='true']"));
     const onHeaderDown = (event: PointerEvent) => {
+        if (!(event.target as HTMLElement | null)?.closest?.(headerSelector)) return;
         if (host.quickDialogFullscreen || event.button !== 0 || isInteractive(event.target)) return;
         drag = {pointerX: event.clientX, pointerY: event.clientY, startX: offsetX, startY: offsetY};
         window.addEventListener("pointermove", onDragMove);
@@ -230,11 +244,12 @@ export function bindQuickDialogFrameFor(host: QuickDialogHost, dialog: Dialog): 
         event.preventDefault();
     };
     const onHeaderDoubleClick = (event: MouseEvent) => {
+        if (!(event.target as HTMLElement | null)?.closest?.(headerSelector)) return;
         if (isInteractive(event.target)) return;
         toggleQuickDialogFullscreenFor(host);
     };
-    header?.addEventListener("pointerdown", onHeaderDown);
-    header?.addEventListener("dblclick", onHeaderDoubleClick);
+    container.addEventListener("pointerdown", onHeaderDown);
+    container.addEventListener("dblclick", onHeaderDoubleClick);
 
     const handles: HTMLElement[] = [];
     const onResizeDown = (edge: ResizeEdge) => (event: PointerEvent) => {
@@ -285,8 +300,8 @@ export function bindQuickDialogFrameFor(host: QuickDialogHost, dialog: Dialog): 
 
     host.quickDialogFrameCleanup = () => {
         observer.disconnect();
-        header?.removeEventListener("pointerdown", onHeaderDown);
-        header?.removeEventListener("dblclick", onHeaderDoubleClick);
+        container.removeEventListener("pointerdown", onHeaderDown);
+        container.removeEventListener("dblclick", onHeaderDoubleClick);
         handles.forEach((handle) => handle.remove());
         window.removeEventListener("pointermove", onDragMove);
         window.removeEventListener("pointerup", onDragEnd);
@@ -307,10 +322,27 @@ export function toggleQuickDialogFullscreenFor(host: QuickDialogHost, root?: HTM
 export function closeQuickDialogFor(host: QuickDialogHost): void {
     const dialog = host.quickDialog;
     if (!dialog) return;
+    const root = host.quickDialogElement;
+    if (root && !confirmQuickDialogEditorLeave(host, root)) return;
     dialog.destroy();
     // SiYuan currently invokes destroyCallback synchronously; retain a
     // fallback so a future asynchronous implementation cannot leave stale refs.
     handleQuickDialogDestroyedFor(host, dialog);
+}
+
+/** Keep every close/reopen entry point on the same editor-draft guard. */
+function confirmQuickDialogEditorLeave(host: QuickDialogHost, root: HTMLElement): boolean {
+    const page = host.pageForRoot ? host.pageForRoot(root) : host.currentPage;
+    if (page !== "editor") return true;
+    const form = root.querySelector<HTMLFormElement>("form");
+    const baseline = root.dataset.editorDraftBaseline;
+    if (!isEditorFormDirty(form ? new FormData(form) : undefined, baseline)) return true;
+    return window.confirm(t("msg.quickCloseEditingConfirm"));
+}
+
+function markQuickDialogDraftAccepted(root: HTMLElement): void {
+    const form = root.querySelector<HTMLFormElement>("form");
+    if (form) root.dataset.editorDraftBaseline = formSignatureFromData(new FormData(form));
 }
 
 export function handleQuickDialogDestroyedFor(host: QuickDialogHost, dialog: Dialog): void {
