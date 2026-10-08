@@ -55,7 +55,7 @@ export function sanitizeDiagnosticDetail(value: string): string {
     const sanitized = boundedInput
         .replace(/\b(?:authorization\s*[:=]\s*(?:token|bearer)\s+|bearer\s+)[^\s,;]+/gi, (match) => match.replace(/[^\s:]+$/, "<redacted>"))
         .replace(/\b(?:access[_-]?auth[_-]?code|access[_-]?token|refresh[_-]?token|id[_-]?token|api[_-]?key|apikey|secret[_-]?key|secret|password|passwd|token|nonce|private[_-]?key|client[_-]?secret)\s*[:=]\s*["']?[^\s,;"']+/gi, (match) => match.replace(/([:=]\s*["']?)[^\s,;"']+$/, "$1<redacted>"))
-        .replace(/(?:[A-Za-z]:[\\/]|\\\\[A-Za-z0-9._-]+[\\/]|\bfile:\/\/|\/(?:Users|home|private\/var|var\/folders|Volumes|data|tmp|mnt)\/)[^\r\n"'<>]*/gi, "<path>")
+        .replace(/(?:[A-Za-z]:[\\/]|\\\\[^\\/\r\n"'<>]+[\\/]|\bfile:\/\/|\/(?:Users|home|private\/var|var\/folders|Volumes|data|tmp|mnt)\/)[^\r\n"'<>]*/gi, "<path>")
         .trim();
     return boundedDiagnosticText(sanitized, CHECKIN_DIAGNOSTIC_DETAIL_MAX_CODE_POINTS);
 }
