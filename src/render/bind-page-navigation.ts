@@ -136,6 +136,11 @@ export interface BindPageNavigationHost {
 
 const pinnedSubnavScrollers = new WeakSet<HTMLElement>();
 const initializedRhythmScrollers = new WeakSet<HTMLElement>();
+/* The review surface root survives page redraws while its inner HTML is
+   replaced.  Keep the delegated mobile-menu toggle listener one-per-root;
+   otherwise every redraw adds another scroll correction callback and the
+   menu visibly jumps/overscrolls after a few interactions. */
+const reviewMoreMenuToggleListeners = new WeakMap<HTMLElement, EventListener>();
 
 /** 回顾二级导航滚动钉住（D-159）：宿主界面缩放形成 zoom 子树后，合成器滚动
     不会重定位 position:sticky（Chromium 已知缺陷，真机实测滚动后导航条消失）。
@@ -1445,7 +1450,11 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
        落入底栏区域，按遮挡量滚动最近的可滚动祖先（兜底 window）让出空间；
        桌面无底栏，测得高度 0 不触发。守门桩 root 无 DOM 事件接口时跳过。 */
     if (typeof root.addEventListener === "function") {
-        root.addEventListener("toggle", (event) => {
+        const previousToggleListener = reviewMoreMenuToggleListeners.get(root);
+        if (previousToggleListener && typeof root.removeEventListener === "function") {
+            root.removeEventListener("toggle", previousToggleListener, true);
+        }
+        const toggleListener: EventListener = (event) => {
             const target = event.target;
             if (!(target instanceof HTMLDetailsElement) || !target.open) return;
             const menu = target.querySelector<HTMLElement>(".lc-checkin__review-more-menu");
@@ -1468,7 +1477,9 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
             }
             if (scroller && scroller !== doc.body) scroller.scrollTop += overflow;
             else view.scrollBy({top: overflow});
-        }, true);
+        };
+        root.addEventListener("toggle", toggleListener, true);
+        reviewMoreMenuToggleListeners.set(root, toggleListener);
     }
     /* 报告设置：改动即写回视图偏好；不触发重渲染（复选框自身状态就是真值）。 */
     root.querySelectorAll<HTMLInputElement>("[data-report-option]").forEach((input) => {

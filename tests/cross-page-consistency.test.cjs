@@ -53,6 +53,17 @@ try {
         assert.match(reviewBind, /compareComposing/, "比较器独立组合态标记");
     });
 
+    check("review more-menu toggle binding stays one-per-root across redraws (T-1790)", () => {
+        /* 回顾页 root 在重绘时复用；重复绑定会让每次展开菜单重复执行滚动修正，
+           最终表现为移动端菜单跳动/过滚。WeakMap + removeEventListener 保证幂等。 */
+        assert.match(reviewBind, /const reviewMoreMenuToggleListeners = new WeakMap<HTMLElement, EventListener>\(\)/);
+        assert.match(reviewBind, /const previousToggleListener = reviewMoreMenuToggleListeners\.get\(root\)/);
+        assert.match(reviewBind, /root\.removeEventListener\("toggle", previousToggleListener, true\)/);
+        assert.match(reviewBind, /const toggleListener: EventListener = \(event\) =>/);
+        assert.match(reviewBind, /root\.addEventListener\("toggle", toggleListener, true\)/);
+        assert.match(reviewBind, /reviewMoreMenuToggleListeners\.set\(root, toggleListener\)/);
+    });
+
     check("reduced-motion reaches occasion drawer scrolling", () => {
         /* T-1613：滚动改 instant 消除 smooth 动画感知（方案 A），reducedMotion 仍在宿主接口。 */
         assert.match(occasionsBind, /behavior: "instant"/, "事项表单滚动使用 instant（消除 smooth 位移感知）");
