@@ -8,6 +8,13 @@
 - 定向证据：`editor-sections`、`preference-rollback`、`settings-navigation`、`accessibility-audit`、`week-strip`、`cross-page-consistency` 与 `pnpm run check` 通过。
 - API 文档边界：核对真实实现与契约后，将 `getEventsInRange` 文档改为合法日期区间 + `limit` 硬上限；366 天仅保留给摘要/日历投影，E2E 的跨年读取示例与实现保持一致。
 
+# 2026-10-09 全插件功能与 UI 复核第七轮
+
+- 设置页交互：`save-reminder-slots`、`save-note-query`、`save-weread`、`weread-pull`、日记写入/创建、摘要写入、头像清除及审计导出统一使用 `runSettingsAction`；重复点击被锁定，控件显示 `aria-busy`，失败进入设置反馈并恢复快照，离开设置页后旧控件也会解除 disabled/busy。`create-diary-doc` 持久化失败会恢复 `diaryReport`；目标清除和自建问卷补齐忙碌态。
+- 跨 root 生命周期：Review 移动菜单 toggle 与 Today 拖拽 Alt+↑/↓ 监听保持幂等；事项排序状态转为 `OccasionsRootContext`，排序只刷新发起 root，避免 dock/tab/quick 串台。
+- API 数据边界：公开项目快照深拷贝 schedule quota、quickSteps、autoArchive、noteAnchor、journal 等嵌套值；分析 snapshot 及周/月/日/年趋势入口拒绝非法/伪造 Date，抛出稳定 `invalid-as-of` TypeError，不再生成 `NaN-NaN-NaN` 日期键。
+- 验证：`pnpm test`、`pnpm run check`、`pnpm run build`、`pnpm run test:ui`、`pnpm run test:mobile`、`pnpm run test:ecosystem`、`pnpm run test:extended`、`pnpm run test:perf` 通过；构建仅保留既有 bundle 体积警告，CSS hygiene 为 655180 bytes、低于 640KiB hard line。浏览器视觉（当前未设置 `CHECKIN_BROWSER`）、真实思源/Android/TalkBack、第三方来源、缩放及保存面板现场继续按阻塞记录开放。
+
 - 本轮按“功能、按钮、设置、表述、显示、逻辑、反馈、点击反应和使用体验”继续逐入口复核，发现并修复三类可复现问题：Today/quick 视图偏好保存失败时界面与存储可能分叉；后台刷新使用最后活跃页面代理导致跨 root 误刷新或漏刷新；英文界面洞察教练、编辑器图标错误、事项农历提示和完成来源摘要存在中文混入。
 - 修复方式：公开 `applyPreferenceMutation` 复用既有快照/回滚/失败提示；`renderBackgroundUpdateFor` 枚举注册 root，输入中的 Today 只延后自身 root，editor 永不被来源刷新覆盖；教练建议和新增错误提示全部走双语 i18n，纯逻辑调用保留中文 fallback。
 - 定向证据：`tests/preference-rollback.test.cjs`、`tests/cross-page-consistency.test.cjs`、`tests/coaching.test.cjs`、`tests/i18n-parity.test.cjs` 已通过；完整 `check`、构建、主链和 UI 链在本轮结束前复跑并记录。

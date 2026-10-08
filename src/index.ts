@@ -4205,6 +4205,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
             occasionStatusFilter: this.occasionStatusFilter,
             occasionKindFilter: this.occasionKindFilter,
             occasionTimeFilter: this.occasionTimeFilter,
+            occasionSortMode: this.occasionSortMode,
             occasionTemplatesOpen: this.occasionTemplatesOpen,
             occasionTemplateCategory: this.occasionTemplateCategory,
             formOpen: this.occasionFormOpen,
@@ -4230,6 +4231,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
         this.occasionStatusFilter = state.occasionStatusFilter;
         this.occasionKindFilter = state.occasionKindFilter;
         this.occasionTimeFilter = state.occasionTimeFilter;
+        this.occasionSortMode = state.occasionSortMode;
         this.occasionTemplatesOpen = state.occasionTemplatesOpen;
         this.occasionTemplateCategory = state.occasionTemplateCategory;
         this.occasionFormOpen = Boolean(state.formOpen);
@@ -5044,11 +5046,16 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
             control.setAttribute("aria-busy", "true");
             if ("disabled" in control) (control as HTMLButtonElement | HTMLInputElement).disabled = true;
             Promise.resolve().then(operation).catch((error) => settingsFeedback(String(error instanceof Error ? error.message : error || t("common.unknownError")))).finally(() => {
-                if (!settingsRootOpen()) return;
                 settingsBusy.delete(control);
+                /* A navigation can leave the settings surface before the
+                   operation settles. Always release the old control's busy
+                   state; only restore focus while settings is still active. */
                 if (control.isConnected) {
                     control.removeAttribute("aria-busy");
                     if ("disabled" in control) (control as HTMLButtonElement | HTMLInputElement).disabled = false;
+                }
+                if (!settingsRootOpen()) return;
+                if (control.isConnected) {
                     control.focus();
                 } else {
                     /* Responsive settings surfaces render several copies of the same
@@ -5134,21 +5141,24 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
             syncPriorityReminderAnnouncementFor(this as unknown as ReminderDeliveryHost);
             this.render();
         });
-        root.querySelector<HTMLElement>("[data-action='save-reminder-slots']")?.addEventListener("click", async () => {
-            const input = root.querySelector<HTMLInputElement>("[data-setting-reminder-slots]");
-            const submitted = input?.value || "";
-            const slots = normalizeDailyReminderSlots((input?.value || "").split(/[,，、;；\s]+/).filter(Boolean));
-            const previous = this.dailyReminder;
-            this.dailyReminder = {...this.dailyReminder, slots};
-            try {
-                await this.persistViewPreferences();
+        root.querySelector<HTMLButtonElement>("[data-action='save-reminder-slots']")?.addEventListener("click", (event) => {
+            const button = event.currentTarget as HTMLButtonElement;
+            runSettingsAction(button, async () => {
+                const input = root.querySelector<HTMLInputElement>("[data-setting-reminder-slots]");
+                const submitted = input?.value || "";
+                const slots = normalizeDailyReminderSlots((input?.value || "").split(/[,，、;；\s]+/).filter(Boolean));
+                const previous = this.dailyReminder;
+                this.dailyReminder = {...this.dailyReminder, slots};
+                try {
+                    await this.persistViewPreferences();
+                } catch {
+                    this.dailyReminder = previous;
+                    throw new Error(t("msg.prefSaveFail"));
+                }
                 if (input?.value === submitted) settingsDrafts.delete("data-setting-reminder-slots");
                 showMessage(t("msg.reminderSlotsSaved", {n: slots.length}));
                 this.render();
-            } catch {
-                this.dailyReminder = previous;
-                showMessage(t("msg.prefSaveFail"));
-            }
+            });
         });
         /* T-1495 事项提前提醒「仅一次」：开关即存即生效（默认关 = 原逐日提醒）。 */
         root.querySelector<HTMLInputElement>("[data-setting-occasion-once]")?.addEventListener("change", (event) => {
@@ -5293,6 +5303,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
                 if (!window.confirm(t("set.targetClearConfirm", {point: t(card.titleKey)}))) return;
                 const previous = docId;
                 button.disabled = true;
+                button.setAttribute("aria-busy", "true");
                 try {
                     card.setId("");
                     try { await this.persistViewPreferences(); }
@@ -5301,7 +5312,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
                     if (button.isConnected && settingsRootOpen()) { settingsFeedback(t("set.targetCleared")); showMessage(t("set.targetCleared")); this.render(root); }
                 } catch (error) {
                     if (button.isConnected) settingsFeedback(error instanceof Error ? error.message : t("bind.statusError"));
-                } finally { button.disabled = false; }
+                } finally { button.disabled = false; button.removeAttribute("aria-busy"); }
             });
         }
         void (async () => {
@@ -5325,8 +5336,8 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
                 if (labelNode) { labelNode.textContent = label; labelNode.title = label; }
             }
         })();
-        root.querySelector<HTMLElement>("[data-action='write-summary-now']")?.addEventListener("click", () => {
-            void this.writeSummaryResidentNow();
+        root.querySelector<HTMLElement>("[data-action='write-summary-now']")?.addEventListener("click", (event) => {
+            runSettingsAction(event.currentTarget as HTMLElement, () => this.writeSummaryResidentNow());
         });
         root.querySelector<HTMLButtonElement>("[data-action='save-journal-custom']")?.addEventListener("click", async (event) => {
             /* T-1465：自建问卷模板文本——解析 fail-closed，保存后编辑器绑定下拉立即可见。 */
@@ -5335,12 +5346,13 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
             if (button.disabled) return;
             const submitted = input?.value ?? "";
             button.disabled = true;
+            button.setAttribute("aria-busy", "true");
             try {
                 if (await this.saveJournalCustomTemplates(submitted)) {
                     if (input?.value === submitted) settingsDrafts.delete("data-journal-custom");
                     settingsFeedback(t("journal.customSaved", {n: this.journalCustomTemplates.length}));
                 }
-            } finally { button.disabled = false; }
+            } finally { button.disabled = false; button.removeAttribute("aria-busy"); }
         });
         root.querySelector<HTMLButtonElement>("[data-action='save-journal-target']")?.addEventListener("click", async (event) => {
             const button = event.currentTarget as HTMLButtonElement;
@@ -5636,29 +5648,31 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
             value: root.querySelector<HTMLInputElement>("[data-note-query-value]")?.value ?? this.noteQuery.value,
             tag: root.querySelector<HTMLInputElement>("[data-note-query-tag]")?.value ?? this.noteQuery.tag,
         });
-        root.querySelector<HTMLElement>("[data-action='save-note-query']")?.addEventListener("click", async () => {
-            const next = readNoteQueryFromDom(this.noteQuery.enabled);
-            if (!next.targetId || !next.itemId || !getActiveItemById(this.store, next.itemId)) {
-                showMessage(t("msg.noteQueryNeedConfig"));
-                return;
-            }
-            try {
-                await this.validateBindingTarget(next.scope === "document" ? "doc" : "notebook", next.targetId);
-            } catch (error) {
-                showMessage(error instanceof Error && error.message ? error.message : t("msg.noteQueryNeedConfig"));
-                return;
-            }
-            const previous = this.noteQuery;
-            this.noteQuery = next;
-            try {
-                await this.persistViewPreferences();
-                showMessage(t("msg.noteQuerySaved"));
-                if (this.noteQuery.enabled) void this.ingestNoteQuery();
-                this.render();
-            } catch {
-                this.noteQuery = previous;
-                showMessage(t("msg.prefSaveFail"));
-            }
+        root.querySelector<HTMLElement>("[data-action='save-note-query']")?.addEventListener("click", (event) => {
+            runSettingsAction(event.currentTarget as HTMLElement, async () => {
+                const next = readNoteQueryFromDom(this.noteQuery.enabled);
+                if (!next.targetId || !next.itemId || !getActiveItemById(this.store, next.itemId)) {
+                    showMessage(t("msg.noteQueryNeedConfig"));
+                    return;
+                }
+                try {
+                    await this.validateBindingTarget(next.scope === "document" ? "doc" : "notebook", next.targetId);
+                } catch (error) {
+                    showMessage(error instanceof Error && error.message ? error.message : t("msg.noteQueryNeedConfig"));
+                    return;
+                }
+                const previous = this.noteQuery;
+                this.noteQuery = next;
+                try {
+                    await this.persistViewPreferences();
+                    showMessage(t("msg.noteQuerySaved"));
+                    if (this.noteQuery.enabled) void this.ingestNoteQuery();
+                    this.render();
+                } catch {
+                    this.noteQuery = previous;
+                    throw new Error(t("msg.prefSaveFail"));
+                }
+            });
         });
         root.querySelector<HTMLInputElement>("[data-note-query-toggle]")?.addEventListener("change", (event) => {
             const checked = (event.currentTarget as HTMLInputElement).checked;
@@ -5743,27 +5757,29 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
             });
             this.render();
         });
-        root.querySelector<HTMLElement>("[data-action='save-weread']")?.addEventListener("click", async () => {
-            const thresholdInput = root.querySelector<HTMLInputElement>("[data-weread-threshold]");
-            const keyInput = root.querySelector<HTMLInputElement>("[data-weread-key]");
-            const submittedThreshold = thresholdInput?.value || "";
-            const submittedKey = keyInput?.value || "";
-            const thresholdMinutes = Math.max(1, Math.min(1440, Math.round(Number(thresholdInput?.value) || 30)));
-            const apiKey = (keyInput?.value || "").trim();
-            if (apiKey && !isWereadApiKey(apiKey)) {
-                showMessage(t("msg.wereadKeyInvalid"));
-                return;
-            }
-            /* Key 只在用户显式输入时更新（留空 = 保留已存 Key）；输入框永不回显 Key 本体。 */
-            const previous = this.wereadIntegration;
-            this.wereadIntegration = {...this.wereadIntegration, thresholdMinutes, ...(apiKey ? {apiKey} : {})};
-            try {
-                await this.persistViewPreferences();
-                if (thresholdInput?.value === submittedThreshold) settingsDrafts.delete("data-weread-threshold");
-                if (keyInput?.value === submittedKey) settingsDrafts.delete("data-weread-key");
-                showMessage(t("msg.wereadSaved"));
-                this.render();
-            } catch { this.wereadIntegration = previous; showMessage(t("msg.prefSaveFail")); }
+        root.querySelector<HTMLElement>("[data-action='save-weread']")?.addEventListener("click", (event) => {
+            runSettingsAction(event.currentTarget as HTMLElement, async () => {
+                const thresholdInput = root.querySelector<HTMLInputElement>("[data-weread-threshold]");
+                const keyInput = root.querySelector<HTMLInputElement>("[data-weread-key]");
+                const submittedThreshold = thresholdInput?.value || "";
+                const submittedKey = keyInput?.value || "";
+                const thresholdMinutes = Math.max(1, Math.min(1440, Math.round(Number(thresholdInput?.value) || 30)));
+                const apiKey = (keyInput?.value || "").trim();
+                if (apiKey && !isWereadApiKey(apiKey)) {
+                    showMessage(t("msg.wereadKeyInvalid"));
+                    return;
+                }
+                /* Key 只在用户显式输入时更新（留空 = 保留已存 Key）；输入框永不回显 Key 本体。 */
+                const previous = this.wereadIntegration;
+                this.wereadIntegration = {...this.wereadIntegration, thresholdMinutes, ...(apiKey ? {apiKey} : {})};
+                try {
+                    await this.persistViewPreferences();
+                    if (thresholdInput?.value === submittedThreshold) settingsDrafts.delete("data-weread-threshold");
+                    if (keyInput?.value === submittedKey) settingsDrafts.delete("data-weread-key");
+                    showMessage(t("msg.wereadSaved"));
+                    this.render();
+                } catch { this.wereadIntegration = previous; throw new Error(t("msg.prefSaveFail")); }
+            });
         });
         root.querySelector<HTMLElement>("[data-action='clear-weread-key']")?.addEventListener("click", () => {
             if (!this.wereadIntegration.apiKey || !window.confirm(t("msg.wereadClearKeyConfirm"))) return;
@@ -5772,8 +5788,8 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
             }, () => showMessage(t("msg.wereadClearKeyDone")));
             this.render();
         });
-        root.querySelector<HTMLElement>("[data-action='weread-pull']")?.addEventListener("click", () => {
-            void this.pullWereadNow();
+        root.querySelector<HTMLElement>("[data-action='weread-pull']")?.addEventListener("click", (event) => {
+            runSettingsAction(event.currentTarget as HTMLElement, () => this.pullWereadNow());
         });
         root.querySelector<HTMLInputElement>("[data-yeguif-toggle]")?.addEventListener("change", (event) => {
             const checked = (event.currentTarget as HTMLInputElement).checked;
@@ -5989,40 +6005,45 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
                 row.querySelector<HTMLInputElement>("[data-diary-create-title]")?.focus();
             }
         });
-        root.querySelector<HTMLElement>("[data-action='create-diary-doc']")?.addEventListener("click", async () => {
-            const titleInput = root.querySelector<HTMLInputElement>("[data-diary-create-title]");
-            const title = titleInput?.value.trim() || "";
-            if (!title) {
-                showMessage(t("msg.diaryTitleRequired"));
-                titleInput?.focus();
-                return;
-            }
-            const notebook = root.querySelector<HTMLSelectElement>("[data-diary-notebook]")?.value || "";
-            if (!notebook) {
-                showMessage(t("msg.diaryNoNotebook"));
-                return;
-            }
-            try {
-                const response = await fetchSyncPost("/api/filetree/createDocWithMd", {notebook, path: `/${title.trim().replace(/[\\/]/g, "／").slice(0, 80)}`, markdown: ""}) as unknown as {code?: number; data?: unknown};
-                const docId = response.code === 0 && typeof response.data === "string" ? response.data : "";
-                if (!docId) {
-                    showMessage(t("msg.diaryCreateFailed"));
+        root.querySelector<HTMLElement>("[data-action='create-diary-doc']")?.addEventListener("click", (event) => {
+            const control = event.currentTarget as HTMLElement;
+            runSettingsAction(control, async () => {
+                const titleInput = root.querySelector<HTMLInputElement>("[data-diary-create-title]");
+                const title = titleInput?.value.trim() || "";
+                if (!title) {
+                    showMessage(t("msg.diaryTitleRequired"));
+                    titleInput?.focus();
                     return;
                 }
-                this.diaryReport = {...this.diaryReport, docId};
+                const notebook = root.querySelector<HTMLSelectElement>("[data-diary-notebook]")?.value || "";
+                if (!notebook) {
+                    showMessage(t("msg.diaryNoNotebook"));
+                    return;
+                }
                 try {
-                    await this.persistViewPreferences();
-                } catch {
-                    showMessage(t("msg.diarySaveFailed"));
+                    const response = await fetchSyncPost("/api/filetree/createDocWithMd", {notebook, path: `/${title.trim().replace(/[\\/]/g, "／").slice(0, 80)}`, markdown: ""}) as unknown as {code?: number; data?: unknown};
+                    const docId = response.code === 0 && typeof response.data === "string" ? response.data : "";
+                    if (!docId) {
+                        showMessage(t("msg.diaryCreateFailed"));
+                        return;
+                    }
+                    const previous = this.diaryReport;
+                    this.diaryReport = {...this.diaryReport, docId};
+                    try {
+                        await this.persistViewPreferences();
+                    } catch {
+                        this.diaryReport = previous;
+                        showMessage(t("msg.diarySaveFailed"));
+                        this.render();
+                        return;
+                    }
+                    showMessage(t("msg.diaryDocSaved"));
                     this.render();
-                    return;
-                }
-                showMessage(t("msg.diaryDocSaved"));
-                this.render();
-            } catch { showMessage(t("msg.diaryCreateFailed")); }
+                } catch { showMessage(t("msg.diaryCreateFailed")); }
+            });
         });
-        root.querySelector<HTMLElement>("[data-action='write-diary-report']")?.addEventListener("click", () => {
-            void this.writeDiaryReport();
+        root.querySelector<HTMLElement>("[data-action='write-diary-report']")?.addEventListener("click", (event) => {
+            runSettingsAction(event.currentTarget as HTMLElement, () => this.writeDiaryReport());
         });
         root.querySelector<HTMLElement>("[data-action='clear-focus-issues']")?.addEventListener("click", (event) => {
             const control = event.currentTarget as HTMLElement;
@@ -6101,8 +6122,10 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
             this.closeAvatarEditor?.();
             this.closeAvatarEditor = openAvatarEditor(this.avatarImage, root, (image) => this.saveAvatarImage(image));
         });
-        root.querySelector<HTMLElement>("[data-setting-avatar-clear]")?.addEventListener("click", () => {
-            void this.saveAvatarImage(undefined).catch(() => showMessage(t("set.avatarEditorSaveFailed")));
+        root.querySelector<HTMLElement>("[data-setting-avatar-clear]")?.addEventListener("click", (event) => {
+            runSettingsAction(event.currentTarget as HTMLElement, () => this.saveAvatarImage(undefined).catch(() => {
+                throw new Error(t("set.avatarEditorSaveFailed"));
+            }));
         });
         /* T-1566：重置视图偏好入重置危险区——确认显示影响范围（显示设置回默认，打卡数据不受影响）。 */
         root.querySelector<HTMLElement>("[data-action='reset-view-preferences']")?.addEventListener("click", () => { if (!window.confirm(t("msg.viewPrefsResetConfirm"))) return; this.applyPreference(() => { this.applyViewPreferences(resetViewPreferences(this.collectViewPreferences())); }); this.render(); });
@@ -6158,11 +6181,15 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
             const control = event.currentTarget as HTMLElement;
             runSettingsAction(control, () => this.clearAuditEntries(), "[data-action='clear-audit']:not([disabled])");
         });
-        root.querySelector<HTMLElement>("[data-action='export-audit']")?.addEventListener("click", () => downloadStoreAuditFor(this.auditEntries));
+        root.querySelector<HTMLElement>("[data-action='export-audit']")?.addEventListener("click", (event) => {
+            runSettingsAction(event.currentTarget as HTMLElement, () => downloadStoreAuditFor(this.auditEntries));
+        });
         /* T-1362：智能体建议审计导出（版本化诊断 JSON）。 */
-        root.querySelector<HTMLElement>("[data-action='export-agent-audit']")?.addEventListener("click", () => {
-            if (!this.suggestionWorkflow) return;
-            downloadSuggestionAuditFor(this.suggestionWorkflow.envelope, this.suggestionWorkflow.audits);
+        root.querySelector<HTMLElement>("[data-action='export-agent-audit']")?.addEventListener("click", (event) => {
+            runSettingsAction(event.currentTarget as HTMLElement, () => {
+                if (!this.suggestionWorkflow) return;
+                downloadSuggestionAuditFor(this.suggestionWorkflow.envelope, this.suggestionWorkflow.audits);
+            });
         });
         /* T-1361：会话诊断导出。R-18.2 · R-A18：裸 confirm 升级为结构化预览——
            按原因码计数、时间范围与内容边界披露，确认后才导出。 */

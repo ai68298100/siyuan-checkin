@@ -13,6 +13,9 @@ const plugin = read("src", "index.ts");
 const navigation = read("src", "render", "bind-page-navigation.ts");
 const today = read("src", "render", "bind-today.ts");
 const quickDialog = read("src", "render", "quick-dialog.ts");
+const reminderSaveStart = plugin.indexOf("data-action='save-reminder-slots'");
+const reminderSaveEnd = plugin.indexOf("/* T-1495", reminderSaveStart);
+const reminderSaveBlock = plugin.slice(reminderSaveStart, reminderSaveEnd);
 const i18n = read("src", "i18n.ts");
 const changeList = read("src", "features", "settings-change-list.ts");
 const registryDoc = read("docs", "settings-field-registry-2026-09-28.md");
@@ -69,6 +72,34 @@ for (const selector of migratedSelectors) {
 }
 assert.ok((plugin.match(/this\.applyPreference\(/g) || []).length >= 36,
     "the migrated B-class surface must go through the unified wrapper");
+
+/* Explicit settings writes must share the same busy/focus/error wrapper so a
+   double click cannot enqueue two saves or duplicate external writes. */
+for (const action of [
+    "save-reminder-slots", "save-note-query", "save-weread", "weread-pull",
+    "write-diary-report", "write-summary-now", "create-diary-doc", "data-setting-avatar-clear",
+]) {
+    const marker = action.startsWith("data-")
+        ? `[${action}]`
+        : `[data-action='${action}']`;
+    const start = plugin.indexOf(marker);
+    assert.ok(start >= 0, `${marker} must remain bound`);
+    const body = plugin.slice(start, start + 1800);
+    assert.match(body, /runSettingsAction\(/, `${marker} must use the settings busy wrapper`);
+}
+assert.match(plugin, /control\.setAttribute\("aria-busy", "true"\)/,
+    "settings async actions must expose aria-busy while pending");
+
+/* 设置提醒时段保存：异步写入必须走统一 busy 生命周期，避免连续点击并发保存；
+   失败必须恢复内存快照并交给设置反馈而不是只弹一次 toast。 */
+assert.match(reminderSaveBlock, /runSettingsAction\(button, async \(\) => \{/,
+    "reminder slot save must use the settings busy lifecycle");
+assert.match(reminderSaveBlock, /const previous = this\.dailyReminder;/,
+    "reminder slot save must snapshot the previous preference");
+assert.match(reminderSaveBlock, /this\.dailyReminder = previous;/,
+    "reminder slot save must roll back after persistence failure");
+assert.match(reminderSaveBlock, /throw new Error\(t\("msg\.prefSaveFail"\)\)/,
+    "reminder slot save failure must use fixed safe feedback");
 
 /* 快照纪律：改值必须发生在 mutate 内（外层先行赋值会污染快照，回滚失效） */
 assert.doesNotMatch(plugin, /this\.firstSuccessState = next;\s*\r?\n\s*this\.applyPreference\(/,

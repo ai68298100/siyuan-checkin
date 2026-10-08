@@ -6,6 +6,13 @@
 
 # 决策
 
+## D-454：第七轮全量复核的异步设置、监听器和公共数据边界（2026-10-09）
+
+- 设置页所有显式异步动作沿用同一 busy/反馈/焦点生命周期；操作离开设置页后仍必须清理旧控件状态，避免 disabled 或 `aria-busy` 残留。保存失败先恢复内存快照，再交给本地化设置反馈。
+- Review 菜单、Today 拖拽和事项排序按 owning root 管理监听与会话状态；同一 root 重绘只允许一个有效监听，跨 dock/tab/quick 的排序不得改动其他 root。
+- 公开快照继续采用深拷贝隔离；分析日期参数必须是真实 finite Date，非法日期以稳定结构化错误拒绝，不能把 NaN 日期键传播到图表、摘要或 API。
+- 本地自动化证据可以关闭对应可复现源码缺陷，但不替代 CHECKIN_BROWSER、真实思源宿主、Android/TalkBack、第三方来源和缩放现场验收。
+
 ## D-448：第三轮全插件复核的异步反馈、root 隔离与双语边界（2026-10-09）
 
 - Today 与 quick 的视图偏好沿用既有 `applyPreference` 快照/回滚链，通过公开 `applyPreferenceMutation` 给 render binding 消费；兼容 stub 才保留旧式持久化 fallback，Review 等页面级偏好仍按 T-1779 单独验收。
