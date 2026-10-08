@@ -21,6 +21,28 @@ const clampRange = (value: number, fallback: number, max: number): number => Num
 const ANALYTICS_SERIES_LIMITS = {weekly: 52, monthly: 24, daily: 366, yearly: 10} as const;
 const ANALYTICS_PAYLOAD_LIMIT = 512 * 1024;
 const ANALYTICS_VALUE_LIMIT = 1_000_000_000;
+type AnalyticsDateError = TypeError & {code: "invalid-as-of"};
+
+/** Reject invalid or non-Date cutoffs before dateKey() can emit NaN labels.
+ * Calling the intrinsic also accepts Date objects from another realm while
+ * refusing forged objects whose getTime method only imitates a Date. */
+const normalizeAnalyticsAsOf = (value: unknown): Date => {
+    let millis: number;
+    try {
+        millis = Date.prototype.getTime.call(value as Date);
+    } catch {
+        const error = new TypeError("asOf 必须是有效日期") as AnalyticsDateError;
+        error.code = "invalid-as-of";
+        throw error;
+    }
+    if (!Number.isFinite(millis)) {
+        const error = new TypeError("asOf 必须是有效日期") as AnalyticsDateError;
+        error.code = "invalid-as-of";
+        throw error;
+    }
+    return new Date(millis);
+};
+
 const isAnalyticsDate = (value: unknown): value is string => {
     if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
     const [year, month, day] = value.split("-").map(Number);
@@ -39,13 +61,14 @@ export interface AnalyticsSnapshot {
 }
 
 export function buildAnalyticsSnapshot(store: CheckinStore, asOf = new Date()): AnalyticsSnapshot {
+    const normalizedAsOf = normalizeAnalyticsAsOf(asOf);
     return {
         version: 1,
-        asOf: dateKey(asOf),
-        weekly: buildWeeklyCompletionTrend(store, 12, asOf),
-        monthly: buildMonthlyEventTrend(store, 6, asOf),
-        daily: buildDailyActivityTrend(store, 30, asOf),
-        yearly: buildYearlyEventTrend(store, 5, asOf),
+        asOf: dateKey(normalizedAsOf),
+        weekly: buildWeeklyCompletionTrend(store, 12, normalizedAsOf),
+        monthly: buildMonthlyEventTrend(store, 6, normalizedAsOf),
+        daily: buildDailyActivityTrend(store, 30, normalizedAsOf),
+        yearly: buildYearlyEventTrend(store, 5, normalizedAsOf),
     };
 }
 
@@ -159,6 +182,7 @@ export function summarizeTrend(series: TrendSeries): {current: number; average: 
 
 /** 近 N 周的完成率（%）：按周一为一周起点，统计"项目-日"粒度的完成占比。 */
 export function buildWeeklyCompletionTrend(store: CheckinStore, weeks = 12, asOf = new Date()): TrendSeries {
+    asOf = normalizeAnalyticsAsOf(asOf);
     weeks = clampRange(weeks, 12, 52);
     const points: TrendPoint[] = [];
     const today = new Date(asOf.getFullYear(), asOf.getMonth(), asOf.getDate());
@@ -189,6 +213,7 @@ export function buildWeeklyCompletionTrend(store: CheckinStore, weeks = 12, asOf
 
 /** 近 N 个月的记录条数。 */
 export function buildMonthlyEventTrend(store: CheckinStore, months = 6, asOf = new Date()): TrendSeries {
+    asOf = normalizeAnalyticsAsOf(asOf);
     months = clampRange(months, 6, 24);
     const points: TrendPoint[] = [];
     for (let index = months - 1; index >= 0; index -= 1) {
@@ -209,6 +234,7 @@ export function buildMonthlyEventTrend(store: CheckinStore, months = 6, asOf = n
 
 /** 近 N 天的活跃天数分布（每天是否有记录）。 */
 export function buildDailyActivityTrend(store: CheckinStore, days = 30, asOf = new Date()): TrendSeries {
+    asOf = normalizeAnalyticsAsOf(asOf);
     days = clampRange(days, 30, 366);
     const points: TrendPoint[] = [];
     /* T-1619：与月/年趋势同一事件日期推导（localDate 优先，非法回退 occurredAt）。 */
@@ -222,6 +248,7 @@ export function buildDailyActivityTrend(store: CheckinStore, days = 30, asOf = n
 }
 
 export function buildYearlyEventTrend(store: CheckinStore, years = 5, asOf = new Date()): TrendSeries {
+    asOf = normalizeAnalyticsAsOf(asOf);
     years = clampRange(years, 5, 10);
     const points: TrendPoint[] = [];
     for (let index = years - 1; index >= 0; index -= 1) {

@@ -34,6 +34,13 @@ for (const filename of ["types.ts", "record-step.ts", "quota.ts", "rules.ts", "d
 }
 const model = require(path.join(outputRoot, "model.js"));
 const charts = require(path.join(outputRoot, "charts.js"));
+const invalidAsOf = (error) => error instanceof TypeError && error.code === "invalid-as-of";
+assert.throws(() => charts.buildAnalyticsSnapshot({}, new Date(Number.NaN)), invalidAsOf,
+    "invalid Date must fail with a structured invalid-as-of error");
+assert.throws(() => charts.buildAnalyticsSnapshot({}, null), invalidAsOf,
+    "non-Date asOf input must fail closed before producing NaN labels");
+assert.throws(() => charts.buildWeeklyCompletionTrend({}, 1, new Date(Number.NaN)), invalidAsOf,
+    "all analytics time entrances must reject invalid Date values");
 const makeItem = (index) => ({
     id: `item-${index}`,
     name: `项目${index}`,
