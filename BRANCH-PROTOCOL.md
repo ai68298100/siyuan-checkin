@@ -5,9 +5,9 @@
 ## 当前唯一基线
 
 - GitHub `main`、本机 `main` 和其他机器应统一跟随同一个提交。
-- 当前发布版本为 `18.17.0`，版本四元组为 `package.json`、`plugin.json`、`src/version.ts` 和构建产物中的 `dist/plugin.json`。
+- 当前版本为 `18.17.1`，版本四元组为 `package.json`、`plugin.json`、`src/version.ts` 和构建产物中的 `dist/plugin.json`。
 - `dev/thispc-1002` 保留为本次双机合并记录和后续开发分支；它可以暂时与 `main` 同步，但稳定安装、发布和新机器初始化都以 `main` 为准。
-- 旧的 v18.16.0 及更早版本说明是历史记录，不回写历史发布文档。
+- 旧的 v18.17.0 及更早版本说明是历史记录，不回写历史发布文档。
 
 ## 日常开发
 

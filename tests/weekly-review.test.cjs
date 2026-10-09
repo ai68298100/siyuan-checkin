@@ -90,6 +90,8 @@ assert.match(indexSource, /async saveWeeklyReviewDraft\(weekKey: string, frictio
 assert.match(indexSource, /exportWeeklyReviewMarkdown\(weekKey: string, friction: string, adjustment: string\): Promise<SaveOutcome>/, "host exports the markdown and returns SaveOutcome");
 assert.match(indexSource, /weeklyReviewDrafts: this\.weeklyReviewDrafts/, "drafts persist through view preferences");
 const i18nSource = fs.readFileSync(path.join(root, "src", "i18n.ts"), "utf8");
+assert.match(i18nSource, /"review\.weeklyExported": "Markdown 已提交到保存通道"/, "Chinese export feedback describes dispatch to the save channel, not final host save completion");
+assert.match(i18nSource, /"review\.weeklyExported": "Markdown sent to the save channel"/, "English export feedback describes dispatch to the save channel, not final host save completion");
 for (const key of ["review.weeklyTitle", "review.weeklyOnlyWeek", "review.weeklyStepFacts", "review.weeklyStepFriction", "review.weeklyStepAdjust", "review.weeklyFactsHint", "review.weeklyFactEvents", "review.weeklyFactItems", "review.weeklyDays", "review.weeklyFrictionPlaceholder", "review.weeklyAdjustPlaceholder", "review.weeklyAdjustHint", "review.weeklySave", "review.weeklySaved", "review.weeklySaveFail", "review.weeklyExport", "review.weeklyExported", "review.weeklyExportFail", "review.weeklyClear", "review.weeklyClearFail", "review.weeklyRangeLabel", "review.weeklyMarkdownNote"]) {
     const count = i18nSource.split(`"${key}"`).length - 1;
     assert.ok(count >= 2, `${key} must exist in both locales (${count})`);
