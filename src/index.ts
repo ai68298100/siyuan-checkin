@@ -768,7 +768,7 @@ export default class CheckinPlugin extends Plugin {
         );
         this.auditEntries = appendStoreAudit(this.auditEntries, {type: "anchor", at: new Date().toISOString(), details: {channel: "diary-report", docId, ok: result.ok, reason: result.reason || ""}});
         this.scheduleAuditPersist();
-        showMessage(result.ok ? t("msg.diaryWritten") : t("msg.diaryWriteFailed", {reason: result.reason || ""}));
+        showMessage(result.ok ? t("msg.diaryWritten") : t("msg.diaryWriteFailed", {reason: safeUserErrorDetail(result.reason) || t("common.unknownError")}));
     }
 
     /* T-1548：输出内容预览——写入前零写入地生成将追加的 Markdown（与写入同一构建路径）。 */
@@ -800,7 +800,7 @@ export default class CheckinPlugin extends Plugin {
             this.auditEntries = appendStoreAudit(this.auditEntries, {type: "anchor", at: new Date().toISOString(), details: {channel: "summary-resident", docId, date: localDate, ok: result.ok, reason: result.reason || ""}});
             this.scheduleAuditPersist();
             if (result.ok) this.summaryResidentWritten.add(writeKey);
-            return {ok: result.ok, duplicate: false, reason: result.ok ? undefined : result.reason};
+            return {ok: result.ok, duplicate: false, reason: result.ok ? undefined : (safeUserErrorDetail(result.reason) || t("common.unknownError"))};
         } finally {
             this.summaryResidentInFlight = false;
         }
@@ -1074,7 +1074,7 @@ export default class CheckinPlugin extends Plugin {
                 const result = await this.writeJournalEntry(template, localDate, markdown, integration);
                 this.auditEntries = appendStoreAudit(this.auditEntries, {type: "anchor", at: new Date().toISOString(), details: {channel: "journal", template: template.id, docId: result.docId, updated: result.updated, ok: result.ok, reason: result.reason || ""}});
                 this.scheduleAuditPersist();
-                showMessage(result.ok ? t("journal.written", {name: result.docName || template.name}) : t("journal.writeFailed", {reason: result.reason || ""}));
+                showMessage(result.ok ? t("journal.written", {name: result.docName || template.name}) : t("journal.writeFailed", {reason: safeUserErrorDetail(result.reason) || t("common.unknownError")}));
                 if (this.currentPage === "today") this.renderBackgroundUpdate();
                 return result.ok;
                 } finally { this.journalPending.delete(pendingKey); }
@@ -1147,7 +1147,7 @@ export default class CheckinPlugin extends Plugin {
         if (result.ok) {
             showMessage(t("msg.summaryWritten"));
         } else if (result.reason && result.reason !== "busy") {
-            showMessage(t("msg.summaryWriteFailed", {reason: result.reason}));
+            showMessage(t("msg.summaryWriteFailed", {reason: safeUserErrorDetail(result.reason) || t("common.unknownError")}));
         }
     }
 

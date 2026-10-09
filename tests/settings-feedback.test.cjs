@@ -13,6 +13,10 @@ assert.match(source, /const rawDetail = error instanceof Error \? error\.message
 assert.match(source, /settingsFeedback\(detail \|\| t\("common\.unknownError"\)\)/, "empty/non-text failures use localized generic feedback");
 assert.doesNotMatch(source, /settingsFeedback\(String\(error instanceof Error \? error\.message/, "raw host exception strings must not be rendered directly");
 assert.doesNotMatch(source, /showMessage\(error instanceof Error && error\.message \? error\.message/, "note-query validation feedback must not show raw exception strings");
+assert.match(source, /diaryWriteFailed[^\n]*safeUserErrorDetail\(result\.reason\)/, "diary report anchor failures must use bounded user feedback");
+assert.match(source, /journal\.writeFailed[^\n]*safeUserErrorDetail\(result\.reason\)/, "journal anchor failures must use bounded user feedback");
+assert.match(source, /summaryWriteFailed[^\n]*safeUserErrorDetail\(result\.reason\)/, "summary anchor failures must use bounded user feedback");
+assert.match(source, /reason: result\.ok \? undefined : \(safeUserErrorDetail\(result\.reason\)/, "summary resident result must not propagate raw kernel reasons");
 assert.match(source, /function safeUserErrorDetail\(error: unknown\)/, "shared user-facing error details must use one sanitizer boundary");
 assert.ok((source.match(/safeUserErrorDetail\(error\)/g) || []).length >= 12, "settings, summary and persistence feedback paths must use the sanitizer");
 assert.match(editorSource, /import \{sanitizeDiagnosticDetail\} from "\.\.\/features\/diagnostics"/, "editor feedback must share the diagnostic sanitizer");
@@ -26,4 +30,7 @@ assert.doesNotMatch(downloadSource, /msg\.exportSaveFail[\s\S]{0,120}String\(err
 assert.doesNotMatch(journalSource, /status\.textContent = error instanceof Error \? error\.message/, "journal feedback must not expose raw exception strings");
 assert.doesNotMatch(yeguifSource, /liveStatus\.textContent = error instanceof Error \? error\.message/, "mapping feedback must not expose raw exception strings");
 assert.doesNotMatch(ecosystemSource, /error: String\(error instanceof Error \? error\.message/, "agent integration results must not expose raw exception strings");
+assert.doesNotMatch(source, /msg\.diaryWriteFailed", \{reason: result\.reason \|\|/, "diary report feedback must sanitize kernel reasons");
+assert.doesNotMatch(source, /journal\.writeFailed", \{reason: result\.reason \|\|/, "journal feedback must sanitize kernel reasons");
+assert.doesNotMatch(source, /msg\.summaryWriteFailed", \{reason: result\.reason\}/, "summary feedback must sanitize kernel reasons");
 console.log("Settings feedback safety checks passed.");

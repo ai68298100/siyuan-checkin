@@ -27,6 +27,12 @@
 - 本轮已落地：新增并修正隔离测试夹具的 `features/diagnostics` 依赖，更新反馈安全守门，防止用户可见路径重新回显原始异常。
 - 本轮证据：`pnpm run check`、`pnpm test`、`pnpm run build`、`pnpm run test:ui`、`pnpm run test:ecosystem`、`pnpm run test:extended` 及相关反馈/导出/Agent/导航/日记/叶归/微信读书定向测试通过；Webpack 保持既有体积 warning。`CHECKIN_BROWSER` 未设置，视觉、真实思源/Android/TalkBack、第三方来源、缩放和保存面板现场仍按阻塞记录开放。
 
+## 2026-10-09 全插件复核第十二轮增量
+
+- 本轮已落地：日记、问卷/日志和摘要锚点写入失败反馈统一经过 `safeUserErrorDetail`，并使用本地化通用错误兜底；内部宿主原因仍保留在机器可读诊断边界，不再直出到普通用户 toast。
+- 本轮已落地：叶归映射目标搜索重绘候选后立即重新计算重复来源校验、保存按钮禁用态和 `aria-invalid`，避免候选筛选后旧状态残留；浏览器夹具按中英文分别断言错误文案。
+- 本轮证据：`pnpm run check`、`pnpm test`、`pnpm run test:ui`、`pnpm run test:extended`、`pnpm run test:ecosystem`、`pnpm run build`、`node tests/settings-feedback.test.cjs`、`node tests/yeguif-mapping-editor.cjs`、`node tests/diary-report.test.cjs`、`node tests/summary-resident.test.cjs` 均通过；`CHECKIN_BROWSER` 未设置，视觉、真实思源/Android/TalkBack、第三方来源、缩放和保存面板现场仍按阻塞记录开放。
+
 ## 2026-10-09 全插件复核第八轮增量
 
 - 本轮已落地：快速弹窗编辑草稿离开守卫与首次标题拖拽/双击绑定时序；配额摘要改用民历日算术跨 DST；渲染块日期格保留键盘激活与共享焦点环，并为 Today 五项截断增加双语、可读的隐藏数量状态。

@@ -89,6 +89,7 @@ export function bindYeguifMappings(root: HTMLElement, options: {
             element.querySelector<HTMLInputElement>("[data-yeguif-target-search]")!.addEventListener("input", event => {
                 row.query = (event.currentTarget as HTMLInputElement).value;
                 element.querySelector<HTMLSelectElement>("[data-yeguif-target]")!.innerHTML = targetOptions(row);
+                updateStatus();
             });
             element.querySelector<HTMLSelectElement>("[data-yeguif-target]")!.addEventListener("change", event => {
                 row.itemId = (event.currentTarget as HTMLSelectElement).value;

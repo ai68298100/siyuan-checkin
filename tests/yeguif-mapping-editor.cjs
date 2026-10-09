@@ -77,6 +77,11 @@ async function verifyMappings() {
                     assert.equal(await added.locator("option[value='target-274']").count(), 1, "search reaches projects after the old 200 cap");
                     await added.locator("[data-yeguif-target]").selectOption("target-274");
                     assert.equal(await primary.locator("[data-yeguif-mapping-save]").isDisabled(), true, "duplicate sources cannot save");
+                    await added.locator("[data-yeguif-target-search]").fill("missing-target");
+                    const duplicateMessage = (await added.locator("[data-yeguif-mapping-error]").textContent()).trim();
+                    assert.ok(duplicateMessage, "candidate search keeps duplicate validation visible");
+                    assert.equal(duplicateMessage, language === "zh-CN" ? "来源项目重复，请保留一条映射" : "Duplicate source project; keep one mapping", "candidate search preserves the localized duplicate validation");
+                    assert.equal(await primary.locator("[data-yeguif-mapping-save]").isDisabled(), true, "duplicate validation remains active after candidate search");
                     assert.equal(await page.evaluate(() => window.__saveCalls), 0, "editing and validation do not write preferences");
                     const hostileName = '<img src=x onerror="window.__canary=1">';
                     await added.locator("[data-yeguif-project]").fill(hostileName);
