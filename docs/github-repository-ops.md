@@ -12,6 +12,8 @@
 
 2026-10-08 双机合并窗口与 v18.17.0 发布已完成：`main` 已统一包含两台电脑的代码，发布提交为 `af9caf9b`，GitHub 默认分支为 `main`，正式 Release 地址为 https://github.com/ai68298100/siyuan-checkin/releases/tag/v18.17.0。后续新功能继续在开发分支或短期特性分支进行，完成验证后再合入 `main`；发布 tag 和 Release 只从 `main` 创建。
 
+2026-10-09 全插件复核补丁 v18.17.1 已发布：提交 `ef4c1c312ef07354f6f354ec83395e39c7f10bb6` 已推送到 `main`，tag 与正式 Release 地址为 https://github.com/ai68298100/siyuan-checkin/releases/tag/v18.17.1，`package.zip` SHA-256 为 `5d3a3d3ceeb9272f2797b9719672b505473ccafea092c9116cbd9f2068d1a213`。真实宿主/设备现场和第三方账号仍按兼容矩阵单独验收。
+
 ## 自动化
 
 `.github/workflows/ci.yml` 对 `main` 和开发分支 push、所有 Pull Request 运行类型检查、构建、主测试、移动结构测试、发布资产检查和浏览器可访问性/视觉走查。Actions 使用最小 `contents: read` 权限，并按分支和提交取消过期运行，避免旧提交占用队列。

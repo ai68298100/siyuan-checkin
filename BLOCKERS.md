@@ -1,10 +1,15 @@
 # 当前阻塞与边界
 
-## 2026-10-08 当前发布基线
+## 2026-10-08 v18.17.0 历史发布基线
 
 - 双机合并、版本统一和 GitHub Release 已完成；发布提交为 `af9caf9b`，版本四元组为 v18.17.0，`v18.17.0` tag 与正式 Release 已发布。
 - GitHub `main` 已是默认分支和稳定同步入口；`dev/thispc-1002` 保留为开发记录，两条远端分支与本机均已对齐。
 - 下文出现的 v18.16.0、开发窗口冻结或“未 push/未发版”均是当时历史记录，不覆盖本节当前事实。
+
+## 2026-10-09 当前发布基线
+
+- v18.17.1 已从 `main` 提交 `ef4c1c312ef07354f6f354ec83395e39c7f10bb6` 创建 tag 和正式 GitHub Release；安装包 SHA-256 为 `5d3a3d3ceeb9272f2797b9719672b505473ccafea092c9116cbd9f2068d1a213`。
+- `main` 已推送并与 `origin/main` 对齐；Release 地址为 https://github.com/ai68298100/siyuan-checkin/releases/tag/v18.17.1。未推送思源集市。
 
 - **B-UI-AUDIT-20261009（浏览器证据已补齐，现场仍开放）**：v18.17.1 发布验收显式设置 `CHECKIN_BROWSER` 为本机 Playwright Chromium，明暗主题 `visual-qa.cjs` 已通过、页面错误均为 0；此前未设置浏览器的记录只作历史证据。draft conflict 走查与 T-1773 的“保留草稿并提示冲突”契约一致。真实思源宿主、第三方账号、Android/TalkBack、缩放和保存面板现场仍需验收，按 D-275 不作为设备等待发布前置。
 - 本轮补充边界：T-1779 页面级偏好失败回滚已完成本地证据；T-1805 与事项关联编辑入口的 root 隔离仍主要具备本地结构/行为证据，真实多表面同屏仍需宿主现场复测。
@@ -63,7 +68,7 @@ T-1509～T-1523 已于 2026-09-28 全部交付，原“14 项当前队列”是�
 ## 2026-10-08 合并后状态
 
 - B-GITHUB-SYNC 已解除：两台电脑的代码已在最终同步提交 1babd179 对齐到本机 main，GitHub main 已设为默认分支；其他机器只需从 main 快进同步。
-- B-RELEASE-SOURCE 已解除：v18.17.0 已从 `main` 创建 tag 与正式 Release，发布来源固定为 `main`。
+- B-RELEASE-SOURCE 已解除：v18.17.1 已从 `main` 创建 tag 与正式 Release，发布来源固定为 `main`。
 - 仍开放的功能待办、外部来源真实账号验证和 Android/真实思源现场验收不因版本统一自动关闭；它们继续按 TODO 和产品阻塞记录处理。
 
 \n

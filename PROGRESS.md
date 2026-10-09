@@ -2,7 +2,7 @@
 
 用户在多轮全插件复核后授权推送并通过 `gh` 发版。本次采用补丁版 v18.17.1，版本源、README 当前入口、变更记录和新发布说明同步更新，v18.17.0 历史资产摘要未回写。发布复核修正周复盘导出双语提示为“提交到保存通道”，避免把宿主异步保存请求派发当作最终完成；对应定向测试通过。第十四轮重复决策编号由 D-451 顺延为 D-458。
 
-最终 `pnpm run test:quality` EXIT 0（证据 `.artifacts/release-18.17.1-quality.log`），覆盖环境、类型、生产构建、主测试、UI、旧样式、移动、生态、扩展、周期对比、性能、摘要同步、非 CI 发布资产检查和四步回滚演练；测试覆盖清单为 266 文件，无退役，公开双语 2707 key 对齐；无障碍缺名、正向 tabindex、键盘不可达和 1227 对比度组合违规均为 0。显式使用本机 Playwright Chromium 运行明暗主题 visual-qa，均 EXIT 0、pageErrors=[]，检查了窄屏回顾、设置、320px 深色今日和展开编辑器截图。CSS 655350 bytes 保留 soft warning，未调整阈值。GitHub 推送、新 tag、正式 Release 与远端 CI 复核随后执行；真实思源、Android/TalkBack、第三方账号、缩放和保存面板现场仍开放，不推送集市。
+最终 `pnpm run test:quality` EXIT 0（证据 `.artifacts/release-18.17.1-quality.log`），覆盖环境、类型、生产构建、主测试、UI、旧样式、移动、生态、扩展、周期对比、性能、摘要同步、非 CI 发布资产检查和四步回滚演练；测试覆盖清单为 266 文件，无退役，公开双语 2707 key 对齐；无障碍缺名、正向 tabindex、键盘不可达和 1227 对比度组合违规均为 0。显式使用本机 Playwright Chromium 运行明暗主题 visual-qa，均 EXIT 0、pageErrors=[]，检查了窄屏回顾、设置、320px 深色今日和展开编辑器截图。宽度矩阵 49 个表面场景、32 个交互状态和长内容维护场景通过。CSS 655350 bytes 保留 soft warning，未调整阈值。已推送 `main` 提交 `ef4c1c312ef07354f6f354ec83395e39c7f10bb6`、tag `v18.17.1` 并创建正式 Release（https://github.com/ai68298100/siyuan-checkin/releases/tag/v18.17.1）；上传包 SHA-256 为 `5d3a3d3ceeb9272f2797b9719672b505473ccafea092c9116cbd9f2068d1a213`。远端 CI 仍待完成，真实思源、Android/TalkBack、第三方账号、缩放和保存面板现场仍开放，不推送集市。
 
 # 2026-10-08 v18.17.0 已正式发布：双机合并后的本机 `main`、`dev/thispc-1002` 和 GitHub 两条同名分支已对齐；发布提交为 `af9caf9b`，tag/Release 为 `v18.17.0`。GitHub 默认分支为 `main`，Release 资产 `package.zip` 的 SHA-256 为 `4f82233ae8c1adb15bb23b572eaf1b5df72168c1a172f4b7fb1a998ca82be717`。完整质量链、发布资产和回滚演练均通过；真实思源/Android/外部来源现场验收仍单独保留，不推送集市。另一台机器只需按 README/同步说明的 `fetch` + `switch main` + `pull --ff-only` 同步。
 
