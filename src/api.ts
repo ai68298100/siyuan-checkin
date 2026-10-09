@@ -200,7 +200,14 @@ export function createCheckinApi(host: CheckinApiHost): CheckinApi {
         getDiagnostics: () => Object.freeze(host.getDiagnostics().map((entry) => ({...entry}))),
         getOccasions: () => host.occasionStore.occasions.map(cloneOccasionForApi),
         getTodayOccasions: () => getVisibleOccasions({version: 1, occasions: host.occasionStore.occasions} as never, currentCalendarDate()).map(cloneOccasionForApi),
-        completeOccasion: (id, occurrenceDate, completed) => host.enqueueMutation(() => host.setOccasionCompleted(id, occurrenceDate, completed)),
+        completeOccasion: (id, occurrenceDate, completed) => {
+            /* 公共写接口在初始化/拆除阶段必须稳定返回 false；
+               enqueueMutation 的兼容哨兵是 undefined，不能透出破坏 Promise<boolean> 契约。 */
+            if (!host.acceptingOperations || host.disposed || host.disposing || host.initializationState !== "ready"
+                || typeof id !== "string" || !id.trim() || !isValidLocalDateInput(occurrenceDate)
+                || typeof completed !== "boolean" || !host.occasionStore.occasions.some((occasion) => occasion.id === id)) return Promise.resolve(false);
+            return host.enqueueMutation(() => host.setOccasionCompleted(id, occurrenceDate, completed)).then((result) => result === true);
+        },
         getSummaryContext: (range) => {
             if (!isSummaryRange(range)) throw new TypeError("range 必须是 day、week 或 month");
             return buildSummaryContext(host.store, range, currentCalendarDate());

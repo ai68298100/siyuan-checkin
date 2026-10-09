@@ -325,8 +325,8 @@ try {
         assert.match(navigation, /\.catch\(\(error\) => \{[\s\S]*?if \(host\.disposed \|\| host\.disposing\) return;[\s\S]*?showMessage/, "tab 打开失败在卸载后不得重新打开 UI");
         assert.match(reviewBind, /const boundPage = pageForRoot\(\);[\s\S]*?const isCurrentSurface = \(\) => root\.isConnected && !host\.disposed && !host\.disposing && pageForRoot\(\) === boundPage;/, "回顾绑定器捕获页面并复核 surface 生命周期");
         assert.match(reviewBind, /if \(ok && isCurrentSurface\(\)\) showCatchUpToast/, "逾期补记完成后只向当前 surface 显示撤销提示");
-        assert.match(reviewBind, /saveWeeklyReviewDraft\?\.\(weekKey, friction, adjustment\)\.then\(\(\) => \{[\s\S]*?if \(!isCurrentSurface\(\)\) return;/, "周复盘保存完成不得写入过期状态行");
-        assert.match(reviewBind, /clearWeeklyReviewDraft\?\.\(weekKey\)\.then\(\(\) => \{[\s\S]*?if \(!isCurrentSurface\(\)\) return;/, "周复盘清除完成不得清空过期输入框");
+        assert.match(reviewBind, /runWeeklyTool\(\(\) => host\.saveWeeklyReviewDraft\?\.\(weekKey, friction, adjustment\)[\s\S]*?review\.weeklySaved/, "周复盘保存完成不得写入过期状态行");
+        assert.match(reviewBind, /runWeeklyTool\(\(\) => host\.clearWeeklyReviewDraft\?\.\(weekKey\)[\s\S]*?review\.weeklyClearFail/, "周复盘清除完成不得清空过期输入框");
         assert.match(reviewBind, /recordHistoryBatch\([^\n]+\);[\s\S]*?if \(!isCurrentSurface\(\)\) return;[\s\S]*?review\.batchDone/, "批量补记完成后不得向过期回顾页提示或重绘");
         assert.match(reviewBind, /try \{ await host\.persist\(\); \} catch \{[\s\S]*?if \(isCurrentSurface\(\)\) showMessage\(t\("msg\.undoFail"\)\)/, "记录删除失败只在当前 surface 提示");
         assert.match(reviewBind, /Promise\.resolve\(\)\.then\(operation\)\.catch\(\(\) => undefined\)\.finally\(\(\) => \{[\s\S]*?if \(!isCurrentSurface\(\)\) return;/, "归档异步动作完成后不得恢复过期控件状态");

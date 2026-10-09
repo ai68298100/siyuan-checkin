@@ -229,6 +229,8 @@ assert.match(pluginSource, /private async undoSkipAndRecordDockTomatoInboxEntry\
     "undo-skip inbox mutation must refresh remote state before removing the entry");
 assert.match(pluginSource, /if \(!cleanupPersisted\) \{[\s\S]{0,700}?await this\.persistDockTomatoInbox\(\);/,
     "successful Dock Tomato completion must await inbox cleanup while the mutation lock is held");
+assert.match(pluginSource, /private async undoSkipAndRecordDockTomatoInboxEntry[\s\S]*?const inboxBeforeCleanup = this\.dockTomatoInbox;[\s\S]*?const cleanupPersisted = await this\.persistDockTomatoInbox\(\);[\s\S]*?if \(!cleanupPersisted\) \{[\s\S]{0,500}?this\.dockTomatoInbox = inboxBeforeCleanup;[\s\S]{0,300}?return false;/,
+    "undo-skip must keep the inbox entry and report failure when cleanup persistence fails");
 assert.doesNotMatch(pluginSource, /if \(!cleanupPersisted\) \{[\s\S]{0,700}?void this\.persistDockTomatoInbox\(\);/,
     "inbox cleanup must not fire-and-forget a stale write after the mutation lock is released");
 /* 偏好桶决策（D-315）：不做跨窗口合并——注册表文档必须记录该决策而非静默。 */

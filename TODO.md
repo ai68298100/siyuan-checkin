@@ -40,6 +40,13 @@
 - 本轮复核：宽度走查的主题动作色、640/360/320 首卡预算、长文本与交互场景已复跑通过；未发现新的生产 UI 缺陷。
 - 本轮证据：`pnpm run check`、`pnpm test`、`pnpm run build`、`pnpm run test:ui`、`pnpm run test:extended`、`node tests/width-walkthrough.cjs`、`node tests/visual-qa.cjs`、`node tests/cross-window-merge.test.cjs`、`node tests/external-pending.test.cjs`、事项完成/改期/表单及跨页一致性定向测试通过。`CHECKIN_BROWSER` 未设置，真实宿主、Android/TalkBack、第三方来源、缩放和保存面板现场仍按阻塞记录开放。
 
+## 2026-10-09 全插件复核第十四轮增量
+
+- 本轮已落地：公开 `completeOccasion` 在初始化未就绪、插件卸载、非法调用或 mutation 队列未执行时统一 fail-closed 返回 `false`，成功严格返回 `true`，不再把 `undefined` 透出给 API 调用方。
+- 本轮已落地：Dock Tomato「撤销跳过并计入」在主记录成功但收件箱清理持久化失败时恢复收件箱条目、显示失败反馈并保留幂等重试路径。
+- 本轮已落地：Review 周复盘保存、导出、复制 AI、清除四个按钮统一防重复点击并暴露 `aria-busy`/`disabled`；Markdown 导出现在向页面反馈保存通道结果，失败可见且中英文文案齐全。
+- 本轮证据：`pnpm run check`、`pnpm test`、`pnpm run test:ui`、`pnpm run test:mobile`、`pnpm run test:extended`、`pnpm run test:ecosystem`、`pnpm run test:perf`、`pnpm run build`、无障碍、下载通道、API、跨窗口、跨页和偏好回滚定向测试通过。`CHECKIN_BROWSER` 未设置，真实思源、Android/TalkBack、第三方来源、缩放和保存面板现场仍按阻塞记录开放。
+
 ## 2026-10-09 全插件复核第八轮增量
 
 - 本轮已落地：快速弹窗编辑草稿离开守卫与首次标题拖拽/双击绑定时序；配额摘要改用民历日算术跨 DST；渲染块日期格保留键盘激活与共享焦点环，并为 Today 五项截断增加双语、可读的隐藏数量状态。

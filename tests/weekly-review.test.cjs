@@ -82,12 +82,15 @@ const bindSource = fs.readFileSync(path.join(root, "src", "render", "bind-page-n
 assert.match(bindSource, /"\[data-weekly-save\]"/, "save is bound");
 assert.match(bindSource, /"\[data-weekly-export\]"/, "export is bound");
 assert.match(bindSource, /"\[data-weekly-clear\]"/, "clear is bound");
+assert.match(bindSource, /let weeklyActionBusy = false/, "weekly actions keep a per-surface busy guard");
+assert.match(bindSource, /controls\.forEach\(control => \{ control\.disabled = true; control\.setAttribute\("aria-busy", "true"\); \}\)/, "weekly actions expose a shared busy state and block conflicting operations");
+assert.match(bindSource, /outcome === "failed" \? "review\.weeklyExportFail" : "review\.weeklyExported"/, "weekly export surfaces SaveOutcome failure");
 const indexSource = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
 assert.match(indexSource, /async saveWeeklyReviewDraft\(weekKey: string, friction: string, adjustment: string\)/, "host persists drafts");
-assert.match(indexSource, /exportWeeklyReviewMarkdown\(weekKey: string, friction: string, adjustment: string\)/, "host exports the markdown");
+assert.match(indexSource, /exportWeeklyReviewMarkdown\(weekKey: string, friction: string, adjustment: string\): Promise<SaveOutcome>/, "host exports the markdown and returns SaveOutcome");
 assert.match(indexSource, /weeklyReviewDrafts: this\.weeklyReviewDrafts/, "drafts persist through view preferences");
 const i18nSource = fs.readFileSync(path.join(root, "src", "i18n.ts"), "utf8");
-for (const key of ["review.weeklyTitle", "review.weeklyOnlyWeek", "review.weeklyStepFacts", "review.weeklyStepFriction", "review.weeklyStepAdjust", "review.weeklyFactsHint", "review.weeklyFactEvents", "review.weeklyFactItems", "review.weeklyDays", "review.weeklyFrictionPlaceholder", "review.weeklyAdjustPlaceholder", "review.weeklyAdjustHint", "review.weeklySave", "review.weeklySaved", "review.weeklyExport", "review.weeklyClear", "review.weeklyRangeLabel", "review.weeklyMarkdownNote"]) {
+for (const key of ["review.weeklyTitle", "review.weeklyOnlyWeek", "review.weeklyStepFacts", "review.weeklyStepFriction", "review.weeklyStepAdjust", "review.weeklyFactsHint", "review.weeklyFactEvents", "review.weeklyFactItems", "review.weeklyDays", "review.weeklyFrictionPlaceholder", "review.weeklyAdjustPlaceholder", "review.weeklyAdjustHint", "review.weeklySave", "review.weeklySaved", "review.weeklySaveFail", "review.weeklyExport", "review.weeklyExported", "review.weeklyExportFail", "review.weeklyClear", "review.weeklyClearFail", "review.weeklyRangeLabel", "review.weeklyMarkdownNote"]) {
     const count = i18nSource.split(`"${key}"`).length - 1;
     assert.ok(count >= 2, `${key} must exist in both locales (${count})`);
 }

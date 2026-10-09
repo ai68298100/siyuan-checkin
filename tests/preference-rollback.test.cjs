@@ -114,10 +114,8 @@ assert.match(weeklySave, /this\.weeklyReviewDrafts = previous;\s*\r?\n\s*throw e
 const weeklyClear = plugin.slice(plugin.indexOf("async clearWeeklyReviewDraft"), plugin.indexOf("exportWeeklyReviewMarkdown"));
 assert.match(weeklyClear, /const previous = this\.weeklyReviewDrafts;/, "clear must snapshot the drafts array");
 assert.match(weeklyClear, /this\.weeklyReviewDrafts = previous;\s*\r?\n\s*throw error;/, "clear failure must roll back and rethrow");
-const saveBlock = navigation.slice(navigation.indexOf("[data-weekly-save]"), navigation.indexOf("[data-weekly-export]"));
-assert.match(saveBlock, /\.catch\(\(\) => \{[\s\S]*?review\.weeklySaveFail/, "weekly save must surface a visible failure status");
-const clearBlock = navigation.slice(navigation.indexOf("[data-weekly-clear]"), navigation.indexOf("[data-denominator-date]"));
-assert.match(clearBlock, /\.catch\(\(\) => \{[\s\S]*?review\.weeklyClearFail/, "weekly clear must surface a visible failure status");
+assert.match(navigation, /runWeeklyTool\([\s\S]*?review\.weeklySaveFail/, "weekly save must surface a visible failure status");
+assert.match(navigation, /runWeeklyTool\([\s\S]*?review\.weeklyClearFail/, "weekly clear must surface a visible failure status");
 assert.match(i18n, /"review\.weeklySaveFail"/, "weekly save failure copy must exist");
 assert.match(i18n, /"review\.weeklyClearFail"/, "weekly clear failure copy must exist");
 assert.equal((i18n.match(/"review\.weeklySaveFail"/g) || []).length, 2, "weeklySaveFail must exist in both languages");

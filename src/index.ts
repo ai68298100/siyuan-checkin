@@ -16,7 +16,7 @@ import {buildReviewComparison, getPreviousReviewRange} from "./features/review-c
 import {summarizeProjectDraft, type ProjectDraft} from "./features/project-draft";import {isEditorFormDirty} from "./features/editor-draft";
 import {buildAnalyticsSnapshot, buildYearHeatmap, type AnalyticsSnapshot} from "./charts";
 import {buildShareCardModel, drawShareCard, shareCardSize, type ShareCardCanvas} from "./features/share-card";
-import {saveGeneratedFile} from "./download";
+import {saveGeneratedFile, type SaveOutcome} from "./download";
 import {formatLunar, solarToLunar} from "./lunar";
 import {getPluginLocale, setPluginLanguage, t} from "./i18n";
 import {uiIcon, type UiIconName} from "./ui/icons";
@@ -2040,7 +2040,8 @@ private reviewCompatibilitySnapshot?: {
     }
 
     /** T-1518 导出周复盘 Markdown：事实来自本地统计（无模型可用），与用户解释分开标注。 */
-    exportWeeklyReviewMarkdown(weekKey: string, friction: string, adjustment: string): void {        const summary = buildSummaryContext(this.store, "week");
+    exportWeeklyReviewMarkdown(weekKey: string, friction: string, adjustment: string): Promise<SaveOutcome> {
+        const summary = buildSummaryContext(this.store, "week");
         const markdown = buildWeeklyReviewMarkdown({
             rangeLabel: t("review.weeklyRangeLabel", {start: summary.startDate, end: summary.endDate}),
             totalEvents: summary.totalEvents,
@@ -2054,7 +2055,7 @@ private reviewCompatibilitySnapshot?: {
                 note: t("review.weeklyMarkdownNote"),
             },
         }, friction, adjustment);
-        this.downloadReportMarkdown(markdown);
+        return this.downloadReportMarkdown(markdown);
     }
 
     /** T-1519 模板分享导出：走既有本地保存通道（移动端回落 /assets + saveExportFile）。 */
@@ -3201,8 +3202,17 @@ this.scheduleMidnightRefresh();
                     this.invalidateSummary();
                     this.renderBackgroundUpdate();
                 }
+                const inboxBeforeCleanup = this.dockTomatoInbox;
                 this.dockTomatoInbox = removeInboxEntry(this.dockTomatoInbox, identity);
-                await this.persistDockTomatoInbox();
+                const cleanupPersisted = await this.persistDockTomatoInbox();
+                if (!cleanupPersisted) {
+                    /* 主记录已经落盘，但收件箱清理未落盘：恢复条目并让下次
+                       重试以 duplicate 收尾，不能把动作反馈成已完成。 */
+                    this.dockTomatoInbox = inboxBeforeCleanup;
+                    showMessage(t("msg.dockInboxUndoSkipFail"));
+                    this.scheduleDockTomatoInboxWake();
+                    return false;
+                }
                 this.scheduleDockTomatoInboxWake();
                 return true;
             }

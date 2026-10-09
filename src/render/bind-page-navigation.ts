@@ -71,7 +71,7 @@ export interface BindPageNavigationHost {
     /** T-1518 周复盘草稿存取与导出（可选：旧桩缺省安全跳过）。 */
     saveWeeklyReviewDraft?(weekKey: string, friction: string, adjustment: string): Promise<void>;
     clearWeeklyReviewDraft?(weekKey: string): Promise<void>;
-    exportWeeklyReviewMarkdown?(weekKey: string, friction: string, adjustment: string): void;
+    exportWeeklyReviewMarkdown?(weekKey: string, friction: string, adjustment: string): Promise<SaveOutcome> | void;
     /** T-1511 提交实际数量补记（mutation 内重校验、整批回滚）。 */
     recordHistoryBatchEntries?(date: string, entries: ReadonlyArray<{itemId: string; value: number}>, root?: HTMLElement): Promise<number>;
     disposed: boolean;
@@ -648,37 +648,62 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
     /* T-1518：周复盘向导——保存草稿（不清输入）、导出 Markdown、清除本周草稿。
        T-1620：保存/清除失败在状态行给出可见反馈（宿主侧已回滚内存草稿），
        输入框内容原样保留作为可重试草稿，不静默。 */
-    root.querySelector<HTMLElement>("[data-weekly-save]")?.addEventListener("click", () => {
+    let weeklyActionBusy = false;
+    const runWeeklyTool = (operation: () => Promise<unknown> | unknown, after?: (result: unknown) => void, failed?: () => void) => {
+        if (weeklyActionBusy) return;
+        weeklyActionBusy = true;
+        const controls = [...root.querySelectorAll<HTMLButtonElement>("[data-weekly-save], [data-weekly-export], [data-weekly-ai-copy], [data-weekly-clear]")];
+        const disabledBefore = new Map(controls.map(control => [control, control.disabled]));
+        controls.forEach(control => { control.disabled = true; control.setAttribute("aria-busy", "true"); });
+        Promise.resolve().then(operation).then((result) => {
+            if (isCurrentSurface()) after?.(result);
+        }).catch(() => { if (isCurrentSurface()) failed?.(); }).finally(() => {
+            weeklyActionBusy = false;
+            if (!isCurrentSurface()) return;
+            controls.forEach(control => {
+                if (!control.isConnected) return;
+                control.removeAttribute("aria-busy");
+                control.disabled = disabledBefore.get(control) ?? false;
+            });
+        });
+    };
+    root.querySelector<HTMLElement>("[data-weekly-save]")?.addEventListener("click", (event) => {
         const container = root.querySelector<HTMLElement>("[data-weekly-key]");
         const weekKey = container?.dataset.weeklyKey || "";
         if (!weekKey) return;
         const friction = root.querySelector<HTMLTextAreaElement>("[data-weekly-friction]")?.value || "";
         const adjustment = root.querySelector<HTMLTextAreaElement>("[data-weekly-adjustment]")?.value || "";
-        void host.saveWeeklyReviewDraft?.(weekKey, friction, adjustment).then(() => {
-            if (!isCurrentSurface()) return;
+        if (!host.saveWeeklyReviewDraft) return;
+        runWeeklyTool(() => host.saveWeeklyReviewDraft?.(weekKey, friction, adjustment), () => {
             const status = root.querySelector<HTMLElement>("[data-weekly-status]");
             if (status) status.textContent = t("review.weeklySaved");
-        }).catch(() => {
-            if (!isCurrentSurface()) return;
+        }, () => {
             const status = root.querySelector<HTMLElement>("[data-weekly-status]");
             if (status) status.textContent = t("review.weeklySaveFail");
         });
     });
-    root.querySelector<HTMLElement>("[data-weekly-export]")?.addEventListener("click", () => {
+    root.querySelector<HTMLElement>("[data-weekly-export]")?.addEventListener("click", (event) => {
         const container = root.querySelector<HTMLElement>("[data-weekly-key]");
         const weekKey = container?.dataset.weeklyKey || "";
         if (!weekKey) return;
         const friction = root.querySelector<HTMLTextAreaElement>("[data-weekly-friction]")?.value || "";
         const adjustment = root.querySelector<HTMLTextAreaElement>("[data-weekly-adjustment]")?.value || "";
-        host.exportWeeklyReviewMarkdown?.(weekKey, friction, adjustment);
+        if (!host.exportWeeklyReviewMarkdown) return;
+        runWeeklyTool(() => host.exportWeeklyReviewMarkdown?.(weekKey, friction, adjustment), (outcome) => {
+            const status = root.querySelector<HTMLElement>("[data-weekly-status]");
+            if (status) status.textContent = t(outcome === "failed" ? "review.weeklyExportFail" : "review.weeklyExported");
+        }, () => {
+            const status = root.querySelector<HTMLElement>("[data-weekly-status]");
+            if (status) status.textContent = t("review.weeklyExportFail");
+        });
     });
     /* T-1539：复制 AI 复盘提示词——本地统计事实+草稿现值组装自足提示词写剪贴板；
        零网络、零模型依赖、不写事件；草稿未保存也可复制（取输入框现值）。 */
     root.querySelector<HTMLElement>("[data-weekly-ai-copy]")?.addEventListener("click", (event) => {
-        const button = event.currentTarget as HTMLElement;
+        if (weeklyActionBusy) return;
         const friction = root.querySelector<HTMLTextAreaElement>("[data-weekly-friction]")?.value || "";
         const adjustment = root.querySelector<HTMLTextAreaElement>("[data-weekly-adjustment]")?.value || "";
-        void (async () => {
+        runWeeklyTool(async () => {
             const asOf = currentCalendarDate();
             const summaryCustomRange = reviewValue("summaryCustomRange", host.summaryCustomRange);
             const summaryRange = reviewValue("summaryRange", host.summaryRange);
@@ -702,25 +727,21 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
                 if (!isCurrentSurface()) return;
                 showMessage(t("msg.clipboardFail"));
             }
-            if (isCurrentSurface() && button.isConnected) {
-                button.removeAttribute("aria-busy");
-            }
-        })();
+        });
     });
-    root.querySelector<HTMLElement>("[data-weekly-clear]")?.addEventListener("click", () => {
+    root.querySelector<HTMLElement>("[data-weekly-clear]")?.addEventListener("click", (event) => {
         const container = root.querySelector<HTMLElement>("[data-weekly-key]");
         const weekKey = container?.dataset.weeklyKey || "";
         if (!weekKey) return;
-        void host.clearWeeklyReviewDraft?.(weekKey).then(() => {
-            if (!isCurrentSurface()) return;
+        if (!host.clearWeeklyReviewDraft) return;
+        runWeeklyTool(() => host.clearWeeklyReviewDraft?.(weekKey), () => {
             const friction = root.querySelector<HTMLTextAreaElement>("[data-weekly-friction]");
             const adjustment = root.querySelector<HTMLTextAreaElement>("[data-weekly-adjustment]");
             if (friction) friction.value = "";
             if (adjustment) adjustment.value = "";
             const status = root.querySelector<HTMLElement>("[data-weekly-status]");
             if (status) status.textContent = "";
-        }).catch(() => {
-            if (!isCurrentSurface()) return;
+        }, () => {
             const status = root.querySelector<HTMLElement>("[data-weekly-status]");
             if (status) status.textContent = t("review.weeklyClearFail");
         });

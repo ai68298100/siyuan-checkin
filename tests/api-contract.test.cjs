@@ -10,6 +10,8 @@ assert.match(apiSource, /getSuggestionWorkflow/);
 assert.match(apiSource, /getSuggestionWorkflowSummary/);
 assert.match(apiSource, /updatedAt: workflowUpdatedAt\(state\)/);
 assert.match(apiSource, /cloneSuggestionWorkflow\(state\)/);
+assert.match(apiSource, /completeOccasion: \(id, occurrenceDate, completed\) => \{[\s\S]*?initializationState !== "ready"[\s\S]*?isValidLocalDateInput\(occurrenceDate\)[\s\S]*?occasionStore\.occasions\.some[\s\S]*?Promise\.resolve\(false\)[\s\S]*?result === true/,
+    "completeOccasion must validate identity/date/lifecycle and return a stable boolean");
 assert.match(apiSource, /getSuggestionWorkflowSummary/);
 const directory = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-api-contract-"));
 const output = path.join(directory, "api-contract.js");
