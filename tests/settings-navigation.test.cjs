@@ -531,6 +531,18 @@ function assertActive(fixture, expectedId) {
         resolvedAppearanceValue: "light",
     };
     const html = exports.renderSettingsView(context);
+    const htmlAgain = exports.renderSettingsView(context);
+    const choiceIds = [...html.matchAll(/data-choice-search="(diary|summary|health|journal)"[^>]*aria-controls="([^"]+)"/g)];
+    const listIds = [...html.matchAll(/data-choice-list="(diary|summary|health|journal)"[^>]*id="([^"]+)"/g)];
+    assert.equal(choiceIds.length, 4, "each document target renders one combobox");
+    assert.equal(listIds.length, 4, "each document target renders one listbox");
+    assert.equal(new Set(choiceIds.map(([, , id]) => id)).size, 4, "combobox controls stay unique within a settings view");
+    for (const [, point, controls] of choiceIds) {
+        assert.equal(listIds.find(([, listPoint, id]) => listPoint === point)?.[2], controls, `${point} combobox controls its own listbox`);
+    }
+    const firstViewId = choiceIds[0][2];
+    const secondViewId = htmlAgain.match(/data-choice-search="diary"[^>]*aria-controls="([^"]+)"/)?.[1];
+    assert.ok(secondViewId && secondViewId !== firstViewId, "a rerender allocates fresh chooser ids for destroyed DOM");
     const localOnly = exports.projectIntegrationStatus({enabled: true, configured: true, todayCount: 2});
     assert.equal(localOnly.configuration, "enabled", "saved opt-in remains a configuration fact");
     assert.equal(localOnly.runtime, "unprobed", "saved opt-in does not prove the host is available");

@@ -7,6 +7,13 @@
 - 渲染块与导航：日期格沿用 Enter/Space 委托和共享 focus-visible 语义；Today 超过五项时通过双语 `role=status` 宣布可见/隐藏数量；事项、历史和 Today 入口完成 root 传递核对。Today 时段统计暂维持 `occurredAt` 时刻分桶、`localDate` 业务日过滤的既有契约，T-1802 仍等待产品明确显示时区。
 - 验证：`pnpm run check`、`pnpm test`、`pnpm run build`、`pnpm run test:ui`、`pnpm run test:mobile`、`pnpm run test:ecosystem`、`pnpm run test:extended`、`pnpm run test:perf` 及相关定向测试均通过；CSS 655284 bytes，高于 620KB soft 线但低于 640KiB hard 线。当前未设置 `CHECKIN_BROWSER`，故浏览器视觉、真实思源/Android/TalkBack、第三方来源、缩放和保存面板仍未现场关闭。
 
+# 2026-10-09 全插件功能与 UI 复核第九轮
+
+- CSV 导入状态机现在区分完整行、超限行和未闭合/截断半行：半行整行丢弃并计入 invalid，超出 20000 行的第一行不会混入确认计数；无可导入行时仍展示逐行错误原因，并通过 i18n 输出中英文行号文案。
+- 设置文档选择器空结果解除 hidden 并更新 combobox 展开态，候选程序化回填派发 bubbling input；四个入口的 listbox id、aria-controls 和多次渲染唯一性均有守门。
+- 动态图标渲染统一 `isSafeIconImage` 白名单，危险 SVG/data/HTTPS 输入转义为文本；Today 上下文菜单使用 owning root/visual viewport 几何并恢复点外关闭焦点；完成项移除重复透明度叠加以保持对比度。
+- 验证：`pnpm test` 全链通过；`pnpm run check`、`node tests/csv-roundtrip.test.cjs`、`node tests/render-boundary.test.cjs`、`node tests/settings-navigation.test.cjs`、`node tests/diary-report.test.cjs`、`node tests/today-context-menu.test.cjs`、`node tests/mobile-editor-structure.test.cjs`、`node tests/i18n-parity.test.cjs` 通过。`CHECKIN_BROWSER` 未设置，视觉与真实宿主现场仍待验收。
+
 # 2026-10-09 全插件功能与 UI 复核第六轮
 
 - 编辑器重绘生命周期：同一 root 的模板推断、组合包和联动委托 click 监听在重绑前统一清理，避免一次点击多次执行；名称推断 timer 同步取消。

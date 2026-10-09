@@ -6,6 +6,13 @@
 - 本文件中 v18.16.0 及更早版本号属于任务登记时的历史基线，保留用于追溯；新任务统一以源码、`PROGRESS.md`、`BLOCKERS.md` 和 `docs/releases/` 的最新版本为准。
 - 仍开放的产品决策、真实宿主/Android 现场验收和外部来源依赖继续保留，不因版本号升级自动标记完成。
 
+## 2026-10-09 全插件复核第九轮增量
+
+- 本轮已落地：CSV 导入遇到未闭合引号或字符上限截断时整行拒绝，不再把半行计入可导入记录；行数上限不多计超限行，空结果也会显示逐行双语错误反馈。
+- 本轮已落地：统一文档选择器的空结果保持可见并通过 `aria-expanded` 宣布，候选回填触发共享 input 草稿边界；combobox/listbox 在多 root 重绘后保持唯一关联。
+- 本轮已落地：动态自定义图标只对白名单 HTTPS、栅格 base64 和无活动内容 SVG 输出图片，危险 data/SVG、属性闭合、控制字符统一转义为文本；Today 上下文菜单按 owning root 与 visual viewport 计算边界并在点外关闭后恢复焦点；完成卡片移除重复 opacity，避免主题对比度叠加下降。
+- 本轮证据：`pnpm test`、`pnpm run check`、CSV/render-boundary/settings-navigation/diary-report/today-context-menu/mobile-editor 定向测试通过；`pnpm-lock.yaml` 生成噪声已清理。浏览器视觉、真实思源/Android/TalkBack、第三方来源、缩放和保存面板现场仍按阻塞记录开放。
+
 ## 2026-10-09 全插件复核第八轮增量
 
 - 本轮已落地：快速弹窗编辑草稿离开守卫与首次标题拖拽/双击绑定时序；配额摘要改用民历日算术跨 DST；渲染块日期格保留键盘激活与共享焦点环，并为 Today 五项截断增加双语、可读的隐藏数量状态。
@@ -82,7 +89,7 @@
 - 2026-10-09 增量：初始化失败 toast 改为本地化 load/save 阶段标签，原始宿主异常只留结构化诊断码；完整 T-1783 脱敏矩阵仍开放。
 - [~] T-1783 诊断、审计与导出敏感信息及长度边界（P1，核心切片已交付 2026-10-09）——审计/诊断/迁移报告统一按 Unicode 长度、深度、键/数组/条目上限清理控制字符并遮罩凭据、本地路径，非法时间与超限输入安全回退；`diagnostics`、`model`、`restore-audit`、`privacy-scope` 已覆盖。复制/下载全字段矩阵、真实宿主和读屏现场仍开放。
 - [~] T-1784 Today 局部刷新、搜索输入与焦点/滚动并发一致性（P1，选区/回执切片已交付 2026-10-09）——搜索重绘保留起止选区和方向，局部成功回执重绑详情展开，IME/跨 root 定向夹具通过；完整慢存储、滚动和真实宿主矩阵仍开放。
-- [ ] T-1785 动态图标与 HTML/SVG 属性转义边界统一（P1，T-1625 扫尾）——`src/index.ts:3570-3588` 批量 `innerHTML` 注入图标，局部 patch、动态 icon 和属性拼接仍需单独审计。用恶意 `data:image`、`</svg>`、属性闭合、控制字符和长 Unicode fixture 验证只按白名单渲染或作为文本，CSP 下无执行，快照和无障碍名称正确；不重复已有普通文本转义批次。
+- [x] T-1785 动态图标与 HTML/SVG 属性转义边界统一（P1，已交付 2026-10-09）——`isSafeIconImage` 统一收紧 HTTPS、栅格 base64 与无活动内容 SVG 白名单；危险 data/SVG、属性闭合、控制字符回退为转义文本，编辑器图标库分类与渲染共用 gate。`tests/render-boundary.test.cjs`、`tests/mobile-editor-structure.test.cjs`、check 通过；CSP/真实宿主仍按现场边界开放。
 - [ ] T-1786 API/Agent/快速入口写入幂等、失败回执与首次破戒统一（P1，T-1768/T-1670 后续）——`src/index.ts:6651-6653`、`src/agent-capabilities.ts:184-185` 及 quick/渲染块入口均有异步写入，但缺少统一 request-id 回执和跨入口对账。验证同 request 重复提交只有一条事件，失败保留可重试状态且无部分事实；atMost 首次破戒可写、普通二值仍阻断，API/Agent/今日显示同一事件详情与撤销对象。
 - [ ] T-1787 备份恢复版本化与独立桶迁移提示（P1，D-318/T-1627 后续）——主档 JSON 已明确不含模板、问卷、图标、事项、提醒动作、视图偏好和失败箱，但多桶恢复尚无具体协议。设计旧/新 schema 校验、逐桶覆盖/合并/跳过预览、敏感遮罩和整体失败回滚；导入后主档与辅助桶均可追溯，界面不再把主档恢复宣传成静默全量迁移。
 - [ ] T-1788 实时状态、错误态与慢响应视觉/操作验收矩阵（P2，T-1778 可执行资产）——现有 `tests/visual-qa.cjs`、`tests/width-walkthrough.cjs` 主要覆盖静态和成功态；补 loading、error、slow-source、empty、长英文和 400% 缩放夹具，覆盖 320/390/720/900/1400px、双主题、中英、焦点、重试、禁用、`aria-live` 与长字段。逐项记录自动化、计算样式和真实宿主证据边界，不另造页面功能任务。
@@ -106,7 +113,7 @@
 - [x] T-1803 API v5 批量写入的 occurredAt/localDate 时区契约（P1，已交付 2026-10-09）——批量 `occurredAt` 现在要求 RFC3339 显式 `Z`/偏移，拒绝仅日期和无时区输入，合法偏移统一归一 UTC；`tests/api-v5.test.cjs`、`docs/api-v5.md`、`docs/api-v5-design.md` 已同步。
 - [~] T-1804 多 root Today 搜索、焦点与 pendingFocus 隔离（P1，焦点守门切片已交付 2026-10-09）——延迟 focus 现在校验 connected root、Today 页面和 activeElement，并恢复选区/方向；跨表面定向矩阵通过。按 root 持有完整 query/scroll/pendingFocus 及真实宿主同屏仍开放。
 - [x] T-1805 后台刷新按 root 隔离并保护编辑页草稿（P1，已交付 2026-10-09）——`renderBackgroundUpdateFor` 逐 root 读取页面并只刷新非 editor surface；Today 输入中的 root 仅在失焦后刷新，其他 Today root 继续更新，避免最后活跃 root 代理状态误伤编辑器草稿。新增跨页一致性结构守门并通过 check/UI 定向回归；真实多表面宿主同屏仍归现场验收。
-- [ ] T-1806 Today 上下文菜单的 owning root 几何与焦点（P2，UI/移动复核）——`src/render/today-bindings.ts:252-265` 生成菜单，SCSS `position:fixed`；定位却统一使用 `window.innerWidth/innerHeight`，dock/quick 内嵌滚动、缩放和移动 WebView 可能越界或被宿主裁切。按所属 root 的 visual viewport/transform 计算，覆盖窄面板、安全区、键盘、Esc/点外关闭和关闭后触发按钮焦点；不把 T-1778/T-1788 的静态状态矩阵当几何验收。
+- [x] T-1806 Today 上下文菜单的 owning root 几何与焦点（P2，已交付 2026-10-09）——菜单按 owning root 与 visual viewport 交集计算 containing-block 原点、最大尺寸和滚动边界；Esc/点外关闭按目标控件决定是否恢复触发焦点，避免抢焦点。`tests/today-context-menu.test.cjs`、check 通过；窄面板/移动 WebView 真实现场仍待验收。
 - [ ] T-1807 主 Store 快照写放大与大历史保存预算（P2，性能/持久化复核）——`docs/codebase-walkthrough.md:214` 已记录 `persist()` 每次写入先追加三份全量快照；`appendStoreSnapshotHistory` 需要读回并序列化完整 Store，长事件/墓碑历史下每次打卡都有额外全量 JSON 往返。用 1k/10k/100k 事件、附件、墓碑和并发写测量耗时/内存/失败恢复，确认快照压缩、分层或节流不会破坏 T-1622、T-1647 的恢复点语义；不以提高上限代替测量。
 - [x] T-1808 初始化失败状态的可执行修复入口（P1，已交付 2026-10-09）——失败页增加双语“重试加载”按钮，点击后在同一插件实例内重置 ready promise、回到 loading 状态并单飞重跑存储初始化；顶栏、宿主事件和渲染块监听只注册一次，避免重试叠加监听或后台任务；失败页继续使用 `role=alert`、主题属性和隐私化阶段提示。`tests/ui-state-ledger.test.cjs`、`settings-migration.test.cjs`、`agent-status.test.cjs`、`pnpm run check` 通过；真实思源权限/损坏存储、移动端与读屏现场仍待验收，诊断复制/导出归 T-1783。
 - [x] T-1809 事项返回与创建后导航的 root 接线（P1，已交付 2026-10-09）——事项关联徽章、创建、编辑保存和取消返回均核对 owning root 传递；本地跨页/跨表面守门通过，真实宿主多表面现场仍按阻塞记录开放。
@@ -351,9 +358,9 @@
 - [ ] T-1678 习惯产品与低压力交互基线更新（P2，研究）——复查 `docs/benchmark-habit-apps-2026-09.md` 中的提醒降噪、断签容忍、恢复/暂停、成就和回顾动作，按真实用户场景而非营销文案筛选；每项输出证据、适用边界、隐私影响和采用/不做建议，不直接增加游戏化压力。
 - [ ] T-1679 循证模板目录治理与重复/本地化身份研究（P2，承接 T-1525）——对模板名称、组合包、语言切换、同义目标、单位和方法论来源建立稳定 slug/去重规则；目录上限、来源说明、删除/替换和旧项目绑定必须可迁移，避免仅改中文名导致重名或历史断链。
 - [ ] T-1680 上游 issue、PR 与发布事实定期复核（P2，R-REL-CHECK）——按 `docs/HANDOFF-2026-09-28.md` 与外部提案清单复查思阅/思播/Task Horizon/Dock Tomato 状态；只有版本化公开契约、对方合并发布和本地真实验收同时满足才改变来源级别，不因无回复重复发帖。
-- [ ] T-1681 T-1616 统一选择器字段接线回归（P0，现状复核新增）——`src/index.ts` 的非 journal 查询分支疑似读取 `[data--doc]`，而 `src/render/settings.ts` 三张文档卡实际输出 `data-diary-doc`/`data-summary-doc`/`data-health-doc`；先用静态接线和浏览器夹具复核，确保搜索结果能回填四个入口，失败不清空旧绑定。该项补 T-1616 已完成批次的验收盲点，不先改代码。
-- [ ] T-1682 文档选择器 `aria-controls` 与 listbox id 同源复核（P0，现状复核新增）——`documentChoiceBlock` 的输入关联值与按 `settingsViewSequence` 生成的 listbox id 形状疑似不一致；补多 root、读屏和销毁重绘断言，确保每个 combobox 只控制自己的 listbox，归档 T-1616/T-1621 的可访问性验收。
-- [ ] T-1683 CSV 截断时的部分记录隔离（P1，T-1628 安全后续）——`parseCsvRows` 在字符上限/EOF 落在未闭合引号或半个字段时仍可能把当前 row 推入，现有 `truncated` 仅提示而未定义是否可确认导入；锁定“只保留完整 RFC 4180 记录或整次拒绝”的边界，覆盖引号、CRLF、日期、数值、单位和文本列恰卡上限，预览明确不会把半行写入主档。
+- [x] T-1681 T-1616 统一选择器字段接线回归（P0，已交付 2026-10-09）——四个入口均按 point 解析对应 `data-*-doc`，候选回填派发 bubbling input，空结果保持可见并宣布展开态；`tests/diary-report.test.cjs`、`tests/settings-navigation.test.cjs` 通过。
+- [x] T-1682 文档选择器 `aria-controls` 与 listbox id 同源复核（P0，已交付 2026-10-09）——每个 combobox/listbox 使用同一 view/point 生成 id，多 root 重绘保持唯一；`tests/diary-report.test.cjs`、`tests/settings-navigation.test.cjs` 通过。
+- [x] T-1683 CSV 截断时的部分记录隔离（P1，已交付 2026-10-09）——RFC 状态机丢弃未闭合引号及字符上限截断半行，超限第一行不混入结果，invalid/逐行原因进入双语反馈；`tests/csv-roundtrip.test.cjs` 通过。
 - [ ] T-1684 外部来源迟到响应的配置代际守门（P1，来源正确性新增）——微信读书逐书 await、叶归逐条结算等路径在函数开始捕获治理配置，停用/换绑/卸载或新一轮开始后迟到响应仍可能按旧项目/映射写入；为每来源定义 generation/abort，写前复核 enabled、target、mapping 和 fingerprint，验收迟到响应只产生可诊断丢弃，不复活旧配置事实。
 
 ## 新建打卡项「问 AI」需求（2026-09-30，用户反馈；先登记不开发；D-327）

@@ -56,6 +56,10 @@ assert.match(settings, /writeTriggerRow\("diary"/, "diary card declares its trig
 assert.match(settings, /writeResultRow\("diary", "diary-report"\)/, "diary card surfaces the latest write outcome");
 assert.match(settings, /data-diary-doc/, "doc id input must exist");
 assert.match(settings, /data-choice-search="\$\{point\}"/, "unified document search exposes a per-point search input");
+assert.match(settings, /const settingsViewId = `lc-checkin-settings-\$\{\+\+settingsViewSequence\}`/, "settings render allocates a fresh view id per render");
+assert.match(settings, /const listId = `document-choices-\$\{point\}-\$\{settingsViewId\}`/, "each document chooser list id derives from its own point and view id");
+assert.match(settings, /aria-controls="\$\{listId\}"/, "each combobox controls the generated list id");
+assert.match(settings, /data-choice-list="\$\{point\}"[^>]*id="\$\{listId\}"/, "each listbox uses the same generated id as aria-controls");
 assert.match(settings, /documentChoiceBlock\("diary"/, "diary card exposes the unified document search (T-1616)");
 assert.match(settings, /documentChoiceBlock\("summary"/, "summary card exposes the unified document search");
 assert.match(settings, /documentChoiceBlock\("health"/, "health card exposes the unified document search");
@@ -85,6 +89,10 @@ assert.match(indexSource, /msg\.diarySaveFailed/, "preference persistence failur
 assert.match(indexSource, /diaryNotebookRequest/, "stale notebook responses must not populate a replaced settings surface");
 assert.match(indexSource, /bindDocumentTargetPickerFor/, "settings must use the shared guarded document picker");
 assert.match(indexSource, /searchBindingDocuments/, "document picker must use the host search route");
+assert.match(indexSource, /point === "journal" \? "\[data-journal-target-doc\]" : `\[data-\$\{point\}-doc\]`/, "all four chooser points resolve their matching data-* target");
+assert.match(indexSource, /docInput\.value = option\.dataset\.choiceId \|\| "";[\s\S]*?docInput\.dispatchEvent\(new Event\("input", \{bubbles: true\}\)\)/, "choice backfill updates the shared settings draft boundary");
+assert.match(indexSource, /listBox\.hidden = false;\s*searchInput\.setAttribute\("aria-expanded", "true"\)/, "empty search results remain visible and announced");
+assert.doesNotMatch(indexSource, /\[data--doc\]/, "chooser target selector must never collapse to data--doc");
 /* T-1616：路由契约迁移到宿主 searchBindingDocuments；纯模块守归一与投影。 */
 assert.match(indexSource, /\/api\/filetree\/searchDocs/, "document search must use the documented host route");
 assert.match(indexSource, /k: query\.trim\(\), flashcard: false, excludeIDs: \[\]/, "search payload must remain bounded to the route contract");

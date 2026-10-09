@@ -1,7 +1,7 @@
 /* 打卡项编辑器视图：从 index.ts 外置；依赖以 EditorViewContext 显式传入。 */
 import {t} from "../i18n";
 import {countCompletedDays, dateKey} from "../model";
-import {currentCalendarDate, escapeHtml, formatNumber, formatScheduleLabel, getEditorStep, getRecordStep, getTargetLabel, renderIconMarkup} from "../shared";
+import {currentCalendarDate, escapeHtml, formatNumber, formatScheduleLabel, getEditorStep, getRecordStep, getTargetLabel, isSafeIconImage, renderIconMarkup} from "../shared";
 import {getRecordStepInputStep} from "../record-step";
 import {CHECKIN_TEMPLATES, ICON_GROUPS, ICON_SEARCH_KEYWORDS, KIND_OPTIONS, RECOMMENDED_TEMPLATES, TEMPLATE_PACKS, templateGroupLabel, templateName, templateNote, templatePackName} from "../catalog";
 import {recommendHabitTemplates} from "../features/habit-recommendations";
@@ -97,8 +97,8 @@ export function renderEditorView(ctx: EditorViewContext): string {
     /* 组件商店（T-116）：默认「全部」视图一次看全内置 9 组；「我的」页签承载自定义图标库。 */
     const selectedIconGroup: string = "all";
     const allIconCount = ICON_GROUPS.reduce((sum, group) => sum + group.icons.length, 0);
-    const imageIcons = ctx.customIconLibrary.filter((icon) => /^(data:image|https?:)/.test(icon));
-    const textIcons = ctx.customIconLibrary.filter((icon) => !/^(data:image|https?:)/.test(icon));
+    const imageIcons = ctx.customIconLibrary.filter((icon) => isSafeIconImage(icon));
+    const textIcons = ctx.customIconLibrary.filter((icon) => !isSafeIconImage(icon));
     const iconSizeSteps = [16, 20, 28, 40];
     const selectedKind = item?.kind || "binary";
     const selectedKindOption = KIND_OPTIONS.find((option) => option.kind === selectedKind) || KIND_OPTIONS[0];

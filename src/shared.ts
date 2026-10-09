@@ -11,6 +11,51 @@ import {normalizeRecordStep} from "./record-step";
 export const MAX_CUSTOM_ICON_BYTES = 240_000;
 export const MAX_CUSTOM_LIBRARY_ITEMS = 128;
 
+const CUSTOM_ICON_RASTER_DATA_RE = /^data:image\/(?:png|jpeg|jpg|gif|webp);base64,/i;
+const CUSTOM_ICON_SVG_DATA_RE = /^data:image\/svg\+xml(?:;base64)?,/i;
+const CUSTOM_ICON_BASE64_RE = /^[A-Za-z0-9+/]+={0,2}$/;
+const UNSAFE_SVG_MARKUP_RE = /<\s*(?:script|foreignObject|iframe|object|embed|use)\b|(?:on[a-z]+\s*=|(?:xlink:)?href\s*=|style\s*=|url\s*\(|javascript:|data:text\/html|<!--|<!doctype)/i;
+
+function decodeCustomSvgPayload(value: string): string | undefined {
+    const match = CUSTOM_ICON_SVG_DATA_RE.exec(value);
+    if (!match) return undefined;
+    const encoded = value.slice(match[0].length);
+    try {
+        if (/;base64,/i.test(match[0])) {
+            if (!CUSTOM_ICON_BASE64_RE.test(encoded) || encoded.length % 4 !== 0 || typeof atob !== "function") return undefined;
+            return atob(encoded);
+        }
+        return decodeURIComponent(encoded);
+    } catch {
+        return undefined;
+    }
+}
+
+function isSafeCustomSvgDataUrl(value: string): boolean {
+    const payload = decodeCustomSvgPayload(value);
+    if (!payload || /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(payload) || UNSAFE_SVG_MARKUP_RE.test(payload)) return false;
+    return /^\s*<svg\b[\s\S]*<\/svg>\s*$/i.test(payload);
+}
+
+/** Dynamic icons may be rendered as images only after an explicit scheme/content gate. */
+export function isSafeIconImage(value: unknown): value is string {
+    if (typeof value !== "string") return false;
+    const trimmed = value.trim();
+    if (!trimmed || trimmed.length > MAX_CUSTOM_ICON_BYTES || /[\u0000-\u001f\u007f\\]/.test(trimmed)) return false;
+    if (CUSTOM_ICON_RASTER_DATA_RE.test(trimmed)) {
+        const payload = trimmed.slice(trimmed.indexOf(",") + 1);
+        return CUSTOM_ICON_BASE64_RE.test(payload) && payload.length % 4 === 0;
+    }
+    if (CUSTOM_ICON_SVG_DATA_RE.test(trimmed)) return isSafeCustomSvgDataUrl(trimmed);
+    if (!/^https:\/\//i.test(trimmed) || trimmed.length > 500) return false;
+    try {
+        const url = new URL(trimmed);
+        return url.protocol === "https:" && !url.username && !url.password && url.hostname.length >= 2;
+    } catch {
+        return false;
+    }
+}
+
 export interface ActionMoment {
     occurredAt: string;
     localDate: string;
@@ -39,13 +84,14 @@ export function normalizeCustomIcon(value: string): string | undefined {
     if (!trimmed) return undefined;
     if (/^data:image\/(png|jpeg|jpg|gif|webp|svg\+xml);base64,/i.test(trimmed)) {
         const compact = trimmed.replace(/\s+/g, "");
-        return /^[\x00-\x7F]*$/.test(compact) && compact.length <= MAX_CUSTOM_ICON_BYTES ? compact : undefined;
+        return /^[\x00-\x7F]*$/.test(compact) && isSafeIconImage(compact) ? compact : undefined;
     }
-    if (!/^https:\/\//i.test(trimmed)) return trimmed.slice(0, 24);
+    if (/^data:/i.test(trimmed)) return isSafeIconImage(trimmed) ? trimmed : undefined;
+    if (!/^https:\/\//i.test(trimmed)) return trimmed.replace(/[\u0000-\u001f\u007f]/g, "").slice(0, 24);
     try {
         const url = new URL(trimmed);
-        if (url.protocol !== "https:" || url.username || url.password || url.hostname.length < 2) return undefined;
-        return url.toString().slice(0, 500);
+        if (!isSafeIconImage(trimmed) || url.protocol !== "https:" || url.username || url.password || url.hostname.length < 2) return undefined;
+        return trimmed;
     } catch {
         return undefined;
     }
@@ -72,10 +118,11 @@ export function parseCustomIconLibrary(text: string): string[] {
 }
 
 export function renderIconMarkup(value: string): string {
-    if (/^(?:https:\/\/|data:image\/)/i.test(value)) {
-        return `<img src="${escapeHtml(value)}" alt="" loading="lazy" referrerpolicy="no-referrer" />`;
+    const raw = typeof value === "string" ? value.trim() : "";
+    if (isSafeIconImage(raw)) {
+        return `<img src="${escapeHtml(raw)}" alt="" loading="lazy" referrerpolicy="no-referrer" />`;
     }
-    return escapeHtml(value);
+    return escapeHtml(raw);
 }
 
 export function safeAttachmentUrl(url: string | undefined): string {

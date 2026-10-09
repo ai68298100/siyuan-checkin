@@ -88,6 +88,19 @@ assert.ok(truncated.rows.length <= 20000, "row cap enforced");
 const small = exporter.parseCheckinCsv("名称,日期\n项目,2026-09-06");
 assert.equal(small.truncated, false, "under-cap files are not truncated");
 
+/* —— 不导入半行：未闭合引号必须整行拒绝，并给出可见错误 —— */
+const incomplete = exporter.parseCheckinCsv("名称,日期\n\"未闭合,2026-09-06");
+assert.equal(incomplete.rows.length, 0, "unterminated quoted rows must not be imported partially");
+assert.equal(incomplete.invalid, 1, "unterminated quoted rows count as invalid");
+assert.match(incomplete.errors[0]?.reason || "", /不完整|未闭合/, "incomplete row exposes a useful reason");
+const incompleteAfterValid = exporter.parseCheckinCsv("名称,日期\n项目,2026-09-06\n\"未闭合,2026-09-07");
+assert.equal(incompleteAfterValid.rows.length, 1, "complete rows before an incomplete row remain importable");
+assert.equal(incompleteAfterValid.invalid, 1, "trailing incomplete row is included in the skip count");
+assert.equal(incompleteAfterValid.errors[0]?.line, 2, "incomplete row error identifies its CSV record line");
+
+/* 行上限的结果只包含上限内记录，不把第 20001 行混入确认计数。 */
+assert.equal(truncated.rows.length, 19999, "row cap excludes the first row beyond the limit (header counts toward the cap)");
+
 /* —— 表头互通反断言：导入识别导出表头（itemName/localDate 别名在档）。 —— */
 const exportSource = fs.readFileSync(path.join(root, "src", "export.ts"), "utf8");
 assert.match(exportSource, /"itemname"/, "itemName export header alias must be recognized");

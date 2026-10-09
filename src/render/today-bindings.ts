@@ -276,10 +276,39 @@ export function bindItemContextMenuFor(host: TodayBindingsHost, root: HTMLElemen
         root.appendChild(menu);
         const margin = 8;
         const rect = menu.getBoundingClientRect();
-        const maxX = Math.max(margin, window.innerWidth - rect.width - margin);
-        const maxY = Math.max(margin, window.innerHeight - rect.height - margin);
-        menu.style.left = `${Math.min(Math.max(margin, clientX), maxX)}px`;
-        menu.style.top = `${Math.min(Math.max(margin, clientY), maxY)}px`;
+        /* The menu is mounted in the owning root.  A transformed dock/tab (or a
+           pinch-zoomed visual viewport) can make `position:fixed` resolve against
+           a local containing block rather than the layout viewport.  Measure the
+           zero-positioned menu to discover that block's client origin, then clamp
+           against both the visual viewport and the owning root's visible bounds.
+           This keeps the menu inside a narrow dock and prevents keyboard/zoom
+           insets from placing its last actions outside the visible surface. */
+        const visualViewport = window.visualViewport;
+        const viewportLeft = visualViewport?.offsetLeft ?? 0;
+        const viewportTop = visualViewport?.offsetTop ?? 0;
+        const viewportRight = viewportLeft + (visualViewport?.width ?? window.innerWidth);
+        const viewportBottom = viewportTop + (visualViewport?.height ?? window.innerHeight);
+        const rootRect = root.getBoundingClientRect();
+        const hasRootBounds = Number.isFinite(rootRect.left) && Number.isFinite(rootRect.top)
+            && Number.isFinite(rootRect.right) && Number.isFinite(rootRect.bottom)
+            && rootRect.width > 0 && rootRect.height > 0;
+        const boundLeft = hasRootBounds ? Math.max(viewportLeft, rootRect.left) : viewportLeft;
+        const boundTop = hasRootBounds ? Math.max(viewportTop, rootRect.top) : viewportTop;
+        const boundRight = hasRootBounds ? Math.min(viewportRight, rootRect.right) : viewportRight;
+        const boundBottom = hasRootBounds ? Math.min(viewportBottom, rootRect.bottom) : viewportBottom;
+        menu.style.maxWidth = `${Math.max(1, boundRight - boundLeft - margin * 2)}px`;
+        menu.style.maxHeight = `${Math.max(1, boundBottom - boundTop - margin * 2)}px`;
+        menu.style.overflowY = "auto";
+        menu.style.boxSizing = "border-box";
+        const measuredRect = menu.getBoundingClientRect();
+        const originLeft = rect.left;
+        const originTop = rect.top;
+        const minX = Math.max(margin, boundLeft - originLeft + margin);
+        const minY = Math.max(margin, boundTop - originTop + margin);
+        const maxX = Math.max(minX, boundRight - originLeft - measuredRect.width - margin);
+        const maxY = Math.max(minY, boundBottom - originTop - measuredRect.height - margin);
+        menu.style.left = `${Math.min(Math.max(minX, clientX - originLeft), maxX)}px`;
+        menu.style.top = `${Math.min(Math.max(minY, clientY - originTop), maxY)}px`;
         menu.querySelector<HTMLElement>("[data-menu-action]")?.focus();
         menu.addEventListener("click", (ev) => {
             const actionButton = (ev.target as HTMLElement).closest<HTMLButtonElement>("[data-menu-action]");
@@ -358,7 +387,12 @@ export function bindItemContextMenuFor(host: TodayBindingsHost, root: HTMLElemen
     root.addEventListener("pointerup", cancelLongPress);
     root.addEventListener("pointercancel", cancelLongPress);
     root.addEventListener("click", (event) => {
-        if (!(event.target as HTMLElement).closest(".lc-checkin__item-context-menu")) closeMenus();
+        const target = event.target as HTMLElement;
+        if (target.closest(".lc-checkin__item-context-menu")) return;
+        /* A click on another control already establishes the user's next focus
+           target. Restore the opener only when the dismissal click itself had
+           no focusable destination. */
+        closeMenus(!target.closest("button, a, input, select, textarea, [tabindex]"));
     });
     root.addEventListener("keydown", (event) => {
         if (event.key === "Escape" && root.querySelector(".lc-checkin__item-context-menu")) {

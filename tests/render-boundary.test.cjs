@@ -20,7 +20,19 @@ fs.mkdirSync(path.join(dir, "ui"), {recursive: true});
 for (const [source, destination] of [["features/record-notes.ts", "features/record-notes.js"], ["ui/labels.ts", "ui/labels.js"], ["shared.ts", "shared.js"]]) {
     fs.writeFileSync(path.join(dir, destination), ts.transpileModule(fs.readFileSync(path.join(root, "src", source), "utf8"), {compilerOptions}).outputText);
 }
-const {safeAttachmentUrl} = require(path.join(dir, "shared.js"));
+const {isSafeIconImage, normalizeCustomIcon, renderIconMarkup, safeAttachmentUrl} = require(path.join(dir, "shared.js"));
+
+/* —— 动态图标边界：仅可信 HTTPS、栅格 base64 或无活动内容的 SVG 可进入 img；
+   其余 data URL/属性闭合/控制字符均作为转义文本，不能借 innerHTML 执行。 —— */
+assert.equal(isSafeIconImage("data:image/png;base64,aGVsbG8="), true, "raster data icons remain supported");
+assert.equal(isSafeIconImage("data:image/svg+xml," + encodeURIComponent("<svg><circle cx=\"1\" cy=\"1\" r=\"1\" /></svg>")), true, "inert SVG data icons remain supported");
+assert.ok(normalizeCustomIcon("data:image/svg+xml," + encodeURIComponent("<svg><circle cx=\"1\" cy=\"1\" r=\"1\" /></svg>")), "safe SVG data icons remain selectable");
+assert.equal(isSafeIconImage("data:image/svg+xml," + encodeURIComponent("<svg onload=\"alert(1)\"></svg>")), false, "SVG event attributes cannot enter image markup");
+assert.equal(isSafeIconImage("data:image/svg+xml,<svg></svg>\u0000"), false, "control characters cannot enter image markup");
+assert.equal(normalizeCustomIcon("data:image/svg+xml;base64," + Buffer.from("<svg onload=\\\"alert(1)\\\"></svg>").toString("base64")), undefined, "unsafe uploaded SVG is rejected");
+assert.match(renderIconMarkup("<svg onload=\"alert(1)\"></svg>"), /^&lt;svg onload=/, "hostile SVG text is escaped");
+assert.doesNotMatch(renderIconMarkup("data:image/svg+xml,<svg onload='alert(1)'></svg>"), /<img\b/, "hostile SVG data is rendered as text");
+assert.match(renderIconMarkup('https://example.test/icon.png?title=" onerror="x'), /<img src="https:\/\/example\.test\/icon\.png\?title=&quot; onerror=&quot;x"/, "HTTPS icon attributes are escaped");
 
 /* —— 敌意 URL 矩阵 —— */
 assert.equal(safeAttachmentUrl("javascript:alert(1)"), "", "javascript: scheme is dropped");

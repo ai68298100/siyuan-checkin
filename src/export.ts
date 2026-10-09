@@ -295,16 +295,33 @@ const CSV_IMPORT_MAX_CHARS = 2_000_000;
 
 /** RFC 4180 状态机：整段文本解析（引号字段可含逗号/换行/双写引号），物理换行才结束一行；
     空行跳过；超行数/超字符上限停止并标记 truncated。带引号单元格保留原文，不带引号的裁剪首尾空白。 */
-function parseCsvRows(text: string): {rows: string[][]; truncated: boolean} {
+function parseCsvRows(text: string): {rows: string[][]; truncated: boolean; incompleteRows: number} {
     const source = text.replace(/^\uFEFF/, "");
     let truncated = source.length > CSV_IMPORT_MAX_CHARS;
     const limit = Math.min(source.length, CSV_IMPORT_MAX_CHARS);
     const rows: string[][] = [];
+    let incompleteRows = 0;
     let row: string[] = [];
     let cell = "";
     let quoted = false;
     let cellQuoted = false;
-    for (let index = 0; index < limit; index += 1) {
+    let stoppedAtRowLimit = false;
+    const pushCompletedRow = (): boolean => {
+        if (!row.some((value) => value !== "")) {
+            row = [];
+            return true;
+        }
+        /* 不把上限之外的第一行也放入结果：调用方的计数和提示必须与实际可导入行一致。 */
+        if (rows.length >= CSV_IMPORT_MAX_ROWS) {
+            truncated = true;
+            stoppedAtRowLimit = true;
+            return false;
+        }
+        rows.push(row);
+        row = [];
+        return true;
+    };
+    for (let index = 0; index < limit && !stoppedAtRowLimit; index += 1) {
         const char = source[index];
         if (quoted) {
             if (char === "\"") {
@@ -323,28 +340,38 @@ function parseCsvRows(text: string): {rows: string[][]; truncated: boolean} {
             row.push(cellQuoted ? cell : cell.trim());
             cell = "";
             cellQuoted = false;
-            if (row.some((value) => value !== "")) rows.push(row);
-            row = [];
-            if (rows.length > CSV_IMPORT_MAX_ROWS) { truncated = true; break; }
+            if (!pushCompletedRow()) break;
         } else cell += char;
     }
-    if (rows.length <= CSV_IMPORT_MAX_ROWS) {
+    const hitCharLimit = limit < source.length;
+    if (!stoppedAtRowLimit && (quoted || hitCharLimit)) {
+        /* 文件被截断或引号未闭合时，尾部只能是半行；丢弃整行并计为无效，
+           避免把用户粘贴到一半的记录静默导入。 */
+        if (quoted || row.length > 0 || cell !== "") incompleteRows += 1;
+    } else if (!stoppedAtRowLimit) {
         row.push(cellQuoted ? cell : cell.trim());
-        if (row.some((value) => value !== "")) rows.push(row);
+        pushCompletedRow();
     }
-    return {rows, truncated};
+    return {rows, truncated, incompleteRows};
 }
 
 export function parseCheckinCsv(text: string): CsvImportResult {
-    const {rows: table, truncated} = parseCsvRows(text);
-    if (!table.length) return {rows: [], invalid: 0, truncated, errors: []};
+    const {rows: table, truncated, incompleteRows} = parseCsvRows(text);
+    if (!table.length) {
+        return {
+            rows: [],
+            invalid: incompleteRows,
+            truncated,
+            errors: incompleteRows ? [{line: 1, reason: "CSV 行不完整或引号未闭合"}] : [],
+        };
+    }
     /* 表头别名：导出表头全集（T-1628）+ 既有中英文别名（旧文件不断）。 */
     const header = table[0].map((cell) => cell.toLowerCase());
     const nameIndex = header.findIndex((cell) => cell === "名称" || cell === "name" || cell === "itemname");
     const dateIndex = header.findIndex((cell) => cell === "日期" || cell === "date" || cell === "localdate");
     const valueIndex = header.findIndex((cell) => cell === "数值" || cell === "value");
     const unitIndex = header.findIndex((cell) => cell === "单位" || cell === "unit");
-    if (nameIndex < 0 || dateIndex < 0) return {rows: [], invalid: table.length - 1, truncated, errors: []};
+    if (nameIndex < 0 || dateIndex < 0) return {rows: [], invalid: table.length - 1 + incompleteRows, truncated, errors: []};
     const rows: CsvImportRow[] = [];
     const errors: Array<{line: number; reason: string}> = [];
     let invalid = 0;
@@ -370,5 +397,6 @@ export function parseCheckinCsv(text: string): CsvImportResult {
         const binary = numeric === 1;
         rows.push({name: name.slice(0, 40), date, value: numeric, unit: unit.slice(0, 16), binary});
     }
-    return {rows, invalid, truncated, errors: errors.slice(0, 10)};
+    if (incompleteRows) errors.push({line: table.length, reason: "CSV 行不完整或引号未闭合"});
+    return {rows, invalid: invalid + incompleteRows, truncated, errors: errors.slice(0, 10)};
 }

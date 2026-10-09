@@ -2037,7 +2037,10 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     .lc-checkin--today .lc-checkin__group-header::after { content: ""; flex: 1; height: 1px; margin-left: 9px; background: color-mix(in srgb, var(--lc-checkin-border-strong) 45%, transparent); }
     .lc-checkin--today .lc-checkin__group-header em { padding: 2px 7px; border-radius: 99px; font-size: 9px; font-style: normal; }
     .lc-checkin--today .lc-checkin__completed-section { margin-top: 20px; padding-top: 10px; border-top: 1px dashed var(--lc-checkin-border-strong); }
-    .lc-checkin--today .lc-checkin__completed-section .lc-checkin__item { opacity: .72; }
+    /* Completed cards already carry the semantic .is-complete treatment. Do
+       not stack a second parent opacity on the whole card, which compounds
+       with the action/text state and drops contrast below the theme tokens. */
+    .lc-checkin--today .lc-checkin__completed-section .lc-checkin__item { opacity: 1; }
     .lc-checkin--today .lc-checkin__completed-section .lc-checkin__item:active,
     .lc-checkin--today .lc-checkin__completed-section .lc-checkin__item:focus-within { opacity: 1; }
     .lc-checkin__occasion-manager-row { min-height: 56px; padding: 9px; border-radius: 9px; }
@@ -2109,7 +2112,7 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     .lc-checkin--today .lc-checkin__item-action .lc-checkin__record-button { min-width: 0; }
     .lc-checkin--today .lc-checkin__item-action .lc-checkin__quick-button { flex: 1 1 auto; min-height: 34px; }
     .lc-checkin--today .lc-checkin__item-action .lc-checkin__more-button { align-self: center; }
-    .lc-checkin--today .lc-checkin__item.is-complete .lc-checkin__item-action { opacity: .72; }
+    .lc-checkin--today .lc-checkin__item.is-complete .lc-checkin__item-action { opacity: 1; }
     .lc-checkin__mobile-nav button small { max-width: 100%; letter-spacing: -.02em; }
     .lc-checkin__mobile-nav button span { display: block; height: 19px; }
     .lc-checkin__mobile-nav button.is-selected { background: var(--lc-checkin-accent-soft); }
@@ -3239,7 +3242,7 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 }
 .lc-checkin--today .lc-checkin__section-count { padding: 1px 8px; border-radius: 999px; background: var(--lc-checkin-muted-surface); font-size: 11px; font-variant-numeric: tabular-nums; }
 .lc-checkin--today .lc-checkin__section-toggle .lc-checkin__chevron { margin-left: auto; font-size: 11px; }
-.lc-checkin--today .lc-checkin__completed-section .lc-checkin__item { opacity: .78; }
+.lc-checkin--today .lc-checkin__completed-section .lc-checkin__item { opacity: 1; }
 .lc-checkin--today .lc-checkin__completed-section .lc-checkin__item:hover { opacity: 1; }
 
 /* 完成打卡后的轻量反馈：脱离滚动正文，避免手机顶部被提示条挤占。 */

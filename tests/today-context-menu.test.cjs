@@ -13,8 +13,12 @@ assert.match(source, /event\.pointerType !== "touch" && event\.pointerType !== "
 assert.match(source, /window\.setTimeout\(\(\) => \{[\s\S]*?520\)/, "long press waits long enough to avoid accidental activation");
 assert.match(source, /Math\.hypot\(event\.clientX - longPressStartX, event\.clientY - longPressStartY\) > 10/, "pointer movement cancels a long press");
 assert.match(source, /suppressContextMenuUntil = Date\.now\(\) \+ 800/, "native follow-up contextmenu is suppressed after long press");
-assert.match(source, /Math\.min\(Math\.max\(margin, clientX\), maxX\)/, "menu is clamped to the horizontal viewport");
-assert.match(source, /Math\.min\(Math\.max\(margin, clientY\), maxY\)/, "menu is clamped to the vertical viewport");
+assert.match(source, /window\.visualViewport/, "menu geometry reads the visual viewport when zoom or keyboard insets are active");
+assert.match(source, /root\.getBoundingClientRect\(\)/, "menu geometry is scoped to its owning root");
+assert.match(source, /clientX - originLeft/, "menu uses the owning containing-block origin for horizontal placement");
+assert.match(source, /clientY - originTop/, "menu uses the owning containing-block origin for vertical placement");
+assert.match(source, /Math\.min\(Math\.max\(minX, clientX - originLeft\), maxX\)/, "menu is clamped to the horizontal visual/root bounds");
+assert.match(source, /Math\.min\(Math\.max\(minY, clientY - originTop\), maxY\)/, "menu is clamped to the vertical visual/root bounds");
 assert.match(source, /menu\.querySelector<HTMLElement>\("\[data-menu-action\]"\)\?\.focus\(\)/, "opening the menu moves focus to its first action");
 assert.match(source, /event\.key === "Escape"[\s\S]*?closeMenus\(true\)/, "Escape closes an open menu");
 assert.match(source, /closeMenus\(true\)/, "closing the menu restores focus to the card action");
@@ -23,6 +27,7 @@ assert.match(source, /role="menuitem"/, "context menu actions expose menuitem se
 assert.match(source, /\["ArrowDown", "ArrowUp"\]/, "context menu supports keyboard traversal");
 assert.match(source, /event\.key === "Home" \|\| event\.key === "End"/, "context menu supports first/last keyboard navigation");
 assert.match(source, /event\.key === "Tab"[\s\S]*?closeMenus\(true\)/, "Tab closes the menu and restores a stable focus target");
+assert.match(source, /target\.closest\("\.lc-checkin__item-context-menu"\)[\s\S]*?closeMenus\(!target\.closest/, "outside click restores focus to the menu trigger");
 assert.match(source, /menu\.setAttribute\("aria-busy", "true"\)/, "context menu exposes its pending state");
 assert.match(source, /querySelectorAll<HTMLButtonElement>\("\[data-menu-action\]"\)[\s\S]*?button\.disabled = true/, "one menu mutation disables every competing action");
 assert.match(source, /function runExclusiveAction\(/, "bulk actions share an exclusive execution guard");
@@ -51,6 +56,8 @@ assert.match(fragments, /data-bulk-toolbar/, "bulk toolbar exposes a coordinatio
 assert.match(fragments, /data-bulk-selected-count role="status" aria-live="polite"/, "selection count is announced without rerendering");
 assert.match(fragments, /data-bulk-selection-action[\s\S]*?disabled/, "empty selection disables destructive bulk actions");
 assert.match(styles, /\.lc-checkin__item-context-menu \{[\s\S]*?position: fixed;/, "context menu is positioned against the viewport");
+assert.match(styles, /\.lc-checkin--today \.lc-checkin__item\.is-complete \.lc-checkin__item-action \{ opacity: 1; \}/, "completed item actions retain readable contrast instead of compounding opacity");
+assert.match(styles, /\.lc-checkin--today \.lc-checkin__completed-section \.lc-checkin__item \{ opacity: 1; \}/, "completed section does not apply a second whole-card opacity layer");
 
 console.log("Today context-menu checks passed.");
 
@@ -102,7 +109,7 @@ function element(dataset = {}) {
         addEventListener(type, listener) { (this.listeners[type] ||= []).push(listener); },
         setAttribute() {},
         remove() { this.isConnected = false; },
-        getBoundingClientRect() { return {width: 120, height: 200}; },
+        getBoundingClientRect() { return {left: 0, top: 0, right: 120, bottom: 200, width: 120, height: 200}; },
         closest(selector) { return selector.includes(".lc-checkin__item") ? this.card || this : null; },
     };
 }

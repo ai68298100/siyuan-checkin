@@ -5905,6 +5905,10 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
             const renderRows = (rows: ReadonlyArray<{id: string; name: string; path: string}>) => {
                 if (!rows.length) {
                     listBox.innerHTML = `<div class="lc-checkin__document-choice-option is-empty" role="status">${escapeHtml(t("set.documentChoiceEmpty"))}</div>`;
+                    /* 空结果也是一次有效反馈：首次查询时不能继续保持 hidden，
+                       否则读屏与键盘用户看不到“无结果”状态。 */
+                    listBox.hidden = false;
+                    searchInput.setAttribute("aria-expanded", "true");
                     return;
                 }
                 listBox.innerHTML = rows.map((row) => `<button type="button" role="option" class="lc-checkin__document-choice-option" data-choice-id="${escapeHtml(row.id)}" aria-selected="false"><strong>${escapeHtml(row.name)}</strong><small>${escapeHtml(row.path || row.id)}</small></button>`).join("");
@@ -5962,6 +5966,9 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
                 const option = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-choice-id]");
                 if (!option) return;
                 docInput.value = option.dataset.choiceId || "";
+                /* 程序化回填必须走与手工输入相同的草稿边界，
+                   让设置变更清单、保存按钮和离开保护都感知这次选择。 */
+                docInput.dispatchEvent(new Event("input", {bubbles: true}));
                 hideList();
                 docInput.focus({preventScroll: true});
             });
@@ -6281,11 +6288,17 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
             try {
                 const parsed = parseCheckinCsv(await file.text());
                 const names = [...new Set(parsed.rows.map((row) => row.name))];
-                if (!parsed.rows.length) { showMessage(t("msg.csvEmpty")); return; }
+                if (!parsed.rows.length) {
+                    if (parsed.invalid && parsed.errors.length) {
+                        const detail = parsed.errors.map((entry) => t("msg.csvErrorLine", entry)).join("；");
+                        settingsFeedback(t("msg.csvErrorDetail", {count: parsed.invalid, detail}) + (parsed.errors.length > 5 ? "…" : ""));
+                    } else showMessage(t("msg.csvEmpty"));
+                    return;
+                }
                 const skip = parsed.invalid;
                 if (parsed.truncated) showMessage(t("msg.csvTruncated"), 4200);
                 if (parsed.errors.length) {
-                    const detail = parsed.errors.slice(0, 5).map((e) => `行 ${e.line}: ${e.reason}`).join("；");
+                    const detail = parsed.errors.slice(0, 5).map((e) => t("msg.csvErrorLine", e)).join("；");
                     settingsFeedback(t("msg.csvErrorDetail", {count: parsed.errors.length, detail}) + (parsed.errors.length > 5 ? "…" : ""));
                 }
                 if (!window.confirm(t("msg.csvConfirm", {items: names.length, events: parsed.rows.length, skipped: skip}))) { input.value = ""; return; }
