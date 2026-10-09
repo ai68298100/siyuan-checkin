@@ -1,6 +1,7 @@
 /* 专注适配器生命周期：从 index.ts 外置（T-022）。
    开始/停止专注、适配器筛选与静默停止；适配器注册表由宿主持有。 */
 import {t} from "../i18n";
+import {sanitizeDiagnosticDetail} from "../features/diagnostics";
 import {getItemRevisionForDate, isItemAvailableOnDate} from "../model";
 import {currentCalendarDate} from "../shared";
 import {showMessage} from "siyuan";
@@ -49,8 +50,8 @@ export function focusStartErrorMessage(error: unknown): string {
     if (code === "DOCK_TOMATO_SESSION_MISMATCH") return t("msg.focusDockSessionMismatch");
     if (code === "DOCK_TOMATO_INTEGRATION_DISABLED") return t("msg.focusDockDisabled");
     let detail = "";
-    try { detail = error instanceof Error ? error.message : String(error); } catch { detail = t("common.unknownError"); }
-    return t("msg.focusStartFail", {error: detail.slice(0, 240)});
+    try { detail = sanitizeDiagnosticDetail(error instanceof Error ? error.message : typeof error === "string" ? error : ""); } catch { detail = ""; }
+    return t("msg.focusStartFail", {error: detail || t("common.unknownError")});
 }
 
 export function startFocusFor(host: FocusAdapterHost, itemId: string, adapterId?: string): Promise<boolean> {
@@ -134,7 +135,7 @@ export function stopFocusFor(host: FocusAdapterHost): Promise<boolean> {
             if (host.activeFocusAdapter === adapter) host.activeFocusAdapter = undefined;
             return true;
         } catch (error) {
-            if (!host.disposed) showMessage(t("msg.focusStopFail", {error: String(error)}));
+            if (!host.disposed) showMessage(t("msg.focusStopFail", {error: sanitizeDiagnosticDetail(error instanceof Error ? error.message : typeof error === "string" ? error : "") || t("common.unknownError")}));
             return false;
         } finally {
             host.focusBusy = false;

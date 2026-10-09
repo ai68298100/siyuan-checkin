@@ -150,6 +150,16 @@ const makeItem = (overrides = {}) => ({
     assert.equal(plan.planned[0].localDate, "2026-09-20");
     assert.deepEqual(plan.recordedIndices, [0, 13], "recorded indices map back to input order");
 
+    /* 批内重复 externalRef 仍只规划一次，但规划结果必须保留首条索引，
+       供宿主持久化成功后把同一 eventId 回填到后续 duplicate 回执。 */
+    const repeatedFreshRef = planBatchRecord(store, [
+        {itemId: "read", externalRef: "ext://batch-fresh", occurredAt: "2026-09-20T08:00:00Z"},
+        {itemId: "read", externalRef: "ext://batch-fresh", occurredAt: "2026-09-20T08:00:00Z"},
+    ], nowIso);
+    assert.deepEqual(repeatedFreshRef.duplicateResultLinks, [{resultIndex: 1, firstResultIndex: 0}],
+        "batch duplicate keeps a link to its first planned result for eventId receipt backfill");
+    assert.equal(repeatedFreshRef.results[1].kind, "duplicate");
+
     /* ISO 入口必须携带显式时区；Date.parse 可接受的日期-only 与无偏移
        字符串会随宿主地区漂移业务日，必须拒绝而不是静默归一化。 */
     assert.equal(planBatchRecord(store, [{itemId: "read", occurredAt: "2026-09-20"}], nowIso).results[0].reason, "invalid-occurred-at");

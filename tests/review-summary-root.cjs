@@ -29,7 +29,8 @@ const methods = plugin.members.filter(member => ["generateSummary", "cancelRevie
 const harnessCode = ts.transpileModule(`class SummaryHarness {${methods}}\nmodule.exports = SummaryHarness;`, {compilerOptions}).outputText;
 const harnessModule = {exports: {}};
 const dependencies = {...model, ...analytics, ...assistant, ...analysis, ...workflow, ...shared,
-    SUMMARY_TIMEOUT_MS: 30000, withTimeout: promise => promise, t: key => key, showMessage: () => {}};
+    SUMMARY_TIMEOUT_MS: 30000, withTimeout: promise => promise, t: key => key, showMessage: () => {},
+    safeUserErrorDetail: error => String(error instanceof Error ? error.message : typeof error === "string" ? error : "").slice(0, 200) || "common.unknownError"};
 new Function("module", ...Object.keys(dependencies), harnessCode)(harnessModule, ...Object.values(dependencies));
 const SummaryHarness = harnessModule.exports;
 

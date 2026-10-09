@@ -214,8 +214,8 @@ assert.match(i18n, /"msg\.focusDockDisabled": "底栏番茄钟的第三方联动
 assert.match(i18n, /"msg\.focusDockUnconfirmed": "Dock Tomato did not return a confirmable session identity/, "English unconfirmed-start copy must exist");
 assert.match(i18n, /"msg\.focusDockSessionMismatch": "Dock Tomato moved on to a different session/, "English session-mismatch copy must exist");
 assert.match(i18n, /"msg\.focusDockDisabled": "Dock Tomato third-party integration is disabled/, "English disabled copy must exist");
-assert.match(focus, /detail\.slice\(0, 240\)/, "unrecognized provider errors must be bounded before display");
-assert.match(focus, /catch \{ detail = t\("common\.unknownError"\); \}/, "hostile error objects must not escape error rendering");
+assert.match(focus, /sanitizeDiagnosticDetail/, "unrecognized provider errors must pass through the diagnostic sanitizer");
+assert.match(focus, /detail \|\| t\("common\.unknownError"\)/, "hostile or empty error objects must use localized fallback");
 assert.match(i18n, /"msg\.focusDockMissing": "未检测到底栏番茄钟/, "Chinese missing-provider guidance must be actionable");
 assert.match(i18n, /"msg\.focusDockPaused": "底栏番茄钟有暂停中的专注/, "Chinese paused guidance must be actionable");
 assert.match(i18n, /"msg\.focusDockMissing": "Dock Tomato was not detected/, "English missing-provider guidance must be actionable");

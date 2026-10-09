@@ -14,6 +14,14 @@
 - 动态图标渲染统一 `isSafeIconImage` 白名单，危险 SVG/data/HTTPS 输入转义为文本；Today 上下文菜单使用 owning root/visual viewport 几何并恢复点外关闭焦点；完成项移除重复透明度叠加以保持对比度。
 - 验证：`pnpm test` 全链通过；`pnpm run check`、`node tests/csv-roundtrip.test.cjs`、`node tests/render-boundary.test.cjs`、`node tests/settings-navigation.test.cjs`、`node tests/diary-report.test.cjs`、`node tests/today-context-menu.test.cjs`、`node tests/mobile-editor-structure.test.cjs`、`node tests/i18n-parity.test.cjs` 通过。`CHECKIN_BROWSER` 未设置，视觉与真实宿主现场仍待验收。
 
+# 2026-10-09 全插件功能与 UI 复核第十轮
+
+- API/回执：`planBatchRecord` 记录批内重复 `externalRef` 与首条结果的链接；`recordEventsBatch` 在持久化成功后回填共享 `eventId`，重复输入不再只有“duplicate”而无法定位事实事件。`docs/api-v5.md`、`tests/api-v5.test.cjs` 同步更新。
+- 备份/恢复：恢复点上一笔基线移入串行 `saveQueue`，连续写入各自保存正确前态；恢复流程检查 `enqueueMutation` 的 undefined 失败哨兵，失败会进入拒绝审计和错误反馈。
+- UI/反馈：修正 `reducedMotion` 根节点及移动宿主兄弟导航的选择器和数据镜像；设置通用动作、绑定/摘要/建议/持久化/Agent/专注错误，以及编辑器锚点与图标导入/下载异常统一限长、脱敏后再显示，未知异常回退本地化通用错误。
+- 边界：墓碑暂不做不安全裁剪；恢复对遵守锁的宿主保持精确替换，旁路并发按写后校验合并；多桶备份 schema、完整墓碑生命周期测量、浏览器视觉和真实思源/Android/TalkBack/第三方来源现场仍未关闭。
+- 验证：`pnpm test`、`pnpm run build`、`pnpm run test:ui`、`pnpm run test:mobile`、`pnpm run test:ecosystem`、`pnpm run test:extended`、`pnpm run test:perf`、`pnpm run check` 及本轮 API/回执/恢复/设置反馈/UI 主题定向测试通过；CSS 655350 bytes，低于 640KiB hard line 但仍高于 620KB soft line。`CHECKIN_BROWSER` 未设置，浏览器视觉、真实思源/Android/TalkBack、第三方来源、缩放与保存面板现场仍按阻塞记录开放；未 push。
+
 # 2026-10-09 全插件功能与 UI 复核第六轮
 
 - 编辑器重绘生命周期：同一 root 的模板推断、组合包和联动委托 click 监听在重绑前统一清理，避免一次点击多次执行；名称推断 timer 同步取消。

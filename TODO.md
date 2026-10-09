@@ -13,6 +13,14 @@
 - 本轮已落地：动态自定义图标只对白名单 HTTPS、栅格 base64 和无活动内容 SVG 输出图片，危险 data/SVG、属性闭合、控制字符统一转义为文本；Today 上下文菜单按 owning root 与 visual viewport 计算边界并在点外关闭后恢复焦点；完成卡片移除重复 opacity，避免主题对比度叠加下降。
 - 本轮证据：`pnpm test`、`pnpm run check`、CSV/render-boundary/settings-navigation/diary-report/today-context-menu/mobile-editor 定向测试通过；`pnpm-lock.yaml` 生成噪声已清理。浏览器视觉、真实思源/Android/TalkBack、第三方来源、缩放和保存面板现场仍按阻塞记录开放。
 
+## 2026-10-09 全插件复核第十轮增量
+
+- 本轮已落地：API v5 批量记录对同一 `externalRef` 的后续 duplicate 回执回填首条事实事件 `eventId`，调用方可以按输入顺序逐项对账；契约文档与回归夹具同步更新。
+- 本轮已落地：恢复点写入在串行保存队列内捕获上一笔已提交基线，连续快速保存不会重复旧恢复点；恢复操作检查 `enqueueMutation` 的失败哨兵，锁内对账/写入失败不再误报成功。
+- 本轮已落地：`reducedMotion` 选择器改为匹配真实 `.lc-checkin` 根节点，并同步宿主级移动导航根，滚动、卡片、弹窗、dock 和 backdrop 动效可实际被关闭；设置动作、绑定/摘要/建议/持久化/Agent/专注错误反馈与编辑器图标/锚点错误反馈统一经过诊断字符串清洗，避免路径、凭据、控制字符和超长异常直出。
+- 本轮保留边界：墓碑不做未经证明的时间/数量裁剪，继续保留外部身份以防旧窗口或 API 重放复活；恢复仍是锁内精确替换、旁路并发按写后校验合并；多桶备份协议、完整墓碑生命周期测量、完整动效/elevation 规范和真实宿主/浏览器视觉现场仍开放。
+- 本轮证据：API v5、record-receipt、restore-audit、storage-transaction、item-tombstone、tombstone-index、tombstone-concurrency、batch-lifecycle-performance、settings-feedback、ui-theme、responsive-layout、accessibility-audit、checkin-toast、cross-page-consistency 定向测试，以及 `pnpm test`、`pnpm run check`、`pnpm run build`、`pnpm run test:ui`、`pnpm run test:mobile`、`pnpm run test:ecosystem`、`pnpm run test:extended`、`pnpm run test:perf` 全部通过。`CHECKIN_BROWSER` 未设置，视觉与真实宿主现场仍按阻塞记录开放。
+
 ## 2026-10-09 全插件复核第八轮增量
 
 - 本轮已落地：快速弹窗编辑草稿离开守卫与首次标题拖拽/双击绑定时序；配额摘要改用民历日算术跨 DST；渲染块日期格保留键盘激活与共享焦点环，并为 Today 五项截断增加双语、可读的隐藏数量状态。

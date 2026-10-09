@@ -8,6 +8,8 @@ assert.match(source, /buildRecoveryAuditDetails\("local-snapshot", preflight, "a
 assert.match(source, /inspectStoreSnapshotHistory\(raw\)/);
 assert.match(source, /preflightJsonRecovery\(JSON\.stringify\(snapshot\.store\), normalizeStore, summarizeJsonBackup\(this\.store\)\)/);
 assert.match(source, /appendStoreSnapshotHistory\(await this\.loadData\(BACKUP_STORAGE_NAME\), createStoreSnapshotEnvelope\(previous\)\)/);
+assert.match(source, /const write = this\.saveQueue\.catch\(\(\) => undefined\)\.then\(async \(\) => \{[\s\S]*?const previous = this\.cloneStore\(this\.lastPersistedStore\);[\s\S]*?appendStoreSnapshotHistory/,
+    "snapshot baseline must be captured inside the serialized save queue so back-to-back writes retain each committed restore point");
 assert.match(source, /snapshotCapturedAt: snapshot\.capturedAt, legacySnapshot: snapshot\.legacy/);
 assert.match(source, /data-restore-snapshot/);
 assert.match(source, /restoreLatestBackup\(index\)/);
@@ -18,6 +20,8 @@ assert.match(source, /inspectStoreSnapshotHistory\(storedSnapshots\)[\s\S]*snaps
 assert.match(source, /snapshotInspection\.recognized && snapshotInspection\.invalidCount > 0[\s\S]*msg\.snapshotHistoryCorrupt/, "all-invalid restore history must be diagnosed and surfaced");
 assert.match(source, /this\.store = backup;\s*try \{\s*await this\.persist\(\);/,
     "snapshot restore must persist the selected backup rather than the pre-restore store");
+assert.match(source, /const restored = await this\.enqueueMutation\([\s\S]*?return true;\s*\}\);[\s\S]*?if \(!restored\) throw new Error\("snapshot-restore-transaction-failed"\)/,
+    "snapshot restore must reject the enqueueMutation undefined sentinel instead of claiming success");
 assert.doesNotMatch(source, /this\.store = backup;\s*try \{\s*await this\.persist\(current\);/);
 assert.match(source, /buildRecoveryAuditDetails\("local-snapshot", preflight, "rejected", validationErrors\)/);
 assert.match(source, /buildRecoveryAuditDetails\("json-import", preflight, "accepted"\)/);

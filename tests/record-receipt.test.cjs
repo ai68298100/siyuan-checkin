@@ -106,6 +106,8 @@ const preFixFragments = cp.execSync("git show 49672ef:src/render/fragments.ts", 
 assert.doesNotMatch(preFixFragments, /toggle-record-details/, "the pre-fix toast had no details entry (red evidence)");
 const indexSource = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
 assert.match(indexSource, /source: event\.source,\s*\r?\n\s*localDate: event\.localDate,/, "the receipt token carries the event facts");
+const completeItemsBlock = indexSource.slice(indexSource.indexOf("private async completeItems"), indexSource.indexOf("/* T-1222 跳过"));
+assert.match(completeItemsBlock, /source: last\.event\.source,\s*\r?\n\s*localDate: last\.event\.localDate,/, "bulk completion receipts carry the same event facts as single records");
 const i18nSource = fs.readFileSync(path.join(__dirname, "..", "src", "i18n.ts"), "utf8");
 for (const key of ["today.viewRecord", "today.hideRecord"]) {
     assert.equal((i18nSource.match(new RegExp(`"${key}":`, "g")) || []).length, 2, `${key} exists in both dictionaries`);

@@ -11,7 +11,7 @@ import "./ui/review-detail.scss";
 import "./ui/review-workspace.scss";
 import {buildCustomSummaryContext, buildSummaryContext} from "./analytics";
 import {buildWeeklyReportMarkdown} from "./features/report";
-import {appendDiagnostic, CHECKIN_DIAGNOSTIC_INFO, normalizeDiagnostics, serializeDiagnostics, summarizeDiagnosticsPreview, type CheckinDiagnostic, type CheckinDiagnosticCode} from "./features/diagnostics";
+import {appendDiagnostic, CHECKIN_DIAGNOSTIC_INFO, normalizeDiagnostics, sanitizeDiagnosticDetail, serializeDiagnostics, summarizeDiagnosticsPreview, type CheckinDiagnostic, type CheckinDiagnosticCode} from "./features/diagnostics";
 import {buildReviewComparison, getPreviousReviewRange} from "./features/review-comparison";
 import {summarizeProjectDraft, type ProjectDraft} from "./features/project-draft";import {isEditorFormDirty} from "./features/editor-draft";
 import {buildAnalyticsSnapshot, buildYearHeatmap, type AnalyticsSnapshot} from "./charts";
@@ -157,6 +157,11 @@ const AUDIT_COALESCE_MS = 1500;
 const DOCK_TYPE = "siyuan-checkin-dock";
 const TAB_TYPE = "checkin";
 const SUMMARY_TIMEOUT_MS = 30000;
+
+function safeUserErrorDetail(error: unknown): string {
+    const raw = error instanceof Error ? error.message : typeof error === "string" ? error : "";
+    return sanitizeDiagnosticDetail(raw) || t("common.unknownError");
+}
 let fallbackStorageQueue: Promise<void> = Promise.resolve();
 
 /* 顶栏/底栏位于 .lc-checkin 滚动面板之外，无法直接继承独立主题 token。
@@ -992,7 +997,7 @@ export default class CheckinPlugin extends Plugin {
             if (response.code !== 0) throw new Error("append-failed");
             return {ok: true, updated: false, docId: target.docId, docName: target.docName};
         } catch (error) {
-            return {ok: false, updated: false, docId: "", docName: "", reason: String(error instanceof Error ? error.message : error)};
+            return {ok: false, updated: false, docId: "", docName: "", reason: safeUserErrorDetail(error)};
         }
     }
 
@@ -2553,7 +2558,7 @@ this.scheduleMidnightRefresh();
             });
             if (shouldRepairSuggestionWorkflow) void this.persistSuggestionWorkflow().catch(() => undefined);
         } catch (error) {
-            if (!this.disposing) showMessage(t("msg.prefRefreshFail", {error: String(error)}));
+            if (!this.disposing) showMessage(t("msg.prefRefreshFail", {error: safeUserErrorDetail(error)}));
         }
     }
 
@@ -3083,7 +3088,7 @@ this.scheduleMidnightRefresh();
         if (inputs.length > CHECKIN_BATCH_RECORD_LIMITS.maxItems) throw new TypeError("单批不得超过 " + CHECKIN_BATCH_RECORD_LIMITS.maxItems + " 条");
         return this.enqueueMutation(async (): Promise<BatchEntryResult[]> => {
             if (this.disposed || this.disposing || this.initializationState !== "ready" || !this.storageReady) throw new Error("checkin: storage is not ready");
-            const {results, planned, recordedIndices} = planBatchRecord(this.store, inputs, new Date().toISOString());
+            const {results, planned, recordedIndices, duplicateResultLinks} = planBatchRecord(this.store, inputs, new Date().toISOString());
             if (!planned.length) return results;
             const previous = this.store;
             const events = planned.map((entry) => {
@@ -3104,6 +3109,13 @@ this.scheduleMidnightRefresh();
             recordedIndices.forEach((resultIndex, planIndex) => {
                 const event = events[planIndex];
                 if (event) results[resultIndex].eventId = event.id;
+            });
+            /* 批内相同 externalRef 的后续输入与首条输入共享事实事件。
+               规划阶段不能知道 makeEvent 生成的 id，持久化成功后再把同一
+               eventId 回填到 duplicate 回执，保证调用方可按输入逐项对账。 */
+            duplicateResultLinks.forEach(({resultIndex, firstResultIndex}) => {
+                const eventId = results[firstResultIndex]?.eventId;
+                if (eventId) results[resultIndex].eventId = eventId;
             });
             this.invalidateSummary();
             const affected = new Map<string, CheckinItem>();
@@ -3560,7 +3572,13 @@ this.scheduleMidnightRefresh();
                     /* T-1622：经 enqueueMutation 写入——主 Store 的锁内重读合并（reconcile）
                        在此生效，Agent 创建不再绕过跨窗口合并；persist 失败回滚内存，
                        异常向 Agent 调用方传播（不得报告成功）。 */
-                    await this.enqueueMutation(async () => {
+                    const persisted = await this.enqueueMutation(async () => {
+                        /* 入口预检只能减少提示；并发 Agent 调用必须在同一
+                           mutation 锁内再次检查，否则两个请求会各自通过
+                           预检并落下同名项目。稳定错误码由 Agent 层翻译。 */
+                        if (this.store.items.some((candidate) => !candidate.archived && candidate.name === created.name)) {
+                            throw new Error("duplicate-item-name");
+                        }
                         const previous = this.store;
                         this.store = {...this.store, items: [...this.store.items, created]};
                         try {
@@ -3569,12 +3587,21 @@ this.scheduleMidnightRefresh();
                             this.store = previous;
                             throw error;
                         }
+                        return true;
                     });
+                    if (!persisted) throw new Error("storage-mutation-failed");
                     this.render();
                 },
                 createOccasion: async (created) => {
                     /* T-1622：同上入队；persistOccasions 自带写前合并（D-314），失败回滚内存。 */
-                    await this.enqueueMutation(async () => {
+                    const persisted = await this.enqueueMutation(async () => {
+                        /* Agent 重放同一创建请求时，在锁内以稳定业务键收敛；
+                           名称、锚点日期和重复方式一致才视为同一事项，避免
+                           双击/重试随机生成两个事实。 */
+                        if (this.occasionStore.occasions.some((candidate) => candidate.name === created.name
+                            && candidate.date === created.date && candidate.recurrence === created.recurrence)) {
+                            throw new Error("duplicate-occasion");
+                        }
                         const previous = this.occasionStore;
                         this.occasionStore = {...this.occasionStore, occasions: [...this.occasionStore.occasions, created]};
                         try {
@@ -3583,7 +3610,9 @@ this.scheduleMidnightRefresh();
                             this.occasionStore = previous;
                             throw error;
                         }
+                        return true;
                     });
+                    if (!persisted) throw new Error("storage-mutation-failed");
                     this.render();
                 },
             });
@@ -3592,7 +3621,7 @@ this.scheduleMidnightRefresh();
         } catch (error) {
             /* 抛错前已注册的能力仍然有效：保留计数，并把原因显示出来，避免与「宿主不支持」混为一谈。 */
             this.agentCapabilityIds = ids;
-            this.agentCapabilityError = String(error instanceof Error ? error.message : error);
+            this.agentCapabilityError = safeUserErrorDetail(error);
             this.agentCapabilityState = "failed";
             showMessage(t("msg.agentRegisterFail", {error: this.agentCapabilityError}));
         }
@@ -4518,6 +4547,10 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
             surface.dataset.reducedMotion = String(this.reducedMotion);
             root.dataset.appearance = appearance;
             root.dataset.palette = this.palette;
+            /* Top/bottom navigation is mounted as a sibling of the scrolling
+               surface. Mirror the motion preference on the owning root so
+               reduced-motion rules also reach those controls. */
+            root.dataset.reducedMotion = String(this.reducedMotion);
             this.syncHostThemeTokens(root, surface);
             /* container queries cannot style their own container, so all page
                content lives in one layout wrapper inside the container. */
@@ -5045,7 +5078,15 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
             settingsBusy.add(control);
             control.setAttribute("aria-busy", "true");
             if ("disabled" in control) (control as HTMLButtonElement | HTMLInputElement).disabled = true;
-            Promise.resolve().then(operation).catch((error) => settingsFeedback(String(error instanceof Error ? error.message : error || t("common.unknownError")))).finally(() => {
+            Promise.resolve().then(operation).catch((error) => {
+                /* Setting actions may surface host/plugin exceptions. Reuse the
+                   diagnostic boundary before displaying any detail so paths,
+                   credentials, controls and oversized messages cannot leak into
+                   the settings alert; unknown/non-text failures stay localized. */
+                const rawDetail = error instanceof Error ? error.message : typeof error === "string" ? error : "";
+                const detail = sanitizeDiagnosticDetail(rawDetail);
+                settingsFeedback(detail || t("common.unknownError"));
+            }).finally(() => {
                 settingsBusy.delete(control);
                 /* A navigation can leave the settings surface before the
                    operation settles. Always release the old control's busy
@@ -5238,7 +5279,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
                     afterSave?.();
                     if (button.isConnected && settingsRootOpen()) { settingsFeedback(t(success)); showMessage(t(success)); this.render(); }
                 } catch (error) {
-                    if (button.isConnected) settingsFeedback(error instanceof Error ? error.message : t("bind.statusError"));
+                    if (button.isConnected) settingsFeedback(safeUserErrorDetail(error));
                 } finally {
                     button.disabled = false;
                     input.disabled = false;
@@ -5290,7 +5331,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
                     if (labelNode) { labelNode.textContent = label; labelNode.title = label; }
                     settingsFeedback(t("bind.statusOk"));
                 } catch (error) {
-                    if (button.isConnected && settingsRootOpen()) settingsFeedback(error instanceof Error ? error.message : t("bind.statusError"));
+                    if (button.isConnected && settingsRootOpen()) settingsFeedback(safeUserErrorDetail(error));
                 } finally {
                     button.disabled = false;
                     button.removeAttribute("aria-busy");
@@ -5311,7 +5352,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
                     settings.targetSummaries.delete(previous);
                     if (button.isConnected && settingsRootOpen()) { settingsFeedback(t("set.targetCleared")); showMessage(t("set.targetCleared")); this.render(root); }
                 } catch (error) {
-                    if (button.isConnected) settingsFeedback(error instanceof Error ? error.message : t("bind.statusError"));
+                    if (button.isConnected) settingsFeedback(safeUserErrorDetail(error));
                 } finally { button.disabled = false; button.removeAttribute("aria-busy"); }
             });
         }
@@ -5371,7 +5412,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
                 for (const attribute of ["data-journal-mode", "data-journal-notebook-id", "data-journal-target-doc"]) settingsDrafts.delete(attribute);
                 if (button.isConnected) { showMessage(t("msg.diaryDocSaved")); this.render(); }
             } catch (error) {
-                if (button.isConnected) settingsFeedback(error instanceof Error ? error.message : t("msg.prefSaveFail"));
+                if (button.isConnected) settingsFeedback(safeUserErrorDetail(error));
             } finally {
                 button.disabled = false;
                 button.removeAttribute("aria-busy");
@@ -7145,7 +7186,7 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
         const captured = snapshot.capturedAt ? `\n${t("msg.snapshotCapturedAt", {time: new Date(snapshot.capturedAt).toLocaleString()})}` : "";
         if (!window.confirm(`${t("msg.snapshotConfirm", {items: itemCount, events: eventCount})}${captured}${review}`)) return;
         try {
-            await this.enqueueMutation(async () => {
+            const restored = await this.enqueueMutation(async () => {
                 const current = this.cloneStore(this.store);
                 this.store = backup;
                 try {
@@ -7154,7 +7195,14 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
                     this.store = current;
                     throw error;
                 }
+                return true;
             });
+            /* enqueueMutation deliberately converts lock/reconciliation failures
+               into an undefined result for callers that can retry in-place. A
+               restore must not treat that sentinel as success: otherwise the
+               UI/audit would claim an exact replace even though the selected
+               snapshot was never written. */
+            if (!restored) throw new Error("snapshot-restore-transaction-failed");
         } catch {
             this.auditEntries = appendStoreAudit(this.auditEntries, {type: "restore", at: new Date().toISOString(), details: {...buildRecoveryAuditDetails("local-snapshot", preflight, "rejected", ["persist-failed"]), snapshotCapturedAt: snapshot.capturedAt, legacySnapshot: snapshot.legacy}});
             this.recordDiagnostic("save-failed", "snapshot-persist-failed");
@@ -7360,6 +7408,10 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
                     progress: getProgress(this.store, last.item, actionDate),
                     target,
                     unit: last.revision.unit || "次",
+                    /* 批量完成也必须提供事实回执所需的来源与业务日；否则
+                       最近记录的“查看此记录”入口无法与单条记录保持同一语义。 */
+                    source: last.event.source,
+                    localDate: last.event.localDate,
                 });
                 this.pendingLocalItemId = last.item.id;
                 this.pendingLocalItemDate = moment.localDate;
@@ -7691,9 +7743,9 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
                 updateSession({refreshing: false});
             }
             if (stillCurrent()) {
-                updateSession({error: String(error instanceof Error ? error.message : error).slice(0, 200), errorScope: scope});
+                updateSession({error: safeUserErrorDetail(error), errorScope: scope});
                 this.render(root);
-                showMessage(t("msg.summaryFail", {error: String(error)}));
+                showMessage(t("msg.summaryFail", {error: safeUserErrorDetail(error)}));
             }
         } finally {
             // An invalidated request must not leave the generate action stuck
@@ -7723,13 +7775,13 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
             if (!decided.accepted) return {kind: "rejected" as const, reason: decided.reason};
             if (decision === "cancel") {
                 this.suggestionWorkflow = decided.state;
-                await this.persistSuggestionWorkflowUnlocked().catch((error) => showMessage(t("agent.workflowPersistFail", {error: String(error)})));
+                await this.persistSuggestionWorkflowUnlocked().catch((error) => showMessage(t("agent.workflowPersistFail", {error: safeUserErrorDetail(error)})));
                 return {kind: "cancelled" as const, current, state: decided.state};
             }
             const applied = applySuggestion(decided.state, this.store);
             if (!applied.result.applied) {
                 this.suggestionWorkflow = applied.state;
-                await this.persistSuggestionWorkflowUnlocked().catch((error) => showMessage(t("agent.workflowPersistFail", {error: String(error)})));
+                await this.persistSuggestionWorkflowUnlocked().catch((error) => showMessage(t("agent.workflowPersistFail", {error: safeUserErrorDetail(error)})));
                 return {kind: "apply-rejected" as const, current, state: applied.state};
             }
             const previousStore = this.store;
@@ -7741,7 +7793,7 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
                 throw error;
             }
             this.suggestionWorkflow = applied.state;
-            await this.persistSuggestionWorkflowUnlocked().catch((error) => showMessage(t("agent.workflowPersistFail", {error: String(error)})));
+            await this.persistSuggestionWorkflowUnlocked().catch((error) => showMessage(t("agent.workflowPersistFail", {error: safeUserErrorDetail(error)})));
             return {kind: "confirmed" as const, current, state: applied.state};
         }).catch((error) => {
             showMessage(t("msg.saveFailedShort"));
@@ -7774,7 +7826,7 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
             const undone = undoSuggestion(current, this.store);
             if (!undone.result.reverted) {
                 this.suggestionWorkflow = undone.state;
-                await this.persistSuggestionWorkflowUnlocked().catch((error) => showMessage(t("agent.workflowPersistFail", {error: String(error)})));
+                await this.persistSuggestionWorkflowUnlocked().catch((error) => showMessage(t("agent.workflowPersistFail", {error: safeUserErrorDetail(error)})));
                 return {kind: "rejected" as const, current, state: undone.state};
             }
             const previousStore = this.store;
@@ -7786,7 +7838,7 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
                 throw error;
             }
             this.suggestionWorkflow = undone.state;
-            await this.persistSuggestionWorkflowUnlocked().catch((error) => showMessage(t("agent.workflowPersistFail", {error: String(error)})));
+            await this.persistSuggestionWorkflowUnlocked().catch((error) => showMessage(t("agent.workflowPersistFail", {error: safeUserErrorDetail(error)})));
             return {kind: "reverted" as const, current, state: undone.state};
         }).catch((error) => {
             showMessage(t("msg.saveFailedShort"));
@@ -8403,9 +8455,14 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
         const snapshot = this.cloneStore(store);
         this.saveState = "saving";
         this.renderBackgroundUpdate();
-        const previous = this.cloneStore(this.lastPersistedStore);
         let persistedSnapshot = snapshot;
         const write = this.saveQueue.catch(() => undefined).then(async () => {
+            /* Capture the restore-point baseline inside the serialized write.
+               Calls can enqueue back-to-back before the first save settles;
+               taking this snapshot outside the queue would make every pending
+               write point at the same stale baseline and silently drop the
+               intermediate committed state from history. */
+            const previous = this.cloneStore(this.lastPersistedStore);
             const history = appendStoreSnapshotHistory(await this.loadData(BACKUP_STORAGE_NAME), createStoreSnapshotEnvelope(previous));
             await this.saveData(BACKUP_STORAGE_NAME, history);
             this.snapshotHistory = readStoreSnapshotHistory(history);
@@ -8419,8 +8476,8 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
         });
         this.saveQueue = write.catch((error) => {
             this.saveState = "error";
-            this.recordDiagnostic("save-failed", String(error).slice(0, 200));
-            showMessage(t("msg.saveDataFail", {error: String(error)}));
+            this.recordDiagnostic("save-failed", safeUserErrorDetail(error));
+            showMessage(t("msg.saveDataFail", {error: safeUserErrorDetail(error)}));
             this.renderBackgroundUpdate();
         });
         void write.then(() => {
@@ -8443,7 +8500,7 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
             this.renderBackgroundUpdate();
         });
         this.auxiliarySaveQueue = write.catch((error) => {
-            if (!this.disposed && !this.disposing) showMessage(t("agent.workflowPersistFail", {error: String(error)}));
+            if (!this.disposed && !this.disposing) showMessage(t("agent.workflowPersistFail", {error: safeUserErrorDetail(error)}));
         });
         return write;
     }
@@ -8485,7 +8542,7 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
         };
         const write = this.saveQueue.catch(() => undefined).then(() => this.saveData(OCCASIONS_STORAGE_NAME, snapshot).then(() => undefined));
         this.saveQueue = write.catch((error) => {
-            if (!surfaceRoot || this.isCurrentOccasionSurface(surfaceRoot)) showMessage(t("msg.occasionPersistFail", {error: String(error)}));
+            if (!surfaceRoot || this.isCurrentOccasionSurface(surfaceRoot)) showMessage(t("msg.occasionPersistFail", {error: safeUserErrorDetail(error)}));
         });
         return write;
     }
@@ -9027,7 +9084,7 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
         /* D-315：偏好桶明确采用后写者胜；仍通过锁串行化整桶写，避免两个 saveData 同时进行。 */
         const write = this.auxiliarySaveQueue.catch(() => undefined).then(() => this.withStorageLock(() => this.saveData(VIEW_PREFERENCES_NAME, preferences).then(() => undefined)));
         this.auxiliarySaveQueue = write.catch((error) => {
-            showMessage(t("msg.prefPersistFail", {error: String(error)}));
+            showMessage(t("msg.prefPersistFail", {error: safeUserErrorDetail(error)}));
         });
         return write.then(() => { this.rememberInitialSurfacePreferences(preferences); });
     }
@@ -9121,8 +9178,8 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
                         this.occasionStore = reconciledOccasions;
                     }
                 } catch (error) {
-                    if (!this.disposing) showMessage(t("msg.refreshFail", {error: String(error)}));
-                    this.recordDiagnostic("load-failed", String(error).slice(0, 200));
+                    if (!this.disposing) showMessage(t("msg.refreshFail", {error: safeUserErrorDetail(error)}));
+                    this.recordDiagnostic("load-failed", safeUserErrorDetail(error));
                     return undefined as T;
                 }
             }

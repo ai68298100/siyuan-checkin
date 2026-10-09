@@ -73,6 +73,7 @@ const hostEnvironment = {
     navigator: {}, STORAGE_LOCK_NAME: "test-lock", STORAGE_NAME: "checkin-store", BACKUP_STORAGE_NAME: "checkin-store-backup",
     SUGGESTION_WORKFLOW_STORAGE_NAME: "checkin-suggestion-workflow", VIEW_PREFERENCES_NAME: "checkin-view-preferences",
     currentCalendarDate: () => new Date(calendarDate),
+    safeUserErrorDetail: error => String(error instanceof Error ? error.message : typeof error === "string" ? error : "").replace(/[A-Za-z]:[\\/][^\r\n"'<>]*/g, "<path>").slice(0, 200) || "common.unknownError",
     captureActionMoment: () => ({occurredAt: calendarDate.toISOString(), localDate: productionModel.dateKey(calendarDate)}),
     t: key => key, showMessage: message => messages.push(message),
     openJournalDialogFor: options => { journalDialog = options; }, buildJournalEventNote: () => "answers",
@@ -127,6 +128,21 @@ function makeHost(initialStore = makeStore()) {
     return {host, storage};
 }
 async function verifyHostTransactions() {
+    /* Back-to-back main-store writes must capture restore baselines in queue
+       order. The second call is issued before the first promise settles; its
+       restore point should still contain the first committed store, rather
+       than repeating the initial empty baseline. */
+    const {host: historyHost, storage: historyStorage} = makeHost();
+    historyHost.store = productionModel.normalizeStore(makeStore([makeEvent(201)]));
+    const firstPersist = historyHost.persist();
+    historyHost.store = productionModel.normalizeStore(makeStore([makeEvent(201), makeEvent(202)]));
+    const secondPersist = historyHost.persist();
+    await Promise.all([firstPersist, secondPersist]);
+    const historyEntries = productionModel.readStoreSnapshotHistory(historyStorage.get("checkin-store-backup"));
+    assert.equal(historyEntries.length, 2, "two serialized writes must create two bounded restore points");
+    assert.equal(productionModel.normalizeStore(historyEntries[0].store).events.length, 0, "the first restore point captures the pre-first-write baseline");
+    assert.equal(productionModel.normalizeStore(historyEntries[1].store).events.length, 1, "the second restore point captures the first committed store");
+
     const {host: blockHost, storage: blockStorage} = makeHost();
     blockStorage.set("checkin-store", productionModel.normalizeStore(makeStore([makeEvent(101)])));
     await blockHost.recordBlockToday("item", 2);

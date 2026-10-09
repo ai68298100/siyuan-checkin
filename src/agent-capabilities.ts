@@ -311,7 +311,16 @@ export function registerAgentCapabilities(deps: AgentCapabilityDeps): void {
             const now = new Date().toISOString();
             const created = normalizeCheckinItem({id: makeId("item"), name, icon: "✓", kind, target, unit: typeof args.unit === "string" && args.unit.trim() ? args.unit.trim().slice(0, 16) : "次", schedule: {type: "daily"}, group: typeof args.group === "string" ? args.group.trim().slice(0, 32) : "", createdDate: dateKey(currentCalendarDate()), createdAt: now, updatedAt: now});
             if (!created) return {error: "打卡项参数无效。"};
-            await deps.createItem(created);
+            try {
+                await deps.createItem(created);
+            } catch (error) {
+                /* 创建由宿主在变更锁内执行；重复请求可能在入口预检后才
+                   发现同名项目。返回稳定的 Agent 错误回执，不把宿主路径或
+                   原始异常文本泄露给调用方。 */
+                return {error: error instanceof Error && error.message === "duplicate-item-name"
+                    ? "已存在同名打卡项。"
+                    : "打卡项保存失败，请稍后重试。"};
+            }
             return {result: "已创建打卡项“" + created.name + "”。", structuredContent: {id: created.id, name: created.name}};
         },
     });
@@ -338,7 +347,13 @@ export function registerAgentCapabilities(deps: AgentCapabilityDeps): void {
             if (!name || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return {error: "事项名称或日期无效。"};
             const created = normalizeOccasion({name, kind: "scheduled", date, recurrence, remindBeforeDays: 3, enabled: true});
             if (!created) return {error: "日期事项参数无效。"};
-            await deps.createOccasion(created);
+            try {
+                await deps.createOccasion(created);
+            } catch (error) {
+                return {error: error instanceof Error && error.message === "duplicate-occasion"
+                    ? "已存在相同日期事项。"
+                    : "日期事项保存失败，请稍后重试。"};
+            }
             return {result: "已创建日期事项“" + created.name + "”（" + date + "）。", structuredContent: {id: created.id, name: created.name, date}};
         },
     });

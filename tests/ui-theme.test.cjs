@@ -100,6 +100,22 @@ assert.match(liveStyles, /Seventeenth narrow-surface pass: viewport fallback and
 assert.ok(!styles.includes("@media (prefers-contrast: more)"), "compatibility media rules must not return to legacy index.scss");
 assert.match(liveStyles, /Eighteenth compatibility pass: contrast, forced colors, motion and touch input[\s\S]*\.lc-checkin__quick-button/,
     "compatibility media rules belong to the component layer");
+/* T-1826: reduced-motion is rendered on the .lc-checkin root itself.  Keep
+   the guard selectors rooted there so scroll, transition and enter-animation
+   suppression actually matches the runtime DOM instead of looking for a
+   non-existent ancestor carrying the data attribute. */
+assert.match(liveStyles, /\.lc-checkin\[data-reduced-motion="true"\]:is\([^)]*\.lc-checkin--today[\s\S]*scroll-behavior:\s*auto/,
+    "reduced motion must disable Today scrolling from the root data attribute");
+assert.match(liveStyles, /\.lc-checkin\[data-reduced-motion="true"\][\s\S]*transition:\s*none !important[\s\S]*transform:\s*none !important/,
+    "reduced motion must disable root transitions and transforms");
+assert.doesNotMatch(liveStyles, /\[data-reduced-motion="true"\]\s+\.lc-checkin--today/,
+    "reduced-motion selectors must not assume the data attribute lives on an ancestor");
+assert.match(liveStyles, /\.lc-checkin-dialog-host--mobile \.lc-checkin\[data-reduced-motion="true"\][\s\S]*backdrop-filter:\s*none/,
+    "mobile dialog backdrop must honor the root reduced-motion state");
+assert.match(liveStyles, /\.lc-checkin-dialog-host--mobile, \.lc-checkin-tab-host\)\[data-reduced-motion="true"\][\s\S]*\.lc-checkin__mobile-nav[\s\S]*transition:\s*none !important/,
+    "sibling mobile navigation must honor the owning root reduced-motion state");
+assert.match(source, /surface\.dataset\.reducedMotion = String\(this\.reducedMotion\);[\s\S]*root\.dataset\.reducedMotion = String\(this\.reducedMotion\);/,
+    "owning host root must mirror reduced-motion for sibling navigation controls");
 assert.match(liveStyles, /Nineteenth interaction pass: compact landscape and coarse-pointer history affordances[\s\S]*\.lc-checkin__mobile-nav button \{ touch-action: manipulation; \}/,
     "compact landscape and coarse-pointer affordances belong to the component layer");
 assert.ok(!styles.includes(".lc-checkin__coaching-list"),
@@ -164,7 +180,7 @@ const settingsSource = fs.readFileSync(path.join(__dirname, "..", "src", "render
 assert.match(settingsSource, /lc-checkin__settings-nav/);
 assert.match(source, /window\.confirm\(t\("msg\.prefsResetConfirm"\)\)/);
 assert.match(i18n, /"msg\.prefsResetConfirm": "恢复全部显示偏好？.*打卡数据、来源绑定、Key、复盘草稿、保存视图与报告输出设置保留。"/);
-assert.match(liveStyles, /\[data-reduced-motion="true"\] \.lc-checkin--history/);
+assert.match(liveStyles, /\.lc-checkin\[data-reduced-motion="true"\]:is\([^)]*\.lc-checkin--history/);
 assert.match(fs.readFileSync(path.join(__dirname, "..", "src", "ui", "tokens.scss"), "utf8"), /--lc-checkin-success:/);
 assert.match(fs.readFileSync(path.join(__dirname, "..", "src", "ui", "tokens.scss"), "utf8"), /--lc-checkin-danger:/);
 /* radius-lg 的真实生效声明在 tokens.scss（20px）；index.scss 里曾有一份死块里的 16px 从未生效 */

@@ -17,6 +17,7 @@ import {buildTemplateSharePackage} from "../features/template-share";
 import {parseTemplateShare, planImportDecisions, TEMPLATE_IMPORT_MAX_BYTES, type ImportDecision} from "../features/template-import";
 import {buildNameInference, inferFieldsFromName} from "../features/name-inference";
 import {formSignatureFromData} from "../features/editor-draft";
+import {sanitizeDiagnosticDetail} from "../features/diagnostics";
 import {fetchSyncPost, showMessage} from "siyuan";
 import {buildAnchorDocumentPath, filterAnchorChoices} from "../features/note-anchor-picker";
 import {describeEditorPreviewActions, describeEditorPreviewMeta} from "./editor";
@@ -29,6 +30,11 @@ const CUSTOM_ICON_LIBRARY_NAME = "checkin-custom-icon-library";
 const USER_TEMPLATES_NAME = "checkin-user-templates";
 const MAX_CUSTOM_ICON_BYTES = 240_000;
 const editorRootBindingCleanups = new WeakMap<HTMLElement, () => void>();
+
+function safeEditorErrorDetail(error: unknown): string {
+    const raw = error instanceof Error ? error.message : typeof error === "string" ? error : "";
+    return sanitizeDiagnosticDetail(raw) || t("common.unknownError");
+}
 
 export interface BindEditorHost {
     store: CheckinStore;
@@ -337,7 +343,7 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
             showMessage(t("editor.anchorCreated"));
         } catch (error) {
             if (!isCurrentSession()) return;
-            showMessage(`${t("editor.anchorCreateFailed")} ${String(error instanceof Error ? error.message : error)}`);
+            showMessage(`${t("editor.anchorCreateFailed")} ${safeEditorErrorDetail(error)}`);
         }
     });
     const unitInput = root.querySelector<HTMLInputElement>("input[name='unit']");
@@ -462,7 +468,7 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
             applyLocalIcon(icon, t("msg.upload"));
         } catch (error) {
             if (!isCurrentSession()) return;
-            showMessage(`[小驴打卡] ${String(error instanceof Error ? error.message : error)}`);
+            showMessage(`[小驴打卡] ${safeEditorErrorDetail(error)}`);
         }
     });
     root.querySelector<HTMLElement>("[data-action='download-custom-icon']")?.addEventListener("click", async () => {
@@ -479,7 +485,7 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
             applyLocalIcon(icon, t("msg.download"));
         } catch (error) {
             if (!isCurrentSession()) return;
-            showMessage(t("msg.iconDownloadFail", {error: String(error instanceof Error ? error.message : error)}));
+            showMessage(t("msg.iconDownloadFail", {error: safeEditorErrorDetail(error)}));
         }
     });
     root.querySelector<HTMLElement>("[data-action='open-iconfont']")?.addEventListener("click", () => {
@@ -516,7 +522,7 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
             host.render();
         } catch (error) {
             if (!isCurrentSession()) return;
-            showMessage(t("msg.iconImportFail", {error: String(error instanceof Error ? error.message : error)}));
+            showMessage(t("msg.iconImportFail", {error: safeEditorErrorDetail(error)}));
         }
     });
     let previousKind = getKind();

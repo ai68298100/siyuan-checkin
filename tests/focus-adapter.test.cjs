@@ -23,6 +23,7 @@ const modelStub = {
 
 const {startFocusFor, focusMappingFingerprint, focusStartErrorMessage} = loadModule("src/render/focus-adapter.ts", {
     "../i18n": {t: (key) => key},
+    "../features/diagnostics": {sanitizeDiagnosticDetail: (value) => String(value).replace(/C:\\\\[^\\s]+/g, "<path>").slice(0, 200)},
     "../model": modelStub,
     "../shared": {currentCalendarDate: () => new Date()},
     "siyuan": {showMessage: () => undefined},
@@ -63,6 +64,8 @@ function makeTimerAdapter() {
 (async () => {
     assert.equal(focusStartErrorMessage({code: "DOCK_TOMATO_INVALID_DURATION"}), "msg.focusDockInvalidDuration");
     assert.equal(focusStartErrorMessage({code: "DOCK_TOMATO_UNSUPPORTED_TIME_UNIT"}), "msg.focusDockUnsupportedTimeUnit");
+    const safeFocusMessage = focusStartErrorMessage(new Error("C:\\secret\\workspace\\focus.log"));
+    assert.ok(!safeFocusMessage.includes("secret"), "focus errors must not expose host paths");
     /* The start boundary must pass today's projection, not the raw future goal or remaining amount. */
     for (const target of [45, 60]) {
         const item = {id: "read", kind: "duration", target: 90, unit: "分钟"};

@@ -174,8 +174,10 @@ assert.match(pluginSource, /private async retrySave\(\)[\s\S]*?await this\.enque
 const agentCreateBlock = pluginSource.slice(pluginSource.indexOf("createItem: async (created) => {"), pluginSource.indexOf("createOccasion: async (created) => {"));
 assert.match(agentCreateBlock, /await this\.enqueueMutation\(async \(\) => \{/, "Agent createItem must go through enqueueMutation (main-store reconcile applies)");
 assert.match(agentCreateBlock, /const previous = this\.store;/, "Agent createItem must snapshot the store");
+assert.match(agentCreateBlock, /this\.store\.items\.some\(\(candidate\) => !candidate\.archived && candidate\.name === created\.name\)/,
+    "Agent createItem must recheck duplicate names inside the mutation lock");
 assert.match(agentCreateBlock, /this\.store = previous;\s*\r?\n\s*throw error;/, "Agent createItem must roll back on persist failure and rethrow");
-assert.match(pluginSource.slice(pluginSource.indexOf("createOccasion: async (created) => {"), pluginSource.indexOf("createOccasion: async (created) => {") + 700),
+assert.match(pluginSource.slice(pluginSource.indexOf("createOccasion: async (created) => {"), pluginSource.indexOf("createOccasion: async (created) => {") + 1400),
     /const previous = this\.occasionStore;[\s\S]*?this\.occasionStore = previous;\s*\r?\n\s*throw error;/,
     "Agent createOccasion must roll back on persist failure and rethrow");
 /* 主 Store 导入/恢复必须先进入同一锁内刷新，再进行替换写入；失败不能留下只在内存中的导入结果。 */

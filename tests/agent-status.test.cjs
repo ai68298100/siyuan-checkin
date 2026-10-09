@@ -139,7 +139,7 @@ assert.ok(registerCall > failBranch, "智能体注册不得放在存储成功的
 assert.match(indexSource.slice(failBranch, registerCall), /if \(this\.disposed \|\| this\.disposing\) return;/, "注册前仍要遵守拆除守卫");
 assert.match(indexSource, /if \(typeof plugin\.addAgentCapability !== "function"\) \{\s*\/\*[\s\S]{0,120}?\*\/\s*this\.agentCapabilityState = "unsupported";\s*return;/, "宿主不支持时要落到 unsupported 状态");
 assert.match(indexSource, /const id = plugin\.addAgentCapability\?\.\(options\);\s*if \(typeof id === "string"\) ids\.push\(id\);/, "必须回收宿主返回的能力 id");
-assert.match(indexSource, /this\.agentCapabilityError = String\(error instanceof Error \? error\.message : error\);\s*this\.agentCapabilityState = "failed";/, "抛错要留下原因并置为 failed");
+assert.match(indexSource, /this\.agentCapabilityError = safeUserErrorDetail\(error\);\s*this\.agentCapabilityState = "failed";/, "抛错要经过安全清洗并置为 failed");
 assert.match(indexSource, /if \(this\.agentCapabilityState !== "pending"/, "重复调用不得二次注册");
 
 /* 字典双语齐全，且旧键彻底退役。 */

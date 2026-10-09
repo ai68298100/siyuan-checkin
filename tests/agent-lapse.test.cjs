@@ -98,7 +98,7 @@ const makeDeps = () => {
     };
     agentCapabilities.registerAgentCapabilities(deps);
     const handler = capabilities.get("checkin-record-event").handler;
-    return {deps, state, handler};
+    return {deps, state, handler, capabilities};
 };
 
 const actionDate = new Date(Number(today.slice(0, 4)), Number(today.slice(5, 7)) - 1, Number(today.slice(8, 10)), 12);
@@ -139,6 +139,13 @@ const actionDate = new Date(Number(today.slice(0, 4)), Number(today.slice(5, 7))
     const failed = await failing.handler({itemId: "quit2"});
     assert.ok(failed.error, "a failed write reports an error");
     assert.equal(model.getEventsForDay(failing.state.store, "quit2", actionDate).length, 0, "no facts are written on failure");
+
+    /* Agent 建项失败也必须返回稳定回执，不能把宿主路径/原始异常泄露给模型。 */
+    const createFailure = makeDeps();
+    createFailure.deps.createItem = async () => { throw new Error("C:\\secret\\workspace\nwrite denied"); };
+    const createFailed = await createFailure.capabilities.get("checkin-create-item").handler({name: "失败建项"});
+    assert.equal(createFailed.error, "打卡项保存失败，请稍后重试。", "create failure uses a stable localized error");
+    assert.ok(!createFailed.error.includes("secret"), "create failure does not expose host details");
 
     /* —— 场景 6：index 记录器同口径结构钉住（今日卡/渲染块与 Agent 一致的门）。 —— */
     const indexSource = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");

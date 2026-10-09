@@ -133,6 +133,7 @@ const Harness = vm.runInNewContext(`${code}\nSummaryHarness`, {
     /* T-1541：renderReview 的 LifeLog 投影依赖——透传真实现（纯函数）。 */
     buildLifelogTimeline: load("features/lifelog-timeline.ts").buildLifelogTimeline,
     currentCalendarDate: () => new Date(clock), structuredClone, t, Error,
+    safeUserErrorDetail: error => String(error instanceof Error ? error.message : typeof error === "string" ? error : "").slice(0, 200) || "common.unknownError",
     createSuggestionWorkflow: envelope => ({envelope}),
     withTimeout: value => Promise.resolve(value), SUMMARY_TIMEOUT_MS: 1000,
     showMessage: message => messages.push(message),

@@ -117,10 +117,17 @@ function normalizeValidIso(value: unknown): string | undefined {
     按固定顺序 duplicate → tombstone discarded → 项目/映射 blocked → recorded;
     批内相同 itemId+source+externalRef 只入账一次,后续条目回显首条结果。
     返回 recorded 条目的写入计划(unit 解析为完成日期修订值)与 recorded 结果下标(供宿主追加后回填 eventId)。 */
-export function planBatchRecord(store: CheckinStore, inputs: readonly unknown[], nowIso: string): {results: BatchEntryResult[]; planned: BatchEntryPlan[]; recordedIndices: number[]} {
+export function planBatchRecord(store: CheckinStore, inputs: readonly unknown[], nowIso: string): {
+    results: BatchEntryResult[];
+    planned: BatchEntryPlan[];
+    recordedIndices: number[];
+    /** 批内重复项指向首条结果；宿主完成写入后可回填同一 eventId。 */
+    duplicateResultLinks: Array<{resultIndex: number; firstResultIndex: number}>;
+} {
     const results: BatchEntryResult[] = [];
     const planned: BatchEntryPlan[] = [];
     const recordedIndices: number[] = [];
+    const duplicateResultLinks: Array<{resultIndex: number; firstResultIndex: number}> = [];
     const seenRefs = new Map<string, number>();
     for (let index = 0; index < inputs.length; index += 1) {
         const raw = inputs[index];
@@ -188,7 +195,9 @@ export function planBatchRecord(store: CheckinStore, inputs: readonly unknown[],
             const firstIndex = seenRefs.get(refKey);
             if (firstIndex !== undefined) {
                 const first = results[firstIndex];
+                const resultIndex = results.length;
                 results.push(first.kind === "recorded" ? {kind: "duplicate"} : {...first});
+                if (first.kind === "recorded") duplicateResultLinks.push({resultIndex, firstResultIndex: firstIndex});
                 continue;
             }
         }
@@ -233,5 +242,5 @@ export function planBatchRecord(store: CheckinStore, inputs: readonly unknown[],
         recordedIndices.push(results.length);
         results.push(usedFallbackTime ? {kind: "recorded", usedFallbackTime: true} : {kind: "recorded"});
     }
-    return {results, planned, recordedIndices};
+    return {results, planned, recordedIndices, duplicateResultLinks};
 }

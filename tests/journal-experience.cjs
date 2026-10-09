@@ -118,7 +118,7 @@ const root = path.resolve(__dirname, "..");
         await page.evaluate(() => {document.querySelector("#root").replaceChildren(); searchRequests[4].reject(Error("detached"));});
         const methods = index.slice(index.indexOf("    private async resolveJournalTarget("), index.indexOf("    private async openJournalEntry("));
         const hostSource = ts.transpileModule(`class JournalHost {${methods}}`, {compilerOptions: {target: ts.ScriptTarget.ES2020}}).outputText;
-        await page.addScriptTag({content: `(() => {const t = key => key; const buildJournalLookupQuery = modules.journal.buildJournalLookupQuery; const currentCalendarDate = () => new Date(2026, 8, 26); const dateKey = () => "2026-09-26"; ${hostSource}; window.JournalHost = JournalHost;})();`});
+        await page.addScriptTag({content: `(() => {const t = key => key; const buildJournalLookupQuery = modules.journal.buildJournalLookupQuery; const currentCalendarDate = () => new Date(2026, 8, 26); const dateKey = () => "2026-09-26"; const safeUserErrorDetail = error => String(error instanceof Error ? error.message : typeof error === "string" ? error : "").slice(0, 200) || "common.unknownError"; ${hostSource}; window.JournalHost = JournalHost;})();`});
         const outcomes = await page.evaluate(async () => {
             const host = new JournalHost();
             host.journalIntegrationPref = {mode: "doc", docId: "20260926120000-abcdef0"};
