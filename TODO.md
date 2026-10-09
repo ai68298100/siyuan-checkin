@@ -11,7 +11,7 @@
 - [x] 用户授权推送与 GitHub 发版；版本四元组、README 当前入口、变更记录、发布说明统一为 v18.17.1，历史版本摘要保留。
 - [x] 最终 `pnpm run test:quality` 通过，含构建、主/UI/移动/生态/扩展/性能链、ZIP 摘要同步、资产清单及四步回滚演练；无障碍 1227 对比度组合零违规。
 - [x] 显式指定本机 Playwright Chromium 的明暗主题 `visual-qa` 通过，页面错误均为 0；历史“CHECKIN_BROWSER 未设置”仅描述此前轮次，不覆盖本次发布证据。
-- [x] 从 `main` 推送提交、新 tag 与 `gh` 正式 Release，远端 main、tag、Release 资产和 SHA-256 已复核；待远端 CI 完成后补结果。
+- [x] 从 `main` 推送提交、新 tag 与 `gh` 正式 Release，远端 main、tag、Release 资产和 SHA-256 已复核；CI run `37900511533` 的 `verify` 与 `browser-audit` 均通过。
 
 ## 2026-10-09 全插件复核第九轮增量
 
