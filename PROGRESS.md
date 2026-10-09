@@ -2722,6 +2722,12 @@ Today 条目附件的 `FileReader.onload/onerror` 现在复核绑定时页面、
 - `node tests/visual-qa.cjs`：在 draft conflict submit 场景等待超时（`draft conflict submit did not finish`），未宣称全量视觉通过。
 - `node tests/cross-surface-matrix.test.cjs`：修复过时的 12.5 静态断言后 12.1–12.6 全部通过；断言仍要求 root-aware `host.render(root)`。
 
+# 2026-10-09 全插件功能与 UI 复核第十一轮
+
+- 用户反馈边界收口：导航打开页签、原生导出保存、日记提交、叶归映射保存、Agent 注册/调用、笔记查询验证、微信读书拉取及设置页 Agent/微信读书状态详情均不再直出宿主原始异常；统一经过 `sanitizeDiagnosticDetail`、长度限制、HTML 转义和本地化通用兜底。
+- 测试夹具同步补齐 `features/diagnostics` 隔离依赖，并更新反馈安全守门与诊断断言，确保后续新增用户反馈路径不会回退到原始异常显示。
+- 验证：`pnpm run check`、`pnpm test`、`pnpm run build`、`pnpm run test:ui`、`pnpm run test:ecosystem`、`pnpm run test:extended` 和本轮定向测试通过；构建仅保留既有 JS/CSS/压缩包体积 warning。`CHECKIN_BROWSER` 未设置，浏览器视觉、真实思源/Android/TalkBack、第三方来源、缩放及保存面板仍未现场关闭。
+
 本轮剩余项回链 T-1778/T-1788/T-1813～T-1829：视觉测试夹具的异步重绘竞态、640px 首屏密度和 draft conflict 浏览器夹具需单独修正/复测；CSS 软线和真实宿主证据保持开放，不把本地自动化通过写成现场验收。
 
 

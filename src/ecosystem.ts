@@ -1,5 +1,6 @@
 import type {CheckinEvent} from "./types";
 import {CHECKIN_API_PROTOCOL, CHECKIN_EVENT_RANGE_LIMITS} from "./api-contract";
+import {sanitizeDiagnosticDetail} from "./features/diagnostics";
 
 export const TASK_HORIZON_EXTERNAL_REF_PREFIX = "taskhorizon" as const;
 export const TASK_HORIZON_REFRESH_EVENTS = [
@@ -150,6 +151,11 @@ export interface AgentCapabilityProbe {
     register: (options: unknown) => {registered: boolean; error?: string};
 }
 
+function safeIntegrationError(error: unknown): string {
+    const raw = error instanceof Error ? error.message : typeof error === "string" ? error : "";
+    return sanitizeDiagnosticDetail(raw) || "未知错误";
+}
+
 export function probeAgentCapabilityHost(host: AgentCapabilityHost | undefined): AgentCapabilityProbe {
     const add = host && typeof host.addAgentCapability === "function" ? host.addAgentCapability.bind(host) : undefined;
     return {
@@ -157,7 +163,7 @@ export function probeAgentCapabilityHost(host: AgentCapabilityHost | undefined):
         register: (options) => {
             if (!add) return {registered: false, error: "宿主不支持智能体能力注册，将使用离线模式。"};
             try { add(options); return {registered: true}; }
-            catch (error) { return {registered: false, error: String(error instanceof Error ? error.message : error)}; }
+            catch (error) { return {registered: false, error: safeIntegrationError(error)}; }
         },
     };
 }
@@ -177,7 +183,7 @@ export async function safeAgentCall<T>(call: () => Promise<T> | T, timeoutMs = 1
         const value = await Promise.race([Promise.resolve().then(call), new Promise<never>((_, reject) => setTimeout(() => reject(new Error("智能体调用超时")), timeoutMs))]);
         return {ok: true, value};
     } catch (error) {
-        return {ok: false, error: String(error instanceof Error ? error.message : error), offline: true};
+        return {ok: false, error: safeIntegrationError(error), offline: true};
     }
 }
 

@@ -1,5 +1,6 @@
 import {t} from "../i18n";
 import {escapeHtml, matchesSearch} from "../shared";
+import {sanitizeDiagnosticDetail} from "../features/diagnostics";
 import type {YeguifProjectMapping} from "../features/yeguif-adapter";
 
 export interface YeguifMappingTarget {
@@ -134,7 +135,8 @@ export function bindYeguifMappings(root: HTMLElement, options: {
             current.saving = false;
             refreshers.get(root)?.();
             const liveStatus = root.querySelector<HTMLElement>("[data-yeguif-mapping-status]");
-            if (liveStatus) liveStatus.textContent = error instanceof Error ? error.message : t("msg.prefSaveFail");
+            const rawDetail = error instanceof Error ? error.message : typeof error === "string" ? error : "";
+            if (liveStatus) liveStatus.textContent = sanitizeDiagnosticDetail(rawDetail) || t("msg.prefSaveFail");
             return;
         }
         current.saving = false;

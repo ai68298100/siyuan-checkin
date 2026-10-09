@@ -19,7 +19,7 @@ assert.match(opsSource, /importLoopPlanInto/, "Loop import executor present");
 assert.match(opsSource, /downloadLoopExportFor/, "Loop export downloader present");
 
 const outputRoot = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-external-ref-"));
-for (const filename of ["types.ts", "api-contract.ts", "ecosystem.ts"]) {
+for (const filename of ["types.ts", "api-contract.ts", "ecosystem.ts", "features/diagnostics.ts"]) {
     const target = path.join(outputRoot, filename.replace(/\.ts$/, ".js"));
     fs.mkdirSync(path.dirname(target), {recursive: true});
     fs.writeFileSync(target, ts.transpileModule(read(filename), {

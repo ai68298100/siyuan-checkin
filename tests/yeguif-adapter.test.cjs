@@ -20,6 +20,7 @@ const transpile = (relative, target) => {
 transpile("src/types.ts");
 transpile("src/api-contract.ts");
 transpile("src/ecosystem.ts");
+transpile("src/features/diagnostics.ts");
 transpile("src/date-keys.ts");
 transpile("src/features/yeguif-adapter.ts");
 const adapter = require(path.join(dir, "src/features/yeguif-adapter.js"));

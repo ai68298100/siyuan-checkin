@@ -21,6 +21,12 @@
 - 本轮保留边界：墓碑不做未经证明的时间/数量裁剪，继续保留外部身份以防旧窗口或 API 重放复活；恢复仍是锁内精确替换、旁路并发按写后校验合并；多桶备份协议、完整墓碑生命周期测量、完整动效/elevation 规范和真实宿主/浏览器视觉现场仍开放。
 - 本轮证据：API v5、record-receipt、restore-audit、storage-transaction、item-tombstone、tombstone-index、tombstone-concurrency、batch-lifecycle-performance、settings-feedback、ui-theme、responsive-layout、accessibility-audit、checkin-toast、cross-page-consistency 定向测试，以及 `pnpm test`、`pnpm run check`、`pnpm run build`、`pnpm run test:ui`、`pnpm run test:mobile`、`pnpm run test:ecosystem`、`pnpm run test:extended`、`pnpm run test:perf` 全部通过。`CHECKIN_BROWSER` 未设置，视觉与真实宿主现场仍按阻塞记录开放。
 
+## 2026-10-09 全插件复核第十一轮增量
+
+- 本轮已落地：导航页签失败、原生导出失败、日记提交、叶归映射保存、Agent 注册/调用、笔记查询验证、微信读书拉取与设置状态详情统一经过诊断字符串清洗、长度边界、HTML 转义和本地化兜底，避免路径、凭据、控制字符和宿主内部异常直出。
+- 本轮已落地：新增并修正隔离测试夹具的 `features/diagnostics` 依赖，更新反馈安全守门，防止用户可见路径重新回显原始异常。
+- 本轮证据：`pnpm run check`、`pnpm test`、`pnpm run build`、`pnpm run test:ui`、`pnpm run test:ecosystem`、`pnpm run test:extended` 及相关反馈/导出/Agent/导航/日记/叶归/微信读书定向测试通过；Webpack 保持既有体积 warning。`CHECKIN_BROWSER` 未设置，视觉、真实思源/Android/TalkBack、第三方来源、缩放和保存面板现场仍按阻塞记录开放。
+
 ## 2026-10-09 全插件复核第八轮增量
 
 - 本轮已落地：快速弹窗编辑草稿离开守卫与首次标题拖拽/双击绑定时序；配额摘要改用民历日算术跨 DST；渲染块日期格保留键盘激活与共享焦点环，并为 Today 五项截断增加双语、可读的隐藏数量状态。

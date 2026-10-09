@@ -15,6 +15,10 @@ function loadDownload({bridge, putFileResponse = {code: 0}, saveExportFileAvaila
         compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS},
         fileName: "src/download.ts",
     }).outputText;
+    const diagnosticsOutput = ts.transpileModule(read("src/features/diagnostics.ts"), {
+        compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS},
+        fileName: "src/features/diagnostics.ts",
+    }).outputText;
     const calls = {createObjectURL: 0, putFile: [], nativeSaves: [], hostSaveExportFile: [], messages: [], links: []};
     const posted = [];
     const fetchPost = (url, data, cb, headers, failCb) => {
@@ -31,11 +35,16 @@ function loadDownload({bridge, putFileResponse = {code: 0}, saveExportFileAvaila
     const document = {createElement: () => { const link = {click() { calls.links.push(this.href); }}; return link; }};
     const URL = {createObjectURL: () => { calls.createObjectURL += 1; return "blob:fake"; }, revokeObjectURL: () => {}};
     const module = {exports: {}};
+    const diagnosticsModule = {exports: {}};
+    vm.runInNewContext(diagnosticsOutput, {module: diagnosticsModule, exports: diagnosticsModule.exports}, {filename: "src/features/diagnostics.ts"});
     vm.runInContext(output, vm.createContext({
         module, exports: module.exports,
         require: (specifier) => {
             if (specifier === "siyuan") return {fetchPost, saveExportFile, showMessage: (text, ms, type) => calls.messages.push({text, type})};
             if (specifier === "./i18n") return {t: (key, params) => `${key}:${JSON.stringify(params || {})}`};
+            if (specifier === "./features/diagnostics") {
+                return diagnosticsModule.exports;
+            }
             throw new Error(`未预期依赖 ${specifier}`);
         },
         window, document, URL, Blob, File, FormData,

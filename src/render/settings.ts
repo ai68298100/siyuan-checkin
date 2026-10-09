@@ -18,6 +18,7 @@ import type {DocumentSourceKey, SourceIngestReport} from "../features/source-ing
 import {bindingTargetLabel} from "../features/note-bindings";
 import {renderPageShellHead} from "./page-shell";
 import {renderYeguifMappings} from "./yeguif-mappings";
+import {sanitizeDiagnosticDetail} from "../features/diagnostics";
 
 const AVATAR_PRESETS = [
     ["check", "set.avatarPresetCheck"],
@@ -157,13 +158,17 @@ export interface SettingsViewContext {
 
 export function renderSettingsView(ctx: SettingsViewContext): string {
     const settingsViewId = `lc-checkin-settings-${++settingsViewSequence}`;
+    const safeDiagnostic = (value: unknown, fallback = t("common.unknownError")): string => {
+        const raw = typeof value === "string" ? value : "";
+        return sanitizeDiagnosticDetail(raw) || fallback;
+    };
     const agentStatusOf = (state: SettingsViewContext["agentCapability"]["state"], count: number, error?: string): string => {
         if (state === "registered") return count ? t("set.agentOn", {count}) : t("set.agentOnUnknown");
         if (state === "unsupported") return t("set.agentUnsupported");
-        if (state === "failed") return t("set.agentFailed", {error: error || ""});
+        if (state === "failed") return t("set.agentFailed", {error: safeDiagnostic(error)});
         return t("set.agentPending");
     };
-    const agentStatus = agentStatusOf(ctx.agentCapability.state, ctx.agentCapability.count, ctx.agentCapability.error);
+    const agentStatus = escapeHtml(agentStatusOf(ctx.agentCapability.state, ctx.agentCapability.count, ctx.agentCapability.error));
     const agentWhere = ctx.agentCapability.state === "registered" ? `<small>${t("set.agentWhere")}</small>` : "";
     const diagnosticState: DockTomatoProviderState = ctx.dockTomatoDiagnostics?.state || "missing";
     const diagnosticKey: Record<DockTomatoProviderState, string> = {
@@ -271,8 +276,9 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
     const wereadPullStatus = ctx.wereadLastPull
         ? (ctx.wereadLastPull.ok
             ? t("set.wereadPullOk", {days: ctx.wereadLastPull.days, written: ctx.wereadLastPull.written})
-            : t("set.wereadPullFail", {message: `${ctx.wereadLastPull.error || ""}${ctx.wereadLastPull.upgrade ? ` · ${ctx.wereadLastPull.upgrade}` : ""}`}))
+            : t("set.wereadPullFail", {message: `${safeDiagnostic(ctx.wereadLastPull.error)}${ctx.wereadLastPull.upgrade ? ` · ${safeDiagnostic(ctx.wereadLastPull.upgrade)}` : ""}`}))
         : t("set.wereadPullIdle");
+    const safeWereadPullStatus = escapeHtml(wereadPullStatus);
     /* T-1457：叶归 LifeLog 缺省值，同上。 */
     const yeguif = ctx.yeguifIntegration || {enabled: false, itemId: "", notebookId: "", mappings: []};
     /* 外部联动统一三态：已启用 / 已配置待启用 / 待配置。配置完成不等于上游已连通，
@@ -685,7 +691,7 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.wereadThreshold")}</span><small>${t("set.wereadThresholdHint")}</small></span><span class="lc-checkin__settings-inline"><input type="number" min="1" max="1440" step="1" data-weread-threshold value="${weread.thresholdMinutes}" aria-label="${t("set.wereadThreshold")}" /><button class="lc-checkin__text-button" type="button" data-action="save-weread">${t("set.wereadSave")}</button></span></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.wereadEffective")}</span><small>${t("set.wereadEffectiveHint")}</small></span><span class="lc-checkin__settings-inline"><span class="lc-checkin__settings-effective">${weread.enabled ? t("set.wereadEnabledOn") : t("set.wereadEnabledOff")} · ${escapeHtml((ctx.store.items.find((item) => item.id === weread.itemId) || {name: t("set.wereadNotBound")}).name)} · ${escapeHtml(t("set.wereadThresholdValue", {n: weread.thresholdMinutes}))} · ${wereadKeySet ? t("set.wereadKeySaved") : t("set.wereadKeyNone")}</span></span></div>
                     <div class="lc-checkin__settings-row" data-weread-integration><span class="lc-checkin__settings-label"><span>${t("set.wereadTitle")}</span><small>${t("set.wereadHint")}${weread.enabled ? ` · ${t("set.wereadToday", {n: formatNumber(wereadTodayMinutes)})}` : ""}</small></span><input type="checkbox" class="lc-checkin__switch" data-weread-toggle ${weread.enabled ? "checked" : ""} aria-label="${t("set.wereadToggle")}" /></div>
-                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.wereadPull")}</span><small>${wereadPullStatus}</small></span><span class="lc-checkin__settings-inline"><button class="lc-checkin__text-button" type="button" data-action="weread-pull">${t("set.wereadPull")}</button></span></div>
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.wereadPull")}</span><small>${safeWereadPullStatus}</small></span><span class="lc-checkin__settings-inline"><button class="lc-checkin__text-button" type="button" data-action="weread-pull">${t("set.wereadPull")}</button></span></div>
                     </details>
                     <div class="lc-checkin__source-category" data-source-category="shared-doc">${t("set.sourceCategory.sharedDoc")}</div>
                     <details class="lc-checkin__source-panel" data-source-panel="health" data-source-state="${healthState}"${sourcePanelOpen("health")}>

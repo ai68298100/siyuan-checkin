@@ -5,6 +5,7 @@
    桌面端与普通浏览器仍用临时 Blob 下载，行为不变。 */
 import {fetchPost, saveExportFile, showMessage} from "siyuan";
 import {t} from "./i18n";
+import {sanitizeDiagnosticDetail} from "./features/diagnostics";
 
 export interface GeneratedFile {
     fileName: string;
@@ -15,6 +16,11 @@ export interface GeneratedFile {
 export type SaveOutcome = "native" | "browser" | "failed";
 
 type NativeBridge = {JSAndroid?: {saveExportFile?: unknown}; webkit?: {messageHandlers?: {saveExportFile?: unknown}}; JSHarmony?: {saveExportFile?: unknown}};
+
+function safeExportErrorDetail(error: unknown): string {
+    const raw = error instanceof Error ? error.message : typeof error === "string" ? error : "";
+    return sanitizeDiagnosticDetail(raw) || t("common.unknownError");
+}
 
 /** 只认宿主的原生保存桥，不按 getFrontend() 名字猜：browser-mobile 是真浏览器，Blob 下载没问题。 */
 export function nativeExportBridge(): "android" | "ios" | "harmony" | undefined {
@@ -64,9 +70,9 @@ function requestNativeSave(container: "android" | "ios" | "harmony", uri: string
                这时必须退回容器原生桥，否则文件写进了 /assets 却没有任何保存动作。 */
             const status = (result as {status?: string} | undefined)?.status;
             if (status && status !== "success" && !callContainerBridge(container, uri)) {
-                showMessage(t("msg.exportSaveFail", {error: String(status)}), 7000, "error");
+                showMessage(t("msg.exportSaveFail", {error: safeExportErrorDetail(status)}), 7000, "error");
             }
-        }).catch((error) => { if (!callContainerBridge(container, uri)) showMessage(t("msg.exportSaveFail", {error: String(error)}), 7000, "error"); });
+        }).catch((error) => { if (!callContainerBridge(container, uri)) showMessage(t("msg.exportSaveFail", {error: safeExportErrorDetail(error)}), 7000, "error"); });
         return;
     }
     /* 宿主未导出该 API 时直接用原生桥（V1 形态，不占用宿主的完成回调全局函数）。 */
@@ -96,7 +102,7 @@ export async function saveGeneratedFile(file: GeneratedFile, stamp: number = Dat
         showMessage(t("msg.exportSaved", {path}), 6200);
         return "native";
     } catch (error) {
-        showMessage(t("msg.exportSaveFail", {error: String(error instanceof Error ? error.message : error)}), 7000, "error");
+        showMessage(t("msg.exportSaveFail", {error: safeExportErrorDetail(error)}), 7000, "error");
         return "failed";
     }
 }

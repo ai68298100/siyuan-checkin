@@ -12,7 +12,7 @@ const compiled = relative => ts.transpileModule(fs.readFileSync(path.join(source
 const sharedSource = ts.createSourceFile("shared.ts", fs.readFileSync(path.join(sourceRoot, "shared.ts"), "utf8"), ts.ScriptTarget.Latest, true);
 const shared = ts.transpileModule(sharedSource.statements.filter(statement => ts.isFunctionDeclaration(statement)
     && ["escapeHtml", "matchesSearch"].includes(statement.name?.text)).map(statement => statement.getText(sharedSource)).join("\n"), {compilerOptions}).outputText;
-const modules = {"../i18n": compiled("i18n.ts"), "../shared": shared, editor: compiled("render/yeguif-mappings.ts"), choices: compiled("render/project-choice.ts")};
+const modules = {"../i18n": compiled("i18n.ts"), "../shared": shared, "../features/diagnostics": compiled("features/diagnostics.ts"), editor: compiled("render/yeguif-mappings.ts"), choices: compiled("render/project-choice.ts")};
 const stylesheet = sass.compile(path.join(sourceRoot, "ui/yeguif-mappings.scss")).css + sass.compile(path.join(sourceRoot, "ui/project-choice.scss")).css;
 
 async function verifyMappings() {

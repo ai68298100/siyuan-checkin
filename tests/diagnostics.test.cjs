@@ -80,7 +80,7 @@ assert.equal(manifestEntry.effect, "read");
 assert.ok(reference.includes("getDiagnostics"), "reference doc must document getDiagnostics");
 
 /* 宿主打点：五个失败路径全部记录原因码。 */
-assert.match(indexSource, /recordDiagnostic\("save-failed", String\(error\)\.slice\(0, 200\)\)/, "store save failures must record save-failed");
+assert.match(indexSource, /recordDiagnostic\("save-failed", safeUserErrorDetail\(error\)\)/, "store save failures must record save-failed through the shared sanitizer");
 const diagnosticRecorder = indexSource.slice(indexSource.indexOf("recordDiagnostic(code:"), indexSource.indexOf("private recordImportFailure"));
 assert.ok(diagnosticRecorder.includes("...(detail ? {detail} : {})"), "recordDiagnostic must delegate detail bounds to the shared sanitizer");
 assert.match(indexSource, /recordDiagnostic\("version-conflict"/, "merge conflicts must record version-conflict");

@@ -17,6 +17,7 @@ const root = path.resolve(__dirname, "..");
             window.require = name => {
                 if (name === "../i18n") return {t: key => key};
                 if (name === "../shared") return {escapeHtml: text => String(text).replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("<", "&lt;")};
+                if (name === "../features/diagnostics") return {sanitizeDiagnosticDetail: value => String(value || "").slice(0, 200)};
                 if (name === "siyuan") return {showMessage: message => messages.push(message), Dialog: class {
                     constructor(options) { this.element = document.createElement("div"); this.element.innerHTML = options.content; document.body.append(this.element); }
                     destroy() { this.element.remove(); }

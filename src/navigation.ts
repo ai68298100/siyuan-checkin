@@ -1,5 +1,6 @@
 /* 页面导航（surface 切换）：从 index.ts 外置（T-022）。 */
 import {t} from "./i18n";
+import {sanitizeDiagnosticDetail} from "./features/diagnostics";
 import {openTab, showMessage} from "siyuan";
 import type {CheckinItem, CheckinStore, PageId, EditorRootContext, InsightsRootContext} from "./types";
 import type {CheckinPageId} from "./features/root-page-store";
@@ -36,6 +37,11 @@ export interface NavigationHost {
     setInsightsStateForRoot?(root: HTMLElement | undefined, patch: Partial<InsightsRootContext>): void;
     editorStateForRoot?(root: HTMLElement): EditorRootContext;
     setEditorStateForRoot?(root: HTMLElement | undefined, patch: Partial<EditorRootContext>, replace?: boolean): void;
+}
+
+function safeNavigationErrorDetail(error: unknown): string {
+    const raw = error instanceof Error ? error.message : typeof error === "string" ? error : "";
+    return sanitizeDiagnosticDetail(raw) || t("common.unknownError");
 }
 
 function setEditor(host: NavigationHost, root: HTMLElement | undefined, patch: Partial<EditorRootContext>, replace = false): void {
@@ -159,7 +165,7 @@ export function openTabPageFor(host: NavigationHost): void {
         }
     }).catch((error) => {
         if (host.disposed || host.disposing) return;
-        showMessage(t("msg.openTabFail", {error: String(error)}));
+        showMessage(t("msg.openTabFail", {error: safeNavigationErrorDetail(error)}));
         host.openQuickDialog();
     }).finally(() => {
         host.tabOpenPromise = undefined;

@@ -58,6 +58,7 @@ function loadSettings() {
                 "../features/health-candidates": healthCandidates,
                 "../features/recommendation-engine": recommendationEngine,
                 "../features/recommendation-render": recommendationRender,
+                "../features/diagnostics": {sanitizeDiagnosticDetail: value => String(value || "").slice(0, 200)},
                 /* T-1576：页面壳头部构造点——此处断言不含头部，桩给最小形状即可。 */
                 "./page-shell": {renderPageShellHead: () => "<header></header>"},
                 "./yeguif-mappings": {renderYeguifMappings: () => '<div data-yeguif-mappings></div>'},

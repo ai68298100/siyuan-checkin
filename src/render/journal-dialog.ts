@@ -5,6 +5,7 @@
 import {t} from "../i18n";
 import {showMessage, Dialog} from "siyuan";
 import {escapeHtml} from "../shared";
+import {sanitizeDiagnosticDetail} from "../features/diagnostics";
 import {resolveJournalQuestionText, type JournalIntegration, type ResolvedJournalTemplate, type JournalTemplateDef} from "../features/journal-templates";
 
 export interface JournalDialogDeps {
@@ -330,7 +331,8 @@ export function openJournalDialogFor(deps: JournalDialogDeps): void {
                     showMessage(t("journal.resultDocPending"));
                 }
             } catch (error) {
-                status.textContent = error instanceof Error ? error.message : t("journal.retryHint");
+                const rawDetail = error instanceof Error ? error.message : typeof error === "string" ? error : "";
+                status.textContent = sanitizeDiagnosticDetail(rawDetail) || t("journal.retryHint");
                 showMessage(status.textContent);
             } finally {
                 locked.forEach(input => { input.disabled = false; });

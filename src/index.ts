@@ -1660,7 +1660,11 @@ export default class CheckinPlugin extends Plugin {
         const written = await this.ingestWeread();
         if (this.wereadIntegration !== governance || this.disposed || this.disposing) return;
         const last = this.wereadLastPull;
-        if (last && !last.ok) showMessage(t("msg.wereadPullFail", {message: `${last.error || ""}${last.upgrade ? ` · ${last.upgrade}` : ""}`}), 4200);
+        if (last && !last.ok) {
+            const errorDetail = safeUserErrorDetail(last.error);
+            const upgradeDetail = last.upgrade ? safeUserErrorDetail(last.upgrade) : "";
+            showMessage(t("msg.wereadPullFail", {message: `${errorDetail}${upgradeDetail ? ` · ${upgradeDetail}` : ""}`}), 4200);
+        }
         else showMessage(t("msg.wereadPullDone", {n: written}));
         this.render();
     }
@@ -5699,7 +5703,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
                 try {
                     await this.validateBindingTarget(next.scope === "document" ? "doc" : "notebook", next.targetId);
                 } catch (error) {
-                    showMessage(error instanceof Error && error.message ? error.message : t("msg.noteQueryNeedConfig"));
+                    showMessage(safeUserErrorDetail(error) || t("msg.noteQueryNeedConfig"));
                     return;
                 }
                 const previous = this.noteQuery;
