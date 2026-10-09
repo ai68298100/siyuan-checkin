@@ -33,6 +33,13 @@
 - 本轮已落地：叶归映射目标搜索重绘候选后立即重新计算重复来源校验、保存按钮禁用态和 `aria-invalid`，避免候选筛选后旧状态残留；浏览器夹具按中英文分别断言错误文案。
 - 本轮证据：`pnpm run check`、`pnpm test`、`pnpm run test:ui`、`pnpm run test:extended`、`pnpm run test:ecosystem`、`pnpm run build`、`node tests/settings-feedback.test.cjs`、`node tests/yeguif-mapping-editor.cjs`、`node tests/diary-report.test.cjs`、`node tests/summary-resident.test.cjs` 均通过；`CHECKIN_BROWSER` 未设置，视觉、真实思源/Android/TalkBack、第三方来源、缩放和保存面板现场仍按阻塞记录开放。
 
+## 2026-10-09 全插件复核第十三轮增量
+
+- 本轮已落地：Today、Review 和 Occasions 的事项完成/撤销/补记/改期异步动作全部携带 owning root，多表面同时操作时只向发起表面回传状态、反馈和重绘；事项表单重绘期间保留 `aria-busy` 与按钮 `disabled`，读屏不会丢失提交中的状态。
+- 本轮已落地：外部失败待处理箱在事件写入成功但箱清理持久化失败时恢复原箱内容并显示可重试错误；启动批量恢复同样在持久化失败时保留全部条目，避免误报成功后重启复现旧条目。
+- 本轮复核：宽度走查的主题动作色、640/360/320 首卡预算、长文本与交互场景已复跑通过；未发现新的生产 UI 缺陷。
+- 本轮证据：`pnpm run check`、`pnpm test`、`pnpm run build`、`pnpm run test:ui`、`pnpm run test:extended`、`node tests/width-walkthrough.cjs`、`node tests/visual-qa.cjs`、`node tests/cross-window-merge.test.cjs`、`node tests/external-pending.test.cjs`、事项完成/改期/表单及跨页一致性定向测试通过。`CHECKIN_BROWSER` 未设置，真实宿主、Android/TalkBack、第三方来源、缩放和保存面板现场仍按阻塞记录开放。
+
 ## 2026-10-09 全插件复核第八轮增量
 
 - 本轮已落地：快速弹窗编辑草稿离开守卫与首次标题拖拽/双击绑定时序；配额摘要改用民历日算术跨 DST；渲染块日期格保留键盘激活与共享焦点环，并为 Today 五项截断增加双语、可读的隐藏数量状态。

@@ -131,7 +131,7 @@ export interface BindPageNavigationHost {
     openProjectDraftEditor(draft: import("../features/project-draft").ProjectDraft, root?: HTMLElement): void;
     reminderFilter: import("../reminders").ReminderFilter;
     reminderUserAction(id: string, action: "snooze" | "skip" | "restore" | "defer"): void;
-    setOccasionCompleted(id: string, occurrenceDate: string, completed: boolean): Promise<boolean>;
+    setOccasionCompleted(id: string, occurrenceDate: string, completed: boolean, root?: HTMLElement): Promise<boolean>;
 }
 
 const pinnedSubnavScrollers = new WeakSet<HTMLElement>();
@@ -327,7 +327,7 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         undoButton.type = "button";
         undoButton.className = "lc-checkin__small-button";
         undoButton.textContent = t("review.undo");
-        undoButton.addEventListener("click", () => { toast.remove(); void host.enqueueMutation(() => host.setOccasionCompleted(occasionId, date, false)); });
+        undoButton.addEventListener("click", () => { toast.remove(); void host.enqueueMutation(() => host.setOccasionCompleted(occasionId, date, false, root)); });
         toast.append(label, undoButton);
         surface.appendChild(toast);
         window.setTimeout(() => { if (toast.isConnected) toast.remove(); }, 6000);
@@ -338,7 +338,7 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         if (!id || !occurrenceDate) return;
         button.disabled = true;
         const name = button.closest<HTMLElement>("[data-overdue-occasion]")?.querySelector("strong")?.textContent || "";
-        void host.enqueueMutation(() => host.setOccasionCompleted(id, occurrenceDate, true)).then((ok) => {
+        void host.enqueueMutation(() => host.setOccasionCompleted(id, occurrenceDate, true, root)).then((ok) => {
             if (ok && isCurrentSurface()) showCatchUpToast(name, id, occurrenceDate);
         }).finally(() => {
             if (isCurrentSurface() && button.isConnected) button.disabled = false;

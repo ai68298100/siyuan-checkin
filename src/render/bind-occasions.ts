@@ -165,7 +165,7 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
         const occurrenceDate = button.dataset.occasionCompleteDate || "";
         const target = button.dataset.occasionCompleteTarget === "true";
         if (!id || !occurrenceDate) return;
-        void host.enqueueMutation(async () => { await host.setOccasionCompleted(id, occurrenceDate, target); });
+        void host.enqueueMutation(async () => { await host.setOccasionCompleted(id, occurrenceDate, target, root); });
     }));
     /* T-1720（D-363）：关联项目徽章点击进该项目编辑器（跨页编辑，返回回事项页）；
        归档项目只读不可进（先启用再编辑）。 */
@@ -222,7 +222,7 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
         const origin = button.dataset.occasionMoveUndoOrigin || "";
         if (!id || !origin) return;
         if (!window.confirm(t("msg.occasionMoveUndoConfirm", {origin, next: button.dataset.occasionMoveUndoNext || ""}))) return;
-        if (host.saveOccasionOverride) host.saveOccasionOverride(id, origin, undefined);
+        if (host.saveOccasionOverride) host.saveOccasionOverride(id, origin, undefined, root);
     }));
 
     const syncBlocks = () => {

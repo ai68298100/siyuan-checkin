@@ -57,24 +57,24 @@ const makeFixture = (presets = []) => {
         occasionTemplateCategory: "recommended",
         render() {},
         enqueueMutation: (operation) => Promise.resolve(operation()),
-        setOccasionCompleted: async (id, date, target) => { host.completions.push({id, date, target}); return true; },
+        setOccasionCompleted: async (id, date, target, rootArg) => { host.completions.push({id, date, target, root: rootArg}); return true; },
         completions,
     };
     for (const name of ["bindDialogClose", "bindMobileNav", "showToday", "syncOccasionLunarHint", "createOccasionLinkedItem", "updateOccasion", "deleteOccasion", "persistOccasions", "saveOccasionForm"]) host[name] = () => Promise.resolve();
     bindOccasions.bindOccasionsHandlers(root, host);
-    return {host, completions, completeButtons};
+    return {host, root, completions, completeButtons};
 };
 
 (async () => {
     /* —— 夹具 1：完成本次 → setOccasionCompleted(id, next, true)。 —— */
     const marking = makeFixture([["occ-1", "2026-09-22", "true"]]);
     marking.completeButtons[0].fire();
-    assert.deepEqual(marking.completions, [{id: "occ-1", date: "2026-09-22", target: true}], "marking calls the shared completion channel with the occurrence date");
+    assert.deepEqual(marking.completions, [{id: "occ-1", date: "2026-09-22", target: true, root: marking.root}], "marking calls the shared completion channel with the occurrence date and surface root");
 
     /* —— 夹具 2：撤销本次 → 同通道回滚（target=false）。 —— */
     const undoing = makeFixture([["occ-1", "2026-09-22", "false"]]);
     undoing.completeButtons[0].fire();
-    assert.deepEqual(undoing.completions, [{id: "occ-1", date: "2026-09-22", target: false}], "undoing rolls back through the same channel");
+    assert.deepEqual(undoing.completions, [{id: "occ-1", date: "2026-09-22", target: false, root: undoing.root}], "undoing rolls back through the same channel and surface root");
 
     /* —— 夹具 3：渲染结构钉——完成切换、本次已完成回显、启停图标消歧。 —— */
     const renderSource = fs.readFileSync(path.join(__dirname, "..", "src", "render", "occasions.ts"), "utf8");
@@ -87,7 +87,7 @@ const makeFixture = (presets = []) => {
     assert.match(renderSource, /uiIcon\(item\.enabled \? "pause" : "play"\)/, "the toggle action uses pause/play icons, not check (T-1711 disambiguation)");
     const bindSource = fs.readFileSync(path.join(__dirname, "..", "src", "render", "bind-occasions.ts"), "utf8");
     assert.match(bindSource, /\[data-occasion-complete\]/, "the binder wires the completion toggle");
-    assert.match(bindSource, /host\.setOccasionCompleted\(id, occurrenceDate, target\)/, "the binder routes through the shared channel");
+    assert.match(bindSource, /host\.setOccasionCompleted\(id, occurrenceDate, target, root\)/, "the binder routes through the shared channel and surface root");
     const iconsSource = fs.readFileSync(path.join(__dirname, "..", "src", "ui", "icons.ts"), "utf8");
     assert.match(iconsSource, /pause: /, "the pause icon exists");
     assert.match(iconsSource, /play: /, "the play icon exists");

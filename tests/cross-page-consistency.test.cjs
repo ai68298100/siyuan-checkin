@@ -271,6 +271,9 @@ try {
         assert.match(occasionsBind, /const renderRoot = \(\) => \{ if \(isCurrentSurface\(\)\) host\.render\(root\); \};/, "事项旧 surface 不得重新渲染");
         assert.match(occasionsBind, /createOccasionLinkedItem\(button\.dataset\.occasionToitem \|\| "", root\)/, "转打卡异步动作携带来源 root");
         assert.match(occasionsBind, /setOccasionCompleted\(id, missedDate, true, root\)/, "事项补记异步动作携带来源 root");
+        assert.match(reviewBind, /setOccasionCompleted\(occasionId, date, false, root\)/, "回顾补记撤销异步动作携带来源 root");
+        assert.match(reviewBind, /setOccasionCompleted\(id, occurrenceDate, true, root\)/, "回顾补记异步动作携带来源 root");
+        assert.match(todayBind, /setOccasionCompleted\(id, occurrenceDate, !isOccasionCompleted\(item, occurrenceDate\), root\)/, "今日事项完成异步动作携带来源 root");
         assert.match(occasionsBind, /saveOccasionOverride\(id, confirmButton\.dataset\.occasionMoveOrigin \|\| "", dateInput\.value, root\)/, "事项改期异步动作携带来源 root");
         assert.match(occasionsBind, /persistOccasions\(root\)/, "事项删除持久化携带来源 root");
         assert.match(indexSrc, /private async persistOccasions\(root\?: HTMLElement\): Promise<void>;[\s\S]*?private async persistOccasions\(store: OccasionStore, root\?: HTMLElement\): Promise<void>;[\s\S]*?storeOrRoot: OccasionStore \| HTMLElement/, "事项持久化保留来源 root 以过滤迟到提示");

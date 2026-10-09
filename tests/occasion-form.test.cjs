@@ -156,6 +156,9 @@ const makeFixture = ({editingOccasionId, confirmResult, saveDelay}) => {
     assert.doesNotMatch(bindSource, /set\("remindBeforeDays", String\(template\.remindBeforeDays\)\);\s*\r?\n\s*host\.editingOccasionId = undefined;/, "template application no longer clears the edit target");
     assert.match(bindSource, /if \(occasionSubmitBusy\) return;/, "in-flight submits are ignored");
     assert.match(bindSource, /occasionSubmitBusy = false;/, "the gate releases after completion");
+    const occasionView = fs.readFileSync(path.join(__dirname, "..", "src", "render", "occasions.ts"), "utf8");
+    assert.match(occasionView, /<form data-occasion-form\$\{ctx\.submitting \? ` aria-busy=\"true\"` : \"\"\}>/, "the re-rendered occasion form preserves aria-busy");
+    assert.match(occasionView, /type=\"submit\" \$\{ctx\.submitting \? `disabled aria-busy=\"true\"` : \"\"\}/, "the re-rendered submit button preserves disabled and aria-busy");
     const preFixBind = cp.execSync("git show 546778d:src/render/bind-occasions.ts", {encoding: "utf8"});
     assert.doesNotMatch(preFixBind, /occasionSubmitBusy/, "the pre-fix form had no submit gate (red evidence)");
     assert.match(preFixBind, /host\.editingOccasionId = undefined;\s*\r?\n\s*syncBlocks\(\);/, "the pre-fix template flow cleared the edit target (red evidence)");

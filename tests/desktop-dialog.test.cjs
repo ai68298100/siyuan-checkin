@@ -296,8 +296,8 @@ assert.match(read("src", "render", "bind-today.ts"), /host\.setPendingFocusItem\
     "record tap sites must queue the card for focus restore on their own surface");
 
 // T-110 补记撤销条：撤销回滚已完成标记
-assert.match(read("src", "render", "bind-page-navigation.ts"), /lc-checkin__catchup-toast[\s\S]*setOccasionCompleted\(occasionId, date, false\)/,
-    "the catch-up toast must offer an undo that rolls back the mark");
+assert.match(read("src", "render", "bind-page-navigation.ts"), /lc-checkin__catchup-toast[\s\S]*setOccasionCompleted\(occasionId, date, false, root\)/,
+    "the catch-up toast must offer an undo that rolls back the mark on its surface");
 
 /* —— T-1597 快速弹窗会话：页签保留（编辑降级）、编辑关闭先提示。 —— */
 const quickDialogT1597 = read("src", "render", "quick-dialog.ts");

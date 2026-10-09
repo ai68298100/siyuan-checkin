@@ -88,7 +88,7 @@ export interface BindTodayHost {
     findFocusAdapter(item: CheckinItem, date?: Date, adapterId?: string): unknown;
     startFocus(itemId: string, adapterId?: string): Promise<boolean>;
     openFocusTimer(itemId: string): void;
-    setOccasionCompleted(id: string, occurrenceDate: string, completed: boolean): Promise<boolean>;
+    setOccasionCompleted(id: string, occurrenceDate: string, completed: boolean, root?: HTMLElement): Promise<boolean>;
 }
 
 const DOCK_TOMATO_MESSAGE_KEYS: Record<DockTomatoProviderState, string> = {
@@ -566,6 +566,6 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
         const id = row?.dataset.occasionId || "";
         const occurrenceDate = row?.dataset.occasionDate || "";
         const item = host.occasionStore.occasions.find((candidate) => candidate.id === id);
-        if (item) void host.enqueueMutation(() => host.setOccasionCompleted(id, occurrenceDate, !isOccasionCompleted(item, occurrenceDate)));
+        if (item) void host.enqueueMutation(() => host.setOccasionCompleted(id, occurrenceDate, !isOccasionCompleted(item, occurrenceDate), root));
     }));
 }

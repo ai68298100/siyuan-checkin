@@ -132,6 +132,10 @@ assert.match(pluginSource, /private async retryExternalPendingEntry\(id: string\
     "pending retry must keep remote merge, event write and box settlement in one mutation");
 assert.match(pluginSource, /private async discardExternalPendingEntry\(id: string\): Promise<boolean> \{[\s\S]*?return this\.withStorageLock\(async \(\) => \{/,
     "pending discard must run under the storage lock");
+assert.match(pluginSource, /private async retryExternalPendingEntry\(id: string\): Promise<boolean> \{[\s\S]*?const previous = this\.externalPendingBox;[\s\S]*?if \(!await this\.persistExternalPendingBox\(\)\) \{[\s\S]*?this\.externalPendingBox = previous;/,
+    "pending retry must restore the entry when cleanup persistence fails");
+assert.match(pluginSource, /private async recoverExternalPendingBox\(\): Promise<void> \{[\s\S]*?const previous = this\.externalPendingBox;[\s\S]*?if \(!await this\.persistExternalPendingBox\(\)\) \{[\s\S]*?this\.externalPendingBox = previous;/,
+    "startup pending recovery must restore the box when settlement persistence fails");
 assert.match(pluginSource, /private async discardExternalPendingEntry\(id: string\): Promise<boolean> \{[\s\S]*?const previous = this\.externalPendingBox;[\s\S]*?await this\.persistExternalPendingBox\(\);[\s\S]*?const saveFailed = this\.externalPendingSaveFailed;[\s\S]*?if \(saveFailed\) \{[\s\S]*?this\.externalPendingBox = previous;/,
     "external pending discard must roll back the in-memory removal when persistence fails");
 assert.match(pluginSource, /const saveFailed = this\.externalPendingSaveFailed;[\s\S]*?showMessage\(t\(saveFailed \? "set\.externalPendingSaveFailed" : "set\.externalPendingDiscarded"\)\);[\s\S]*?return !saveFailed;/,
@@ -207,8 +211,8 @@ assert.match(suggestionBody, /private async undoSuggestionWorkflow[\s\S]*?const 
     "suggestion undo must reconcile and persist the main store inside the mutation queue");
 assert.match(pageNavigationSource, /undoButton\.addEventListener\([\s\S]*?host\.enqueueMutation\(\(\) => host\.setOccasionCompleted\(/,
     "catch-up undo must use the mutation queue");
-assert.match(pageNavigationSource, /void host\.enqueueMutation\(\(\) => host\.setOccasionCompleted\(id, occurrenceDate, true\)\)/,
-    "catch-up completion must use the mutation queue");
+assert.match(pageNavigationSource, /void host\.enqueueMutation\(\(\) => host\.setOccasionCompleted\(id, occurrenceDate, true, root\)\)/,
+    "catch-up completion must use the mutation queue and preserve the surface root");
 const completeItemsBody = pluginSource.slice(pluginSource.indexOf("private async completeItems"), pluginSource.indexOf("/* T-1222 跳过"));
 assert.match(completeItemsBody, /void this\.enqueueMutation\(\(\) => this\.setOccasionCompleted\(/,
     "batch completion occasion linkage must defer the auxiliary write through the mutation queue");

@@ -3221,12 +3221,14 @@ this.scheduleMidnightRefresh();
        宿主只负责用当前 store/偏好提供重查输入。容量与保留期常量见该模块。 ===== */
 
     /** 箱持久化：失败必须可见（externalPendingSaveFailed 置位），不静默。 */
-    private async persistExternalPendingBox(): Promise<void> {
+    private async persistExternalPendingBox(): Promise<boolean> {
         try {
             await this.saveData(EXTERNAL_PENDING_STORAGE_NAME, serializeExternalPendingBox(this.externalPendingBox));
             this.externalPendingSaveFailed = false;
+            return true;
         } catch {
             this.externalPendingSaveFailed = true;
+            return false;
         }
     }
 
@@ -3268,10 +3270,15 @@ this.scheduleMidnightRefresh();
             await this.mergeExternalPendingFromRemoteUnlocked();
             const entry = this.externalPendingBox.items.find((item) => item.id === id);
             if (!entry) return false;
+            const previous = this.externalPendingBox;
             const plan = this.externalPendingRetryPlan(entry);
             if (plan.kind === "refuse") {
                 this.externalPendingBox = settleExternalPendingAfterRetry(this.externalPendingBox, id, {written: false, duplicate: false, reason: plan.reason}, new Date().toISOString());
-                await this.persistExternalPendingBox();
+                if (!await this.persistExternalPendingBox()) {
+                    this.externalPendingBox = previous;
+                    showMessage(t("set.externalPendingSaveFailed"));
+                    return false;
+                }
                 showMessage(t(REFUSE_TOAST_KEYS[plan.reason] ?? "set.externalPendingRetryFail"));
                 return false;
             }
@@ -3282,14 +3289,22 @@ this.scheduleMidnightRefresh();
             const recorded = await this.recordExternalEvent({itemId: entry.itemId, value: entry.value, unit: entry.unit, note: entry.note, source: entry.source, externalRef: entry.externalRef}, {occurredAt: entry.occurredAt, localDate: entry.localDate}, fingerprint, outcome);
             if (recorded) {
                 this.externalPendingBox = settleExternalPendingAfterRetry(this.externalPendingBox, id, {written: true, duplicate: true}, new Date().toISOString());
-                await this.persistExternalPendingBox();
+                if (!await this.persistExternalPendingBox()) {
+                    this.externalPendingBox = previous;
+                    showMessage(t("set.externalPendingSaveFailed"));
+                    return false;
+                }
                 this.renderBackgroundUpdate();
                 showMessage(t("set.externalPendingRetryDone"));
                 return true;
             }
             if (outcome.reason !== "storage-failed") {
                 this.externalPendingBox = settleExternalPendingAfterRetry(this.externalPendingBox, id, {written: false, duplicate: false, reason: outcome.reason || "retry-failed"}, new Date().toISOString());
-                await this.persistExternalPendingBox();
+                if (!await this.persistExternalPendingBox()) {
+                    this.externalPendingBox = previous;
+                    showMessage(t("set.externalPendingSaveFailed"));
+                    return false;
+                }
             }
             /* storage-failed：recordExternalEvent 已合并回箱（保留首次数据），这里只提示。 */
             showMessage(t("set.externalPendingRetryFail"));
@@ -3337,6 +3352,7 @@ this.scheduleMidnightRefresh();
         if (!this.externalPendingBox.items.length) return;
         await this.enqueueMutation(async () => {
             await this.mergeExternalPendingFromRemoteUnlocked();
+            const previous = this.externalPendingBox;
             let recovered = 0;
             let refused = 0;
             let kept = 0;
@@ -3364,7 +3380,10 @@ this.scheduleMidnightRefresh();
                 }
             }
             this.externalPendingRecovery = {recovered, refused, kept};
-            await this.persistExternalPendingBox();
+            if (!await this.persistExternalPendingBox()) {
+                this.externalPendingBox = previous;
+                this.externalPendingRecovery = {recovered: 0, refused: 0, kept: previous.items.length};
+            }
             if (this.externalPendingBox.items.length) this.renderBackgroundUpdate();
         });
     }
