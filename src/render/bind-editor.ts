@@ -333,11 +333,15 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
     anchorQuery?.addEventListener("input", updateAnchorInputState);
     anchorOptions.forEach((button) => button.addEventListener("click", () => { if (anchorInput) anchorInput.value = button.dataset.anchorChoice || ""; anchorBrowser?.setAttribute("hidden", ""); updateAnchorInputState(); }));
     root.querySelector<HTMLElement>("[data-action='anchor-create']")?.addEventListener("click", () => { anchorCreateRow?.toggleAttribute("hidden"); if (!anchorCreateRow?.hidden) { void loadAnchorNotebooks(); root.querySelector<HTMLInputElement>("[data-anchor-doc-title]")?.focus(); } });
-    root.querySelector<HTMLElement>("[data-action='anchor-create-confirm']")?.addEventListener("click", async () => {
+    root.querySelector<HTMLButtonElement>("[data-action='anchor-create-confirm']")?.addEventListener("click", async (event) => {
+        const button = event.currentTarget as HTMLButtonElement;
+        if (button.disabled) return;
         const notebook = root.querySelector<HTMLSelectElement>("[data-anchor-notebook]")?.value || "";
         const title = root.querySelector<HTMLInputElement>("[data-anchor-doc-title]")?.value || "";
         const path = buildAnchorDocumentPath(title);
         if (!notebook || !path) { showMessage(t("editor.anchorCreateInvalid")); return; }
+        button.disabled = true;
+        button.setAttribute("aria-busy", "true");
         try {
             const response = await fetchSyncPost("/api/filetree/createDocWithMd", {notebook, path, markdown: ""}) as unknown as {code?: number; msg?: string; data?: unknown};
             const blockId = response.code === 0 && typeof response.data === "string" ? response.data : "";
@@ -352,6 +356,11 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         } catch (error) {
             if (!isCurrentSession()) return;
             showMessage(`${t("editor.anchorCreateFailed")} ${safeEditorErrorDetail(error)}`);
+        } finally {
+            if (button.isConnected) {
+                button.disabled = false;
+                button.removeAttribute("aria-busy");
+            }
         }
     });
     const unitInput = root.querySelector<HTMLInputElement>("input[name='unit']");

@@ -30,6 +30,10 @@ assert.match(editor, /data-action="anchor-open-picker"/);
 assert.match(editor, /data-action="anchor-create-confirm"/);
 assert.match(binding, /\/api\/notebook\/lsNotebooks/);
 assert.match(binding, /\/api\/filetree\/createDocWithMd/);
+assert.match(binding, /data-action='anchor-create-confirm'[\s\S]*?if \(button\.disabled\) return;[\s\S]*?button\.disabled = true;[\s\S]*?button\.setAttribute\("aria-busy", "true"\)/,
+    "anchor creation must lock the button before the async document write");
+assert.match(binding, /anchorCreateFailed[\s\S]*?finally \{[\s\S]*?button\.disabled = false;[\s\S]*?button\.removeAttribute\("aria-busy"\)/,
+    "anchor creation must release its busy state after success or failure");
 assert.match(binding, /if \(!isCurrentSession\(\) \|\| !select\.isConnected \|\| root\.querySelector\("\[data-anchor-notebook\]"\) !== select\) return;/, "notebook response must not mutate a detached or replaced editor root");
 assert.match(binding, /if \(!isCurrentSession\(\) \|\| !anchorInput\?\.isConnected \|\| root\.querySelector\("input\[name='anchorBlockId'\]"\) !== anchorInput\) return;/, "created anchor must not write into a stale editor session");
 console.log("Note anchor picker checks passed: local selection/search, safe document path and create wiring.");
