@@ -4462,6 +4462,11 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
             const context = this.ensureRootContext(root);
             if (context.page === "review" && page !== "review") this.cancelReviewSummary(root);
             context.page = page;
+            /* Details opened from another surface keep an explicit return page
+               only while Archived is active. Any normal navigation consumes
+               the one-hop return context so a later back action cannot jump
+               to a stale source page. */
+            if (page !== "archived") context.returnTo = undefined;
             if (page === "more") context.moreActive = true;
             else if (page === "today" || page === "review" || page === "occasions" || page === "editor") context.moreActive = false;
             this.rootPages.navigate(root, page);
@@ -4477,10 +4482,27 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
             const context = this.ensureRootContext(surface);
             if (context.page === "review" && page !== "review") this.cancelReviewSummary(surface);
             context.page = page;
+            if (page !== "archived") context.returnTo = undefined;
             if (page === "more") context.moreActive = true;
             else if (page === "today" || page === "review" || page === "occasions" || page === "editor") context.moreActive = false;
             this.rootPages.navigate(surface, page);
         }
+    }
+
+    public setReturnPageForRoot(root: HTMLElement | undefined, page: "today" | "review" | "insights" | "more"): void {
+        if (root) {
+            this.ensureRootContext(root).returnTo = page;
+            return;
+        }
+        /* Legacy no-root navigation broadcasts to every registered surface;
+           keep the return context aligned with that broadcast so Archived
+           does not depend on whichever surface happened to be active. */
+        for (const surface of this.roots()) this.ensureRootContext(surface).returnTo = page;
+    }
+
+    public returnPageForRoot(root: HTMLElement): "today" | "review" | "insights" | "more" | undefined {
+        const page = this.rootContexts.get(root)?.returnTo;
+        return page === "today" || page === "review" || page === "insights" || page === "more" ? page : undefined;
     }
 
     public forgetSurfaceRoot(root: HTMLElement): void {

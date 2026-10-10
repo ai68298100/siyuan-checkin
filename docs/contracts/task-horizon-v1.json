@@ -15,10 +15,13 @@
   "unit": "个",
   "externalRefPrefix": "taskhorizon:",
   "refreshEvents": [
-    "checkin:event-recorded",
-    "checkin:analytics-updated",
+    "checkin:item-created",
+    "checkin:item-updated",
+    "checkin:item-deleted",
     "checkin:item-archived",
-    "checkin:item-updated"
+    "checkin:event-recorded",
+    "checkin:event-deleted",
+    "checkin:analytics-updated"
   ],
   "summaryLimits": {
     "maxDays": 366,

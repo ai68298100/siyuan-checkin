@@ -9,10 +9,15 @@
     root.createTaskHorizonBridge = bridge.createTaskHorizonBridge;
 })(typeof globalThis === "undefined" ? this : globalThis, function () {
     const REFRESH_EVENTS = new Set([
-        "checkin:event-recorded",
-        "checkin:analytics-updated",
-        "checkin:item-archived",
-        "checkin:item-updated",
+        /* subscribe() passes the CheckinIntegrationEvent, whose type is
+           unprefixed; only window CustomEvent names carry "checkin:". */
+        "item-created",
+        "item-updated",
+        "item-deleted",
+        "item-archived",
+        "event-recorded",
+        "event-deleted",
+        "analytics-updated",
     ]);
 
     function canonicalExternalRef(blockId, localDate) {
@@ -27,17 +32,32 @@
     function createTaskHorizonBridge(options = {}) {
         const checkin = options.checkin || (typeof window !== "undefined" ? window.siyuanCheckin : undefined);
         let unsubscribe;
-        let targetItemId;
+        /* Keep an explicit binding available for the write queue before the
+           first start() call; start() still validates the target against the
+           provider before reporting the bridge ready. */
+        const hasExplicitBinding = typeof options.itemId === "string";
+        let targetItemId = hasExplicitBinding && options.itemId.trim()
+            ? options.itemId.trim()
+            : undefined;
+        let targetUnit = typeof options.unit === "string" && options.unit.trim()
+            ? options.unit.trim()
+            : "个";
         let stopped = false;
         let started = false;
         let startInFlight;
         const pending = new Map();
+        const pendingReasons = new Map();
         const recordInFlight = new Map();
         let retryInFlight;
         const refreshInFlight = new Map();
+        let refreshRevision = 0;
         let projectionMode = "summary-fallback";
+        let writeEnabled = options.enableWriteBack === false
+            ? false
+            : options.enableWriteBack === true || hasExplicitBinding;
         const projectionCache = new Map();
         const projectionInFlight = new Map();
+        let projectionRevision = 0;
 
         const reportError = (phase, error) => {
             if (typeof options.onError !== "function") return;
@@ -61,9 +81,11 @@
             try { key = JSON.stringify([requested, options.summaryOptions]); } catch { key = String(requested); }
             const existing = refreshInFlight.get(key);
             if (existing) return existing;
+            const requestRevision = refreshRevision;
             const run = (async () => {
                 const summary = await checkin.getEventRangeSummary(requested, options.summaryOptions);
                 if (stopped) return undefined;
+                if (requestRevision !== refreshRevision) return {abandoned: true, reason: "stale"};
                 if (typeof options.onRefresh === "function") await options.onRefresh(summary);
                 return summary;
             })();
@@ -77,12 +99,12 @@
 
         const start = () => {
             if (stopped) return Promise.resolve({ready: false, reason: "stopped"});
-            if (started) return Promise.resolve({ready: true, itemId: targetItemId, projectionMode});
+            if (started) return Promise.resolve({ready: true, itemId: targetItemId, projectionMode, writeEnabled});
             if (startInFlight) return startInFlight;
             const run = (async () => {
                 if (!checkin || typeof checkin.whenReady !== "function") return {ready: false, reason: "unavailable"};
+                let descriptor;
                 if (typeof checkin.describe === "function") {
-                    let descriptor;
                     try { descriptor = checkin.describe(); } catch (error) { reportError("describe", error); return {ready: false, reason: "protocol-error"}; }
                     const version = descriptor && Number(descriptor.version);
                     if (!descriptor || descriptor.protocol !== "siyuan-checkin" || !Number.isFinite(version) || version < 4) {
@@ -97,14 +119,20 @@
                    显式降级 summary-fallback（旧消费者不会因缺少新能力而失效）。 */
                 try {
                     projectionMode = typeof checkin.hasCapability === "function"
+                        && Number(descriptor?.version) >= 5
                         && checkin.hasCapability("calendar.read")
                         && typeof checkin.getCalendarProjection === "function" ? "calendar.read" : "summary-fallback";
                 } catch (error) { reportError("capability", error); projectionMode = "summary-fallback"; }
+                const requestedItemId = typeof options.itemId === "string" ? options.itemId.trim() : "";
+                writeEnabled = options.enableWriteBack === true || (options.enableWriteBack !== false && hasExplicitBinding);
                 let capabilities;
                 try {
-                    capabilities = typeof checkin.hasCapability === "function"
-                        && checkin.hasCapability("analytics.read")
-                        && checkin.hasCapability("events.record");
+                    if (typeof checkin.hasCapability !== "function") return {ready: false, reason: "capability-missing"};
+                    const readCapability = projectionMode === "calendar.read"
+                        ? checkin.hasCapability("calendar.read")
+                        : checkin.hasCapability("analytics.read");
+                    const writeCapabilities = !writeEnabled || (checkin.hasCapability("items.read") && checkin.hasCapability("events.record"));
+                    capabilities = typeof checkin.hasCapability === "function" && readCapability && writeCapabilities;
                 } catch (error) {
                     reportError("capability", error);
                     return {ready: false, reason: "capability-error"};
@@ -112,28 +140,65 @@
                 if (!capabilities) {
                     return {ready: false, reason: "capability-missing"};
                 }
-                let candidates;
-                try { candidates = typeof checkin.getItems === "function" ? checkin.getItems() : []; } catch (error) {
+                if (writeEnabled && !requestedItemId) return {ready: false, reason: "target-missing"};
+                let candidates = [];
+                try { candidates = writeEnabled && typeof checkin.getItems === "function" ? checkin.getItems() : []; } catch (error) {
                     reportError("items", error);
                     return {ready: false, reason: "items-error"};
                 }
-                if (!Array.isArray(candidates)) {
+                if (writeEnabled && !Array.isArray(candidates)) {
                     reportError("items", new TypeError("getItems() must return an array"));
                     return {ready: false, reason: "items-invalid"};
                 }
                 try {
-                    targetItemId = options.itemId || candidates.find((item) => item && !item.archived && item.name === "任务打卡")?.id;
+                    let target = writeEnabled ? candidates.find((item) => item && item.id === requestedItemId) : undefined;
+                    /* getItems() intentionally excludes archived projects. If
+                       the explicit binding is absent, query the public archive
+                       surface so the caller can explain the disabled target. */
+                    if (writeEnabled && !target && typeof checkin.getArchivedItems === "function") {
+                        let archived;
+                        try { archived = checkin.getArchivedItems(); } catch (error) { reportError("items", error); return {ready: false, reason: "items-error"}; }
+                        if (!Array.isArray(archived)) {
+                            reportError("items", new TypeError("getArchivedItems() must return an array"));
+                            return {ready: false, reason: "items-invalid"};
+                        }
+                        target = archived.find((item) => item && item.id === requestedItemId);
+                    }
+                    if (writeEnabled) {
+                        if (!target) return {ready: false, reason: "target-missing"};
+                        if (target.archived === true) return {ready: false, reason: "target-archived"};
+                        if (target.direction === "atMost") return {ready: false, reason: "target-incompatible"};
+                        const requestedUnit = typeof options.unit === "string" && options.unit.trim() ? options.unit.trim() : undefined;
+                        if (requestedUnit && target.unit && target.unit !== requestedUnit) return {ready: false, reason: "target-incompatible"};
+                        targetUnit = requestedUnit || (typeof target.unit === "string" && target.unit.trim()) || "个";
+                        targetItemId = requestedItemId;
+                    }
                 } catch (error) {
                     reportError("items", error);
                     return {ready: false, reason: "items-error"};
                 }
-                if (!targetItemId) return {ready: false, reason: "target-missing"};
+                if (writeEnabled && !targetItemId) return {ready: false, reason: "target-missing"};
                 if (typeof checkin.subscribe === "function") {
                     try {
                         unsubscribe = checkin.subscribe((event) => {
                             try {
-                                if (event && REFRESH_EVENTS.has(event.type)) void refresh().catch((error) => reportError("refresh", error));
-                            projectionCache.clear();
+                                if (event && REFRESH_EVENTS.has(event.type)) {
+                                    /* Invalidate in-flight reads as well as
+                                       cached projections. A read already in
+                                       the provider cannot be cancelled, but a
+                                       new event must be allowed to start a
+                                       fresh read instead of joining that stale
+                                       promise. */
+                                    refreshRevision += 1;
+                                    projectionRevision += 1;
+                                    refreshInFlight.clear();
+                                    projectionInFlight.clear();
+                                    projectionCache.clear();
+                                    const work = projectionMode === "calendar.read"
+                                        ? refreshProjection(options.calendarRange || options.range)
+                                        : refresh();
+                                    void work.catch((error) => reportError("refresh", error));
+                                }
                             } catch (error) {
                                 reportError("event", error);
                             }
@@ -144,7 +209,25 @@
                     }
                 }
                 try {
-                    await refresh();
+                    if (projectionMode === "calendar.read") {
+                        const projectionResult = await refreshProjection(options.calendarRange || options.range);
+                        if (!projectionResult || projectionResult.abandoned) {
+                            cleanupSubscription();
+                            return {ready: false, reason: "read-failed"};
+                        }
+                    } else {
+                        /* A data event can invalidate the startup read after
+                           it has entered the provider. Join the replacement
+                           read once so start() cannot report ready from a
+                           stale summary while still allowing range-less v4
+                           consumers to start normally. */
+                        let summaryResult = await refresh();
+                        if (summaryResult?.abandoned && !stopped) summaryResult = await refresh();
+                        if (summaryResult?.abandoned) {
+                            cleanupSubscription();
+                            return {ready: false, reason: "read-failed"};
+                        }
+                    }
                 } catch (error) {
                     cleanupSubscription();
                     reportError("refresh", error);
@@ -155,7 +238,7 @@
                     return {ready: false, reason: "stopped"};
                 }
                 started = true;
-                return {ready: true, itemId: targetItemId, projectionMode};
+                return {ready: true, itemId: targetItemId, projectionMode, writeEnabled};
             })();
             let startPromise;
             startInFlight = startPromise = run.finally(() => {
@@ -166,19 +249,29 @@
 
         const recordTaskCompletion = ({blockId, localDate, itemId = targetItemId} = {}) => {
             const externalRef = canonicalExternalRef(blockId, localDate);
-            if (!externalRef || !itemId || stopped || !checkin || typeof checkin.recordEvent !== "function") return Promise.resolve(undefined);
+            /* Once start() binds a target, a caller cannot retarget an in-flight
+               completion to another project. The itemId remains in the queue key. */
+            if (!writeEnabled || !externalRef || !itemId || !targetItemId || itemId !== targetItemId || stopped || !checkin || typeof checkin.recordEvent !== "function") return Promise.resolve(undefined);
             const key = completionKey(itemId, externalRef);
             const existing = recordInFlight.get(key);
             if (existing) return existing;
-            const payload = {itemId, value: 1, unit: "个", source: "api", externalRef};
+            const payload = {itemId, value: 1, unit: targetUnit, source: "api", externalRef};
             const run = (async () => {
                 try {
                     const result = await checkin.recordEvent(payload);
-                    // A returned event means new or idempotent-existing; undefined means rejected.
-                    pending.delete(key);
+                    // Single-record v4 cannot distinguish rejection causes. Keep the exact
+                    // identity for a user-visible validation/retry path instead of dropping it.
+                    if (result === undefined) {
+                        pending.set(key, payload);
+                        pendingReasons.set(key, "rejected");
+                    } else {
+                        pending.delete(key);
+                        pendingReasons.delete(key);
+                    }
                     return result;
                 } catch (error) {
                     pending.set(key, payload);
+                    pendingReasons.set(key, "transport");
                     reportError("record", error);
                     return undefined;
                 }
@@ -206,10 +299,17 @@
                     attempted += 1;
                     try {
                         const result = await checkin.recordEvent(payload);
-                        pending.delete(key);
-                        if (result === undefined) rejected += 1;
-                        else succeeded += 1;
+                        if (result === undefined) {
+                            rejected += 1;
+                            pending.set(key, payload);
+                            pendingReasons.set(key, "rejected");
+                        } else {
+                            pending.delete(key);
+                            pendingReasons.delete(key);
+                            succeeded += 1;
+                        }
                     } catch (error) {
+                        pendingReasons.set(key, "transport");
                         failed += 1;
                         reportError("retry", error);
                     }
@@ -223,10 +323,20 @@
             return retryPromise;
         };
 
-        const getPendingCompletions = () => [...pending.values()].map((payload) => ({...payload}));
+        const getPendingCompletions = () => [...pending.entries()].map(([key, payload]) => ({...payload, pendingReason: pendingReasons.get(key) || "transport"}));
 
-        /* T-1428（R-40.2）：calendar.read 投影消费——单飞合流 + 事件失效缓存 +
-           超时/Abort 守卫。v4 宿主（能力缺失）显式拒绝并给出 reason，不猜测新字段。 */
+        const discardPendingCompletion = ({blockId, localDate, itemId = targetItemId} = {}) => {
+            const externalRef = canonicalExternalRef(blockId, localDate);
+            if (!externalRef || !itemId) return false;
+            const key = completionKey(itemId, externalRef);
+            const removed = pending.delete(key);
+            pendingReasons.delete(key);
+            return removed;
+        };
+
+        /* calendar.read is a synchronous bounded provider method. This wrapper
+           coalesces callers and rejects stale cache writes; it cannot interrupt
+           a provider call after JavaScript has entered it. */
         const getProjection = (range = {}, callOptions = {}) => {
             if (stopped) return Promise.resolve({abandoned: true, reason: "stopped"});
             if (projectionMode !== "calendar.read" || typeof checkin.getCalendarProjection !== "function") {
@@ -235,36 +345,26 @@
             if (callOptions.signal && callOptions.signal.aborted) {
                 return Promise.resolve({abandoned: true, reason: "aborted"});
             }
-            const exclusiveEnd = (() => {
-                if (typeof range.endDate !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(range.endDate)) return undefined;
-                const day = new Date(`${range.endDate}T00:00:00Z`);
-                if (Number.isNaN(day.valueOf())) return undefined;
-                day.setUTCDate(day.getUTCDate() + 1);
-                return day.toISOString().slice(0, 10);
-            })();
-            const key = JSON.stringify([range.startDate, exclusiveEnd, range.itemIds || null]);
+            if (typeof range.startDate !== "string" || typeof range.endDateExclusive !== "string") {
+                return Promise.resolve({abandoned: true, reason: "invalid-range"});
+            }
+            const key = JSON.stringify([range.startDate, range.endDateExclusive]);
             const cached = projectionCache.get(key);
             if (cached) return Promise.resolve({data: cached});
             const existing = projectionInFlight.get(key);
             if (existing) return existing;
-            const timeoutMs = Number.isFinite(options.projectionTimeoutMs) ? options.projectionTimeoutMs : undefined;
+            const requestRevision = projectionRevision;
             const run = (async () => {
                 try {
-                    const data = await Promise.race([
-                        Promise.resolve(checkin.getCalendarProjection({startDate: range.startDate, endDateExclusive: exclusiveEnd})),
-                        ...(timeoutMs !== undefined
-                            ? [new Promise((resolve) => { const timer = setTimeout(() => resolve({abandoned: true, reason: "timeout"}), timeoutMs); if (typeof timer.unref === "function") timer.unref(); })]
-                            : []),
-                        ...(callOptions.signal
-                            ? [new Promise((resolve) => { callOptions.signal.addEventListener("abort", () => resolve({abandoned: true, reason: "aborted"}), {once: true}); if (callOptions.signal.aborted) resolve({abandoned: true, reason: "aborted"}); })]
-                            : []),
-                    ]);
-                    if (data && data.abandoned) return data;
+                    const data = await checkin.getCalendarProjection({startDate: range.startDate, endDateExclusive: range.endDateExclusive});
+                    if (callOptions.signal && callOptions.signal.aborted) return {abandoned: true, reason: "aborted"};
                     if (stopped) return undefined;
+                    if (requestRevision !== projectionRevision) return {abandoned: true, reason: "stale"};
                     projectionCache.set(key, data);
                     if (projectionCache.size > 16) projectionCache.delete(projectionCache.keys().next().value);
                     return {data};
                 } catch (error) {
+                    projectionCache.clear();
                     reportError("projection", error);
                     return {abandoned: true, reason: "error", error: String(error instanceof Error ? error.message : error)};
                 }
@@ -277,6 +377,18 @@
             return projectionPromise;
         };
 
+        const refreshProjection = async (range) => {
+            if (!range) return {abandoned: true, reason: "range-missing"};
+            const result = await getProjection(range);
+            if (result && result.data && typeof options.onProjection === "function") {
+                try { await options.onProjection(result.data); } catch (error) {
+                    reportError("projection-render", error);
+                    return {abandoned: true, reason: "render-error"};
+                }
+            }
+            return result;
+        };
+
         const getStatus = () => ({stopped, projectionMode, projectionCacheSize: projectionCache.size, pending: pending.size});
 
         const stop = () => {
@@ -284,10 +396,13 @@
             started = false;
             cleanupSubscription();
             projectionCache.clear();
+            refreshRevision += 1;
+            projectionRevision += 1;
+            refreshInFlight.clear();
             projectionInFlight.clear();
         };
 
-        return {start, refresh, getProjection, getStatus, recordTaskCompletion, retryPending, getPendingCompletions, stop};
+        return {start, refresh, getProjection, refreshProjection, getStatus, recordTaskCompletion, retryPending, getPendingCompletions, discardPendingCompletion, stop};
     }
 
     return {createTaskHorizonBridge};

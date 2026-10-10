@@ -311,26 +311,30 @@ const cases = [
                 assert.equal(titleState.title, true, `${label}: desktop More page keeps its page title`);
             }
         }
-        if (surface === 'today' && width >= 900) {
+        if (surface === 'today') {
             const placement = await page.locator('.lc-checkin__list').evaluate(list => {
                 const load = list.querySelector(':scope > .lc-checkin__week-load');
                 if (!load) return null;
                 const loadBox = load.getBoundingClientRect();
-                const previousBox = load.previousElementSibling?.getBoundingClientRect();
+                const queueBottom = [...list.children]
+                    .filter(child => child !== load)
+                    .reduce((bottom, child) => Math.max(bottom, child.getBoundingClientRect().bottom), 0);
                 const style = getComputedStyle(load);
                 return {
                     gridColumnStart: style.gridColumnStart,
                     gridColumnEnd: style.gridColumnEnd,
                     width: loadBox.width,
                     listWidth: list.clientWidth,
-                    followsPrevious: !previousBox || loadBox.top >= previousBox.bottom - 1,
+                    followsQueue: !queueBottom || loadBox.top >= queueBottom - 1,
                 };
             });
             if (placement) {
-                assert.equal(placement.gridColumnStart, '1', `${label}: week load starts at the first task column`);
-                assert.equal(placement.gridColumnEnd, '-1', `${label}: week load spans the task area`);
-                assert.ok(Math.abs(placement.width - placement.listWidth) <= 2, `${label}: week load occupies the full list width ${JSON.stringify(placement)}`);
-                assert.equal(placement.followsPrevious, true, `${label}: week load stays below the preceding task/evidence content`);
+                assert.equal(placement.followsQueue, true, `${label}: week load stays below every task/evidence block ${JSON.stringify(placement)}`);
+                if (width >= 900) {
+                    assert.equal(placement.gridColumnStart, '1', `${label}: week load starts at the first task column`);
+                    assert.equal(placement.gridColumnEnd, '-1', `${label}: week load spans the task area`);
+                    assert.ok(Math.abs(placement.width - placement.listWidth) <= 2, `${label}: week load occupies the full list width ${JSON.stringify(placement)}`);
+                }
             }
         }
         const topnav = page.locator('.lc-checkin__topnav');
@@ -889,13 +893,23 @@ const cases = [
                 assert.equal(await page.locator('.lc-checkin__empty--onboard').isVisible(), true);
                 const add = page.locator('.lc-checkin__empty--onboard [data-action="add"]');
                 await assertControlReachable(add, `${label}/add`, 44);
+                const featureToggle = page.locator('.lc-checkin__onboard-features > summary');
+                assert.equal(await featureToggle.isVisible(), true, `${label}: optional feature overview is reachable`);
+                assert.equal(await page.locator('.lc-checkin__onboard-features').evaluate(details => details.open), false, `${label}: overview stays folded until requested`);
+                await featureToggle.click();
+                assert.equal(await page.locator('.lc-checkin__onboard-features').evaluate(details => details.open), true, `${label}: feature overview expands on activation`);
+                assert.equal(await page.locator('.lc-checkin__onboard-features li').count(), 4, `${label}: overview lists all four main navigation areas`);
+                await featureToggle.click();
                 const onboarding = await add.evaluate(button => {
                     const box = button.getBoundingClientRect();
                     const steps = button.closest('.lc-checkin__empty--onboard').querySelector('.lc-checkin__onboard-steps').getBoundingClientRect();
                     const position = getComputedStyle(button).position;
-                    return {position, width: box.width, height: box.height, followsSteps: box.top >= steps.bottom - 1};
+                    const skip = button.closest('.lc-checkin__empty--onboard').querySelector('[data-action="skip-onboard"]');
+                    return {position, width: box.width, height: box.height, followsSteps: box.top >= steps.bottom - 1,
+                        primary: button.classList.contains('lc-checkin__primary-button'), skipFollows: !skip || skip.getBoundingClientRect().top >= box.bottom - 1};
                 });
-                assert.ok(!['absolute', 'fixed'].includes(onboarding.position) && onboarding.followsSteps && onboarding.width > onboarding.height, `${label}: first-habit CTA belongs in the onboarding flow ${JSON.stringify(onboarding)}`);
+                assert.ok(!['absolute', 'fixed'].includes(onboarding.position) && onboarding.followsSteps && onboarding.width > onboarding.height
+                    && onboarding.primary && onboarding.skipFollows, `${label}: first-habit CTA leads the onboarding flow and skip stays secondary ${JSON.stringify(onboarding)}`);
                 await assertLayout(label);
                 await screenshot({path: path.join(outputRoot, `${label}.png`)});
                 await add.click();

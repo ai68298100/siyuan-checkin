@@ -3407,6 +3407,41 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__onboard-steps li > div { display: grid; gap: 2px; min-width: 0; }
 .lc-checkin__onboard-steps strong { color: var(--lc-checkin-text); font-size: 12.5px; }
 .lc-checkin__onboard-steps small { color: var(--lc-checkin-muted); font-size: 11px; line-height: 1.5; }
+.lc-checkin__onboard-features {
+    width: min(100%, 360px);
+    margin: 2px 0;
+    color: var(--lc-checkin-muted);
+    text-align: left;
+}
+.lc-checkin__onboard-features summary {
+    width: fit-content;
+    max-width: 100%;
+    color: var(--lc-checkin-accent-text);
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 650;
+}
+.lc-checkin__onboard-features ul {
+    display: grid;
+    gap: 5px;
+    margin: 7px 0 2px;
+    padding: 0 0 0 18px;
+    font-size: 10.5px;
+    line-height: 1.4;
+}
+.lc-checkin__onboard-features li { padding-left: 2px; }
+.lc-checkin__onboard-features li strong { color: var(--lc-checkin-text); margin-right: 5px; }
+.lc-checkin__onboard-features li span { color: var(--lc-checkin-muted); }
+.lc-checkin--today .lc-checkin__empty--onboard > .lc-checkin__onboard-start {
+    width: min(100%, 280px);
+    min-height: 42px;
+    margin: 4px 0 0;
+}
+.lc-checkin--today .lc-checkin__empty--onboard > .lc-checkin__onboard-skip {
+    min-height: 36px;
+    margin: 0;
+    padding-inline: 12px;
+}
 
 /* Onboarding is useful, but it should not turn an empty Today page into a
    tall poster. Keep all three explanations visible while using the same
@@ -3457,6 +3492,13 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
         font-size: 10px;
         line-height: 1.3;
     }
+    .lc-checkin--today .lc-checkin__empty--onboard .lc-checkin__onboard-features ul {
+        gap: 4px;
+        margin-top: 5px;
+        font-size: 10px;
+    }
+    .lc-checkin--today .lc-checkin__empty--onboard > .lc-checkin__onboard-start { min-height: 44px; }
+    .lc-checkin--today .lc-checkin__empty--onboard > .lc-checkin__onboard-skip { min-height: 44px; }
 }
 .lc-checkin__all-done span { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; color: #fff; background: var(--lc-checkin-success); font-size: 16px; }
 .lc-checkin__all-done strong { color: var(--lc-checkin-text); font-size: 14px; }
@@ -6135,13 +6177,29 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 }
 .lc-checkin--occasions .lc-checkin__occasion-manager-row.is-disabled .lc-checkin__occasion-status { color: var(--lc-checkin-muted); background: var(--lc-checkin-surface-soft); }
 .lc-checkin--occasions .lc-checkin__occasion-stats { display: flex; flex-wrap: wrap; gap: 6px; }
-.lc-checkin--occasions .lc-checkin__occasion-stats span {
+.lc-checkin--occasions .lc-checkin__occasion-stats :where(span, button) {
     padding: 4px 9px;
     border-radius: 999px;
     color: var(--lc-checkin-muted);
     background: var(--lc-checkin-surface-soft);
     font-size: 10.5px;
     font-variant-numeric: tabular-nums;
+}
+.lc-checkin--occasions .lc-checkin__occasion-stats button {
+    border: 1px solid transparent;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+.lc-checkin--occasions .lc-checkin__occasion-stats button:hover,
+.lc-checkin--occasions .lc-checkin__occasion-stats button.is-active {
+    color: var(--lc-checkin-accent-text);
+    border-color: var(--lc-checkin-accent-soft);
+    background: var(--lc-checkin-accent-soft);
+}
+.lc-checkin--occasions .lc-checkin__occasion-stats button:focus-visible {
+    outline: 2px solid var(--lc-checkin-focus);
+    outline-offset: 1px;
 }
 .lc-checkin--occasions .lc-checkin__occasion-filters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) auto; gap: 6px; align-items: end; }
 .lc-checkin--occasions .lc-checkin__occasion-filter-fold > summary { display: none; }

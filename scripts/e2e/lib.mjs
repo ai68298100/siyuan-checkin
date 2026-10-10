@@ -95,7 +95,7 @@ export function assertScratchWorkspace(workspace, {env = process.env} = {}) {
         if (fs.existsSync(conf)) {
             const notebook = JSON.parse(fs.readFileSync(conf, "utf8"));
             if (typeof notebook.name !== "string" || (!isScratchName(notebook.name) && env.SIYUAN_E2E_ALLOW_SHARED !== "1")) throw new Error("E2E 工作区包含非小驴打卡测试笔记本，拒绝本地安装和配置写入");
-        } else if (!new Set([".siyuan", "plugins", "storage", "assets", "emojis", "widgets", "templates", "public", "history", "snippets"]).has(entry.name)) {
+        } else if (!new Set([".siyuan", "plugins", "storage", "assets", "emojis", "icons", "themes", "widgets", "templates", "public", "history", "snippets"]).has(entry.name)) {
             throw new Error(`E2E data 存在无法确认用途的目录 ${entry.name}，拒绝写入`);
         }
     }
@@ -106,7 +106,7 @@ export function assertScratchWorkspace(workspace, {env = process.env} = {}) {
     return marker;
 }
 
-/** A self-managed workspace still requires the caller's explicit access code. */
+/** A self-managed workspace still requires the caller's explicit API token. */
 export function configureAccessToken(workspace, {token, created = false} = {}) {
     assertScratchWorkspace(workspace);
     const target = resolveTarget({baseArg: `http://127.0.0.1:${DEFAULT_E2E_PORT}`, tokenArg: token, env: {}});
@@ -117,7 +117,9 @@ export function configureAccessToken(workspace, {token, created = false} = {}) {
     const confPath = path.join(workspace, "conf", "conf.json");
     if (fs.existsSync(confPath)) throw new Error("新靶场已有配置，拒绝覆盖访问码");
     fs.mkdirSync(path.dirname(confPath), {recursive: true});
-    fs.writeFileSync(confPath, JSON.stringify({accessAuthCode: target.token}, null, 2));
+    /* SiYuan authenticates /api requests with conf.api.token.  accessAuthCode is
+       the lock-screen code and must not be used as an API credential. */
+    fs.writeFileSync(confPath, JSON.stringify({api: {token: target.token}}, null, 2));
     return target.token;
 }
 
@@ -173,6 +175,9 @@ export async function startKernel({kernel, appDir, workspace, port, host = "127.
 export function readAccessToken(workspace) {
     try {
         const conf = JSON.parse(fs.readFileSync(path.join(workspace, "conf", "conf.json"), "utf8"));
+        if (typeof conf.api?.token === "string" && conf.api.token) return conf.api.token;
+        /* Legacy E2E workspaces wrote accessAuthCode; keep a read-only fallback
+           so the mismatch error remains explicit instead of silently replacing it. */
         return typeof conf.accessAuthCode === "string" ? conf.accessAuthCode : "";
     } catch {
         return "";
@@ -230,6 +235,18 @@ export class SiyuanClient {
             if (progress && progress.code === 0 && progress.data && Number(progress.data.progress) >= 100) {
                 await this.version();
                 return;
+            }
+            /* Read-only kernels on recent SiYuan builds can finish booting
+               without exposing bootProgress=100. A successful version call is
+               the same authenticated readiness signal and avoids a false
+               timeout after the kernel log already says "kernel booted". */
+            if ((lines || []).some((line) => /kernel booted/i.test(line)) || progress === undefined || (progress && progress.code !== 0 && !progress.msg)) {
+                try {
+                    await this.version();
+                    return;
+                } catch {
+                    /* Keep polling until the bounded timeout. */
+                }
             }
             if (progress && progress.code !== 0 && progress.code !== undefined && progress.msg) throw new Error(`bootProgress: ${progress.msg}`);
             await new Promise((resolve) => setTimeout(resolve, 250));

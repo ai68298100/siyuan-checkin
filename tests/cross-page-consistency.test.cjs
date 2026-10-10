@@ -375,6 +375,10 @@ try {
         assert.match(navigation, /const currentPage = root && host\.pageForRoot \? host\.pageForRoot\(root\) : host\.currentPage;/, "洞察返回页读取发起表面");
         assert.match(navigation, /const returnPage = currentPage === "review" \? "review"/, "洞察返回页按发起表面判定");
         assert.match(navigation, /if \(!setPage\(host, "insights", root\)\) return;/, "洞察导航走统一落点");
+        assert.match(navigation, /setReturnPageForRoot\?\.\(root, returnPage\)/, "归档入口记录发起页以支持返回");
+        assert.match(reviewBind, /if \(pageForRoot\(\) === "archived"\) \{[\s\S]*?returnPageForRoot\?\.\(root\)[\s\S]*?host\.showInsights\(undefined, root\)/, "归档返回按 root 发起页回到洞察");
+        assert.match(indexSrc, /public setReturnPageForRoot\(root: HTMLElement \| undefined, page: "today" \| "review" \| "insights" \| "more"\)/, "宿主提供 root 级归档返回上下文");
+        assert.match(indexSrc, /if \(page !== "archived"\) context\.returnTo = undefined;/, "普通导航消费归档返回上下文，避免 stale return");
         const navWrites = navigation.match(/host\.currentPage = "/g) || [];
         assert.equal(navWrites.length, 1, "导航函数仅 openTabPageFor 保留宿主级写（页签继承孤儿页）");
         /* 分发层：rail/底栏/顶栏导航只落在发起表面。 */

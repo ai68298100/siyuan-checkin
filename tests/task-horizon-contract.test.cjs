@@ -58,8 +58,11 @@ assert.equal(externalRef("p1:block", "2026-09-18"), undefined, "block IDs with s
 assert.equal(ecosystem.parseTaskHorizonExternalRef("taskhorizon:p1-block:2026-02-30"), undefined, "impossible dates are rejected");
 assert.deepEqual(manifest, ecosystem.TASK_HORIZON_CONTRACT, "machine-readable manifest stays aligned with runtime contract");
 assert.deepEqual(manifest.writeResult, {newEvent: "event", duplicate: "existing-event", rejected: "undefined"});
-assert.equal(ecosystem.isTaskHorizonRefreshEvent("checkin:event-recorded"), true);
-assert.equal(ecosystem.isTaskHorizonRefreshEvent("checkin:item-created"), false, "creation noise does not trigger calendar refresh");
+for (const eventName of [
+    "checkin:item-created", "checkin:item-updated", "checkin:item-deleted", "checkin:item-archived",
+    "checkin:event-recorded", "checkin:event-deleted", "checkin:analytics-updated",
+]) assert.equal(ecosystem.isTaskHorizonRefreshEvent(eventName), true, `${eventName} refreshes the projection`);
+assert.equal(ecosystem.isTaskHorizonRefreshEvent("checkin:suggestion-workflow-updated"), false, "workflow changes do not affect the calendar projection");
 const first = event("task-1", "p1-block", "2026-09-18");
 const replay = {...first, id: "task-replay", value: 99};
 const nextDay = event("task-2", "p1-block", "2026-09-19");
@@ -80,6 +83,11 @@ const docs = fs.readFileSync(path.join(__dirname, "..", "docs", "checkin-taskhor
 assert.match(docs, /taskhorizon:<blockId>:<localDate>/, "cooperation doc keeps the canonical identity format");
 assert.match(docs, /仅用户真实点击/, "cooperation doc keeps the native-checkbox trigger boundary");
 assert.match(docs, /task-horizon-v1\.json/, "cooperation doc links the machine-readable manifest");
+assert.match(docs, /比“普通任务完成”更接近小驴的习惯项目/, "cooperation doc records the closer product fit of Task Horizon check-in cycles");
+assert.match(docs, /追加事实/, "cooperation doc must preserve the cancellation mismatch for check-in-cycle writes");
+const issueDraft = fs.readFileSync(path.join(__dirname, "..", "docs", "contracts", "upstream-proposals", "taskhorizon-issue-draft.md"), "utf8");
+assert.match(issueDraft, /未来可以由用户明确选择一个目标小驴项目/, "dedicated upstream proposal includes the check-in-cycle matching path");
+assert.match(issueDraft, /不得自行扩展现有 `taskhorizon:<blockId>:<localDate>` 身份格式/, "future check-in-cycle writes cannot silently reuse ordinary task identity");
 
 const indexSource = fs.readFileSync(path.join(sourceRoot, "index.ts"), "utf8");
 assert.match(indexSource, /isTaskHorizonExternalRef\(taskHorizonRef\)/, "API write boundary validates Task Horizon keys after trimming");

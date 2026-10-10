@@ -110,10 +110,10 @@ siplayer.getEffectivePlayback({localDate}: {localDate: string}): {playingMs: num
 
 ### 提案消费层行为（v1 草案，对齐其 dockTomato 接入惯例）
 
-1. **探测与协商**：`window.siyuanCheckin.protocol === "siyuan-checkin"`、`version >= 5`、`capabilities` 含 `calendar.read`，才启用打卡图层。
-2. **读取**：`getCalendarProjection({startDate, endDateExclusive}, {signal})` 风格——能力检测、超时、AbortSignal 取消、单飞（并发请求合并），与 `__dockTomato.stats.queryFocus` 同款纪律。
-3. **刷新**：只订阅 `checkin:event-recorded`、`checkin:analytics-updated`、`checkin:item-archived`、`checkin:item-updated` 四个事件触发重查；其余事件（含 `item-created/item-deleted`）不触发日历重查。
-4. **降级**：插件缺失、未加载、能力不足、超时或错误 → 隐藏打卡图层（与番茄专注模块同款策略），服务恢复自动刷新；错误可诊断（控制台/诊断信息），不静默。
+1. **探测与协商**：`window.siyuanCheckin.describe()` 返回 `protocol === "siyuan-checkin"`、`version >= 5`，且 `hasCapability("calendar.read")` 为 true，才启用打卡图层。
+2. **读取**：`getCalendarProjection({startDate, endDateExclusive})` 是同步、有界的只读方法，不接受 `AbortSignal`；消费端校验范围、合并同一轮事件刷新并在卸载后不再更新 UI。timeout/Abort 仅适用于真正异步的服务，不能用 `Promise.race` 声称中断此同步读取。
+3. **刷新**：订阅 `checkin:item-created`、`checkin:item-updated`、`checkin:item-deleted`、`checkin:item-archived`、`checkin:event-recorded`、`checkin:event-deleted` 和 `checkin:analytics-updated`，事件到达后合并重查；仅 `checkin:suggestion-workflow-updated` 与日历投影无关。
+4. **降级**：插件缺失、未加载、能力不足或读取异常 → 隐藏打卡图层（与番茄专注模块同款策略），服务恢复后重读；错误可诊断（控制台/诊断信息），不静默。
 5. **旧版兼容**：仅协商到 v4 的旧消费方不得假装支持项目级隐藏——保留 legacy 聚合图层或整体隐藏细粒度图层，不能让用户已关闭「Task Horizon 日历显示」的项目因旧缓存继续出现。
 6. **只读边界**：投影为纯数据快照（无备注/附件/externalRef），只用于日历展示；不得从投影反向写回任务状态，任务完成回写仍走 L2 `recordEvent` 契约（`taskhorizon:<blockId>:<localDate>`），与显示开关解耦。
 
@@ -124,20 +124,20 @@ siplayer.getEffectivePlayback({localDate}: {localDate: string}): {playingMs: num
 ## 四、最小消费示例（我方视角，供对方评审参考）
 
 ```ts
-/* 消费 calendar.read 的参考实现骨架：协商 → 单飞读取 → 事件刷新 → 降级。 */
-async function loadCalendarLayer(signal?: AbortSignal) {
+/* 消费 calendar.read 的参考实现骨架：协商 → 有界同步读取 → 事件刷新 → 降级。 */
+async function loadCalendarLayer() {
     const api = globalThis.window?.siyuanCheckin;
-    if (api?.protocol !== "siyuan-checkin" || api.version < 5
-        || !api.capabilities?.includes("calendar.read")) return null;   // 降级：隐藏图层
+    const descriptor = api?.describe?.();
+    if (descriptor?.protocol !== "siyuan-checkin" || descriptor.version < 5
+        || api?.hasCapability?.("calendar.read") !== true) return null;   // 降级：隐藏图层
+    if (!await api.whenReady()) return null;
     const end = new Date(); end.setDate(end.getDate() + 1);
     const start = new Date(); start.setDate(start.getDate() - 29);      // 30 天窗口
     const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    const projection = api.getCalendarProjection(
-        {startDate: iso(start), endDateExclusive: iso(end)});
+    const projection = api.getCalendarProjection({startDate: iso(start), endDateExclusive: iso(end)});
     return projection.truncated ? {…projection, note: "truncated"} : projection;  // 有界消费
 }
-// 刷新：仅 checkin:event-recorded / analytics-updated / item-archived / item-updated 触发重查；
-// 并发重查合并（单飞），查询携带 AbortSignal，插件不可用即隐藏图层。
+// 刷新：订阅上方列出的 7 个数据变化事件；用 microtask/debounce 合并事件突发，插件不可用即隐藏图层。
 ```
 
 ## 五、交付物与下一步

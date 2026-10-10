@@ -50,6 +50,8 @@ const load = relative => import(pathToFileURL(path.join(repository, relative)).h
     const isolated = mockApi([scratch]);
     assert.deepEqual(await safety.prepareScratch(isolated.api, {base, env: {}}), ["scratch"]);
     assert.deepEqual(isolated.calls.map(call => call.route), ["/api/notebook/lsNotebooks", "/api/notebook/lsNotebooks", "/api/notebook/removeNotebook"]);
+    const bootstrap = mockApi([{id: "default", name: "My Notebook"}, {id: "scratch", name: scratch.name}]);
+    assert.deepEqual(await safety.prepareScratch(bootstrap.api, {base, env: {}}), ["scratch"], "SiYuan bootstrap notebook is allowed but never swept");
     const changed = [];
     await assert.rejects(safety.prepareScratch(async route => {
         changed.push(route);
@@ -104,11 +106,14 @@ const load = relative => import(pathToFileURL(path.join(repository, relative)).h
         const prepared = e2e.prepareWorkspace(workspace);
         assert.equal(prepared.created, true);
         fs.mkdirSync(path.join(workspace, "data", ".siyuan"), {recursive: true});
+        fs.mkdirSync(path.join(workspace, "data", "icons"), {recursive: true});
+        fs.mkdirSync(path.join(workspace, "data", "themes"), {recursive: true});
         e2e.assertScratchWorkspace(workspace); // real SiYuan workspaces carry data/.siyuan beside notebook boxes
         assert.throws(() => e2e.configureAccessToken(workspace, {created: true}), /token/, "new self-managed workspace must require an explicit token");
         const generated = e2e.configureAccessToken(workspace, {created: true, token: "new-explicit-token"});
         assert.equal(generated, "new-explicit-token");
         assert.equal(e2e.readAccessToken(workspace), generated);
+        assert.deepEqual(JSON.parse(fs.readFileSync(path.join(workspace, "conf", "conf.json"), "utf8")).api, {token: generated});
         assert.throws(() => e2e.configureAccessToken(workspace), /token/);
         assert.throws(() => e2e.configureAccessToken(workspace, {token}), /不匹配/);
         assert.equal(e2e.readAccessToken(workspace), generated, "existing access code is never silently replaced");

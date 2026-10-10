@@ -79,6 +79,9 @@ test("问卷日记:绑定项目打卡弹问卷并写入当日日记且重填幂�
     await refillButton.click();
     const refillForm = page.locator("[data-journal-form]");
     await expect(refillForm).toBeVisible({timeout: 20000});
+    /* 已配置目标默认收起，先展开目标配置抽屉再切换到复制段落。 */
+    const configDrawer = refillForm.locator("[data-journal-config-drawer]");
+    if (!(await configDrawer.getAttribute("open"))) await configDrawer.locator("summary").click();
     /* A copied paragraph ID must resolve to this same document, not append inside the paragraph. */
     await refillForm.locator('input[name="journalTarget"][value="doc"]').check();
     await refillForm.locator('input[name="journalDocId"]').fill(writtenBlock.id);

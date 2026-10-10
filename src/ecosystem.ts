@@ -4,10 +4,13 @@ import {sanitizeDiagnosticDetail} from "./features/diagnostics";
 
 export const TASK_HORIZON_EXTERNAL_REF_PREFIX = "taskhorizon" as const;
 export const TASK_HORIZON_REFRESH_EVENTS = [
-    "checkin:event-recorded",
-    "checkin:analytics-updated",
-    "checkin:item-archived",
+    "checkin:item-created",
     "checkin:item-updated",
+    "checkin:item-deleted",
+    "checkin:item-archived",
+    "checkin:event-recorded",
+    "checkin:event-deleted",
+    "checkin:analytics-updated",
 ] as const;
 export const TASK_HORIZON_CONTRACT = Object.freeze({
     version: 1,

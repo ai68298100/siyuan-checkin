@@ -6,6 +6,20 @@
 - 本文件中 v18.17.0 及更早版本号属于任务登记时的历史基线，保留用于追溯；新任务统一以源码、`PROGRESS.md`、`BLOCKERS.md` 和 `docs/releases/` 的最新版本为准。
 - 仍开放的产品决策、真实宿主/Android 现场验收和外部来源依赖继续保留，不因版本号升级自动标记完成。
 
+## 2026-10-10 全量体验复核第十六轮（T-1839）
+
+- [x] 事项页统计与筛选入口对齐：修复统计数据已计算但页面仍渲染旧静态文本的问题；全部/启用/今天/错过/已结束统计现在均为可点击筛选入口，补齐中英文无障碍标签和按钮状态样式。
+- [x] 归档返回路径按发起页面恢复：Review、Insights、More、Today 进入归档后，返回分别回到原工作区/项目/入口；返回上下文按 root 隔离，普通导航会清理过期上下文。
+- [x] 编辑器创建锚点文档增加单飞锁：请求期间按钮禁用并暴露 `aria-busy`，成功/失败/导航销毁后均正确释放，避免重复点击创建重复文档。
+- [x] 验收：`pnpm run check`、`pnpm run build`、`pnpm test`、`pnpm run test:ui`、`pnpm run test:mobile`、`pnpm run test:ecosystem`、`node tests/cross-page-consistency.test.cjs`、`node tests/surface-session-browser.cjs`、`node tests/occasion-stats.test.cjs`、`node tests/note-anchor-picker.test.cjs`、`node tests/width-walkthrough.cjs`、`node tests/visual-qa.cjs`、`git diff --check` 均通过。
+- [ ] 真实思源宿主、多窗口现场、Android/TalkBack、第三方来源、缩放与保存面板仍按既有阻塞记录开放；构建仅保留既有 CSS/JS/ZIP 体积提示。
+
+## 2026-10-10 新用户首次使用体验（T-1838，D-466）
+
+- [x] 空库 Today 首屏保留三步操作引导，并增加默认收起的“先了解这几个入口”功能概览，解释今天/回顾/事项/更多的职责；跳过引导后不重复展示。
+- [x] 将“新建第一个打卡项”提升为首要主按钮，跳过引导保留为次级动作；中英文文案、键盘/触屏可达性和窄屏顺序已锁定。
+- [x] 验收：`node tests/first-success.test.cjs`、`node tests/ui-state-ledger.test.cjs`、`node tests/responsive-layout.test.cjs`、`node tests/i18n-parity.test.cjs`、`node tests/width-walkthrough.cjs`、`pnpm run check`、`pnpm run build`、`git diff --check` 均通过。
+
 ## 2026-10-10 发布 v18.17.2（R-RELEASE-18.17.2）
 
 - [x] 版本源、README 当前入口、变更记录和发布说明已统一为 v18.17.2；v18.17.1 历史摘要保留。
@@ -18,6 +32,13 @@
 - [x] T-1831 v3 入口映射完成：移动/桌面统一为“今天/回顾/事项/记录/更多”，设置、归档、编辑器和搜索从“更多”进入并保留返回上下文；快速弹窗内点击“记录”直接进入新建编辑器；设置健康卡“提醒与专注”直达外观与交互分组。
 - [x] T-1832 README 更新完成：首屏保留四款内测插件说明；18.17.1 更新按“整体/新增/优化/修复”分组；历史版本折叠；补齐八款系列插件的一句话简介、GitHub 仓库和 QQ 群 871707735。
 - [x] T-1833 入口验收脚本同步：More 分组、数据/外部联动 E2E、首成功流程、宽度走查、UI 结构守门和偏好文档断言均迁移到当前入口语义。
+
+## 2026-10-10 Task Horizon 打卡匹配研究（D-464）
+
+- [x] T-1834 对方源码打卡能力核对：已读取 Task Horizon v3.1.8（commit `58ec06f`），确认其有按日 `checkinHistory` 的内部打卡循环、`tm-checkin-updated` 事件和日历内部事件，也有面向旧积分插件的 `task-horizon:task-completed`/`siyuan-points-reward-*` 联动；这些都不是小驴 `recordEvent` 公共契约，不能直接监听或读取私有状态。
+- [x] T-1835 小驴打卡专门合作包：更新 [合作设计](docs/checkin-taskhorizon-cooperation.md)，新增 [Task Horizon 专门 Issue 草案](docs/contracts/upstream-proposals/taskhorizon-issue-draft.md)，补齐 v5 日历投影、普通任务完成回写、内部打卡循环匹配、取消/补录/多窗口和唯一 canonical source 边界；契约、参考 bridge 和 mock consumer 守门均通过。
+- [x] T-1837 联调包边界复核：参考 bridge 修正订阅事件前缀、固定项目 ID、单位快照、`undefined` 待处理状态、跨午夜历史边界、在途读取失效和旧结果丢弃；测试矩阵改为只覆盖明确绑定项目，不允许单次调用临时改投目标。
+- [ ] T-1836 Task Horizon 消费端联调：等待对方维护者确认日历图层位置、目标项目按 ID 绑定、7 个数据变化刷新事件、日期/撤销语义和普通任务触发纪律；确认后由对方仓库实现 PR，小驴侧维护 API/契约夹具。Issue 草案已补齐历史日期、`undefined`、目标 ID 固定、缓存失效和项目增删/事件删除边界，仍未向外部提交。内部“打卡循环”同步另立可撤回状态契约，不与普通复选框回写混做。
 
 ## 2026-10-09 原型对照与交互状态复核（第十五轮，D-460）
 
@@ -4170,3 +4191,7 @@ G组 文档（5/5）：88 路线图五版本计划表 89 生态合作文档（Ta
 - [ ] T-1508 外部时长片段与 LifeLog 项目路由收口
   - 状态：本地实现与回归通过；已观察到的可重试失败片段由 T-1509 有界持久待处理箱承接。剩余仅跨窗口同一真实会话身份、未收到的监听事件和真实第三方宿主证据。思阅/思播同日 20+15 分别两条，思播按完整播放段结束结算；新身份改用精确开始毫秒，避免同一分钟两段碰撞，旧每日/分钟桶身份继续可读。叶归有映射时未命中跳过，无映射时仅唯一同名分钟目标匹配。上游旧提案/历史研究保留当时每日口径，不当作当前功能说明；见 BLOCKERS。
   - 下一步：等待可验证的上游共享会话身份或单采集窗口机制，并在真实双插件宿主核对；不能用时间近似合并，也不承诺恢复从未收到的事件。
+
+- [ ] T-1840 v18.17.3 发版收口
+  - 验收：README、发布说明、变更记录和版本四元组一致；完整质量链、发布资产门禁、GitHub main/tag/Release 与 SHA-256 一致；保留真实设备证据边界。
+  - 状态：E2E 已完成（可写 23/23、只读 1/1）；等待质量链和 gh 发布。

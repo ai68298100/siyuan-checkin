@@ -1,5 +1,18 @@
 # D-361：README 版本更新区块格式（2026-10-08）
 
+# D-464：Task Horizon 内部打卡循环与小驴事件分阶段匹配（2026-10-10）
+
+- 对 Task Horizon v3.1.8（`58ec06f`）的源码核对确认：`repeatRule.trigger === "checkin"`、`repeatState.checkinHistory`、`tm-checkin-updated` 和 `checkin:<taskId>:<localDate>` 都属于对方内部打卡循环；`task-horizon:task-completed` 与 `siyuan-points-reward-*` 属于旧积分联动。两类均不是小驴 `window.siyuanCheckin` 的版本化 `recordEvent` 契约，不允许小驴直接读取私有字段/DOM 或监听未版本化事件。
+- 产品匹配上，内部打卡循环比普通任务复选框更接近小驴习惯项目；但对方可删除某日 `checkinHistory` 记录，而小驴公开 `recordEvent()` 只追加事实且暂无外部事件撤回方法。先做 v5 `calendar.read` 只读消费和普通任务完成回写，内部循环同步必须另立可撤回状态对账契约，并明确用户触发、补录、取消、多窗口重放、解除映射和唯一 canonical source。
+- 本轮只维护本仓合作说明、专门 Issue 草案和契约夹具，不创建外部 Issue/PR；Task Horizon 侧实现应在维护者确认入口/设置/语义后由对方仓库提交 PR。`task-horizon-v1.json` 保持 v4 兼容，不把 v5 投影能力倒填进旧机器契约。
+
+## D-465：Task Horizon 消费边界按真实事件和日期语义收口（2026-10-10）
+
+- 日历投影刷新必须覆盖项目创建/更新/删除/归档、事件新增/删除和分析刷新 7 个数据变化事件；只有建议工作流事件与投影无关。旧“四类刷新、创建/删除是噪声”的草案已修正，避免新项目、删除项目或撤销事件继续显示旧缓存。
+- 参考 bridge 要求用户明确持久化目标 `itemId`，不按名称自动猜测；目标归档、at-most、单位不匹配或 ID 失效时 fail-closed。待处理身份固定为当时的 `itemId + source + externalRef`，映射变化不得把旧队列投向新项目。
+- 单条 `recordEvent()` 的 `undefined` 只代表未写入，无法区分拒绝和存储失败；bridge 保留原 payload 并标记 `rejected/transport`，用户可重新校验重试或显式丢弃。历史日期只能使用 v5 `recordEventsBatch` 的显式 `occurredAt`，不能用 externalRef 日期伪造落账日期。
+- 投影超时、Abort、异常、卸载或能力变化清空缓存并隐藏图层；阶段 2 先采用单向事实语义，Task Horizon 撤销不自动删除小驴追加事件。内部打卡循环另立可撤回/对账契约，不与普通完成共享 canonical source。
+
 # D-463：CSS 维护态硬预算调整（2026-10-10）
 
 - 用户明确授权将 CSS 生产产物硬阻断线从 640 KiB 调整为 660 KiB，以容纳本轮提醒文流、More 入口和短屏布局收口后的实际样式体积；620 KB 软提醒保持不变。
@@ -2803,3 +2816,27 @@
 - 可见的宽屏 Tab/Dock/对话框承载提醒时，通知加入该 surface 的文流，避免固定浮层覆盖主内容；无可见 surface 时才挂到 body。已有移动端 inline 规则沿用，不改变送达、静音或提醒内容语义。
 - v3 的移动/桌面导航与 Settings 健康总览属于信息架构迁移，不通过本轮局部修补冒充达标；入口迁移需保持现有深链、功能可达、返回上下文和选中态，范围登记 T-1831/T-1819/T-1822。
 - disabled 控件应在同组就地说明前置条件；保存视图“删除”仅在选中一个实际保存视图时可用。Review 未来日期和未绑定文档目标使用本地化原因提示。
+
+# D-465：Task Horizon bridge 的固定绑定与刷新代次（2026-10-10）
+
+- Task Horizon 消费端只能使用用户明确绑定的 `itemId`；`recordTaskCompletion()` 不接受临时换绑。显式绑定可在 `start()` 前保留待写身份，但 `start()` 仍负责项目存在、归档、方向和单位校验；provider 最终拒绝时保留原 payload 待处理。
+- `api.subscribe()` 的事件类型无 `checkin:` 前缀；window CustomEvent 名才带前缀。事件刷新同时推进摘要/投影代次、清空缓存和在途 Promise 索引；同步投影本身不声称可中断，但旧结果不得调用渲染回调或覆盖新数据。
+- 绑定项目的单位从目标快照读取，默认仅在未提供单位时回退“个”；`externalRef` 日期只做身份去重，历史补录和跨午夜重试必须使用 v5 `recordEventsBatch + occurredAt`。普通任务回写、内部可撤销打卡循环和旧积分事件保持互斥，不共享未版本化身份。
+
+# D-466：首次使用引导的密度与操作层级（2026-10-10）
+
+- 新用户引导继续放在 Today 空态，不使用强制弹窗，避免阻塞首次记录；三步核心路径始终可见，功能概览使用默认收起的原生 `details`，需要了解信息架构时再展开。
+- “新建第一个打卡项”是首要动作，使用主按钮并排在跳过之前；跳过仍可用但降为次级按钮，跳过后持久隐藏三步和功能概览。主按钮与跳过按钮在窄屏均保留足够触控高度，且不改变已有用户的活跃列表布局。
+
+# D-467：全量体验复核第十六轮的状态与返回语义（2026-10-10）
+
+- 事项统计必须复用已计算的筛选口径并提供真实按钮入口；统计按钮使用 `aria-pressed`、标题提示和统一焦点/激活样式，避免“看得到数字但点不了”的伪入口。
+- 归档返回属于一次性 root 级上下文：进入归档时记录 Today/Review/Insights/More 来源，返回后恢复来源页面及其已有会话状态；任意普通导航清理过期 `returnTo`，避免 stale 跳转，多 root 不共享该状态。
+- 异步创建文档属于单飞动作：按钮在请求期间必须 `disabled + aria-busy`，成功、失败和 surface 销毁都要释放；用户反馈只在仍连接的发起 surface 更新。
+- 本轮本地自动化全部通过不等于真实思源、Android/TalkBack、第三方来源、缩放和保存面板现场已验收；继续保留既有阻塞边界。
+
+# D-468：v18.17.3 独立内核 E2E 与发布口径（2026-10-11）
+
+- 真实 E2E 使用独立 workspace 和独立内核；可写默认端口 6807，只读端口若冲突通过 `CHECKIN_E2E_READONLY_PORT` 改为空闲端口。不得附着真实用户工作区，也不以共享模式替代隔离验收。
+- 思源 API 的 `Authorization: Token` 对应 `conf.api.token`；`accessAuthCode` 是锁屏访问码，E2E 不再把两者混用。靶场守门只额外承认思源自动生成的 `icons`、`themes` 和默认引导笔记本。
+- 只读内核若日志已报告 `kernel booted` 但 `bootProgress` 不到 100，则用同 token 的 `system/version` 成功作为就绪信号；该回退不放宽认证、工作区和写入拒绝检查。

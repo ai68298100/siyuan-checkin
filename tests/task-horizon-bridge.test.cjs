@@ -6,7 +6,10 @@ const vm = require("node:vm");
 const source = fs.readFileSync(path.join(__dirname, "..", "examples", "task-horizon-bridge", "plugin.js"), "utf8");
 const context = {console, module: {exports: {}}, exports: {}, globalThis: {}};
 vm.runInNewContext(source, context, {filename: "task-horizon-bridge/plugin.js"});
-const {createTaskHorizonBridge} = context.module.exports;
+const {createTaskHorizonBridge: createRawTaskHorizonBridge} = context.module.exports;
+/* Most cases exercise one explicitly bound target; target-selection cases
+   below call the raw factory intentionally. */
+const createTaskHorizonBridge = (options = {}) => createRawTaskHorizonBridge({itemId: "task-item", ...options});
 assert.equal(typeof createTaskHorizonBridge, "function");
 
 const calls = [];
@@ -17,7 +20,7 @@ let rejectNextRecord = false;
 const checkin = {
     whenReady: async () => true,
     describe: () => ({protocol: "siyuan-checkin", version: 4}),
-    hasCapability: (name) => name === "analytics.read" || name === "events.record",
+    hasCapability: (name) => name === "items.read" || name === "analytics.read" || name === "events.record",
     getItems: () => [{id: "task-item", name: "任务打卡"}],
     getEventRangeSummary: (range) => { calls.push({type: "summary", range}); return {points: []}; },
     subscribe: (callback) => { listener = callback; return () => { listener = undefined; }; },
@@ -39,6 +42,22 @@ const checkin = {
     assert.equal(status.ready, true);
     assert.equal(status.itemId, "task-item");
     assert.equal(refreshCount, 1);
+    /* An explicitly bound target is safe to use before start(): the provider
+       still owns readiness/persistence validation, while the bridge refuses
+       any retargeted itemId.  This keeps a native completion from being lost
+       while Task Horizon is finishing startup without weakening the binding. */
+    const preStartCalls = [];
+    const preStartBridge = createTaskHorizonBridge({checkin: {...checkin,
+        subscribe: () => () => {},
+        recordEvent: async (input) => { preStartCalls.push(input); return {id: "pre-start", ...input}; },
+    }});
+    const preStartResult = await preStartBridge.recordTaskCompletion({blockId: "pre-start", localDate: "2026-09-18"});
+    assert.equal(preStartResult.itemId, "task-item");
+    assert.equal(preStartCalls.length, 1);
+    assert.equal(await preStartBridge.recordTaskCompletion({blockId: "pre-start-other", localDate: "2026-09-18", itemId: "other-item"}), undefined);
+    assert.equal(preStartCalls.length, 1, "pre-start writes cannot retarget the bound item");
+    await preStartBridge.start();
+    preStartBridge.stop();
     let raceSubscribeCount = 0;
     const raceCheckin = {...checkin,
         whenReady: async () => { await new Promise((resolve) => setTimeout(resolve, 10)); return true; },
@@ -71,11 +90,11 @@ const checkin = {
     releaseSlowSummary({points: []});
     assert.equal(await lateRefreshPromise, undefined, "stopped refresh does not publish a late result");
     assert.equal(lateRefreshes, 0, "stopped refresh skips consumer callback");
-    listener({type: "checkin:event-recorded"});
+    listener({type: "event-recorded"});
     await new Promise((resolve) => setImmediate(resolve));
     assert.equal(refreshCount, 2, "allowed refresh events trigger a summary refresh");
     for (const type of ["checkin:analytics-updated", "checkin:item-archived", "checkin:item-updated"]) {
-        listener({type});
+        listener({type: type.replace(/^checkin:/, "")});
     }
     await new Promise((resolve) => setImmediate(resolve));
     assert.equal(refreshCount, 3, "refresh bursts coalesce across manifest events");
@@ -98,12 +117,12 @@ const checkin = {
     assert.equal(await bridge.recordTaskCompletion({blockId: "block-3", localDate: "2026-09-18"}), undefined);
     rejectNextRecord = true;
     const rejectedRetry = await bridge.retryPending();
-    assert.deepEqual({attempted: rejectedRetry.attempted, succeeded: rejectedRetry.succeeded, rejected: rejectedRetry.rejected, failed: rejectedRetry.failed, remaining: rejectedRetry.remaining}, {attempted: 1, succeeded: 0, rejected: 1, failed: 0, remaining: 0});
+    assert.deepEqual({attempted: rejectedRetry.attempted, succeeded: rejectedRetry.succeeded, rejected: rejectedRetry.rejected, failed: rejectedRetry.failed, remaining: rejectedRetry.remaining}, {attempted: 1, succeeded: 0, rejected: 1, failed: 0, remaining: 1});
     failNextRecord = true;
     assert.equal(await bridge.recordTaskCompletion({blockId: "block-4", localDate: "2026-09-18"}), undefined);
     failNextRecord = true;
     const failedRetry = await bridge.retryPending();
-    assert.deepEqual({attempted: failedRetry.attempted, succeeded: failedRetry.succeeded, rejected: failedRetry.rejected, failed: failedRetry.failed, remaining: failedRetry.remaining}, {attempted: 1, succeeded: 0, rejected: 0, failed: 1, remaining: 1});
+    assert.deepEqual({attempted: failedRetry.attempted, succeeded: failedRetry.succeeded, rejected: failedRetry.rejected, failed: failedRetry.failed, remaining: failedRetry.remaining}, {attempted: 2, succeeded: 1, rejected: 0, failed: 1, remaining: 1});
     let concurrentWrites = 0;
     let failConcurrent = true;
     const concurrentCheckin = {...checkin, recordEvent: async (input) => {
@@ -153,7 +172,7 @@ const checkin = {
     assert.equal(await bridge.recordTaskCompletion({blockId: "block:bad", localDate: "2026-09-18"}), undefined);
     bridge.stop();
     assert.equal(listener, undefined);
-    assert.equal(calls.filter((entry) => entry.type === "record").length, 7);
+    assert.equal(calls.filter((entry) => entry.type === "record").length, 8);
     const protocolMismatch = createTaskHorizonBridge({checkin: {...checkin, describe: () => ({protocol: "other", version: 4})}});
     assert.equal((await protocolMismatch.start()).reason, "protocol-mismatch");
     const invalidVersion = createTaskHorizonBridge({checkin: {...checkin, describe: () => ({protocol: "siyuan-checkin", version: "unknown"})}});
@@ -167,7 +186,7 @@ const checkin = {
     const invalidItems = createTaskHorizonBridge({checkin: {...checkin, getItems: () => ({})}});
     assert.equal((await invalidItems.start()).reason, "items-invalid");
     const maliciousItem = createTaskHorizonBridge({checkin: {...checkin, getItems: () => [{get name() { throw new Error("item getter failed"); }}]}});
-    assert.equal((await maliciousItem.start()).reason, "items-error");
+    assert.equal((await maliciousItem.start()).reason, "target-missing");
     const subscribeFailure = createTaskHorizonBridge({checkin: {...checkin, subscribe: () => { throw new Error("subscribe failed"); }}});
     assert.equal((await subscribeFailure.start()).reason, "subscribe-error");
     let eventError;
@@ -212,7 +231,7 @@ const checkin = {
         ["stopped refresh", await (async () => { const stoppedBridge = createTaskHorizonBridge({checkin, range: {startDate: "2026-09-01", endDateExclusive: "2026-10-01"}}); stoppedBridge.stop(); return (await stoppedBridge.refresh()) === undefined; })()],
         ["empty retry", (await createTaskHorizonBridge({checkin}).retryPending()).attempted === 0],
         ["stopped retry", (await (() => { const stoppedBridge = createTaskHorizonBridge({checkin}); stoppedBridge.stop(); return stoppedBridge.retryPending(); })()).attempted === 0],
-        ["retry rejected", (await (() => { const rejectedBridge = createTaskHorizonBridge({checkin: {...checkin, recordEvent: async () => undefined}}); return rejectedBridge.recordTaskCompletion({blockId: "matrix-5", localDate: "2026-09-18", itemId: "task-item"}).then(() => rejectedBridge.retryPending()); })()).rejected === 0],
+        ["retry rejected", (await (() => { const rejectedBridge = createTaskHorizonBridge({checkin: {...checkin, recordEvent: async () => undefined}}); return rejectedBridge.recordTaskCompletion({blockId: "matrix-5", localDate: "2026-09-18", itemId: "task-item"}).then(() => rejectedBridge.retryPending()); })()).rejected === 1],
         ["pending export", Array.isArray(bridge.getPendingCompletions())],
         ["stop idempotent", (() => { const stoppedBridge = createTaskHorizonBridge({checkin}); stoppedBridge.stop(); stoppedBridge.stop(); return true; })()],
         ["retry result shape", ["attempted", "succeeded", "rejected", "failed", "remaining"].every((key) => Object.hasOwn(retryShape, key))],
@@ -301,13 +320,17 @@ const checkin = {
     });
     await eventMatrixBridge.start();
     const allowedEvents = [
-        "checkin:event-recorded", "checkin:analytics-updated", "checkin:item-archived", "checkin:item-updated",
-        "checkin:event-recorded", "checkin:analytics-updated", "checkin:item-archived", "checkin:item-updated",
-        "checkin:event-recorded", "checkin:analytics-updated", "checkin:item-archived", "checkin:item-updated",
-        "checkin:event-recorded", "checkin:analytics-updated", "checkin:item-archived",
+        "item-created", "item-updated", "item-deleted", "item-archived",
+        "event-recorded", "event-deleted", "analytics-updated",
+        "item-created", "item-updated", "item-deleted", "item-archived",
+        "event-recorded", "event-deleted", "analytics-updated",
+        "item-created", "item-updated", "item-deleted", "item-archived",
+        "event-recorded", "event-deleted", "analytics-updated",
+        "item-created", "item-updated", "item-deleted", "item-archived",
+        "event-recorded", "event-deleted", "analytics-updated",
     ];
     const ignoredEvents = [
-        "", "checkin:unknown", "event-recorded", "checkin:event-deleted", "checkin:item-created",
+        "", "checkin:unknown", "checkin:event-recorded", "suggestion-workflow-updated",
         "checkin:analytics-reset", "CHECKIN:EVENT-RECORDED", "checkin:event-recorded ", "checkin:item-updated:extra", null,
         undefined, 7, {}, {type: "other"}, {get type() { throw new Error("event type"); }},
     ];
@@ -324,7 +347,7 @@ const checkin = {
         eventMatrix.push([`ignored event ${index}`, eventMatrixRefreshes === refreshesBeforeIgnored]);
     }
     for (const [label, passed] of eventMatrix) assert.equal(passed, true, `event matrix case: ${label}`);
-    assert.equal(eventMatrix.length, 30, "fifth 30-case event matrix remains complete");
+    assert.equal(eventMatrix.length, allowedEvents.length + ignoredEvents.length, "refresh event matrix covers every listed event");
     const protocolVersions = [0, 1, 3, 3.9, "3", NaN, Infinity, null, "", "unknown", -1, 4, 4.5, 5, "4"];
     const protocolMatrix = [];
     for (const [index, version] of protocolVersions.entries()) {
@@ -378,35 +401,40 @@ const checkin = {
     }
     for (const [label, passed] of summaryMatrix) assert.equal(passed, true, `summary matrix case: ${label}`);
     assert.equal(summaryMatrix.length, 30, "seventh 30-case summary matrix remains complete");
-    const automaticTargets = [
-        [[{id: "auto-1", name: "任务打卡"}], "auto-1"],
-        [[{id: "old", name: "任务打卡", archived: true}, {id: "auto-2", name: "任务打卡"}], "auto-2"],
-        [[{id: "other", name: "其它"}, {id: "auto-3", name: "任务打卡"}], "auto-3"],
-        [[{id: "auto-4", name: "任务打卡"}, {id: "later", name: "任务打卡"}], "auto-4"],
-        [[null, {id: "auto-5", name: "任务打卡"}], "auto-5"],
-        [[false, {id: "auto-6", name: "任务打卡"}], "auto-6"],
-        [[{id: "auto-7", name: "任务打卡", archived: false}], "auto-7"],
-        [[{id: "auto-8", name: "任务打卡", archived: 0}], "auto-8"],
-        [[{id: "missing-1", name: "任务打卡", archived: true}], undefined],
-        [[{id: "missing-2", name: "Task check-in"}], undefined],
-        [[{id: "missing-3", name: "任务打卡 "}], undefined],
-        [[{id: "missing-4", name: ""}], undefined],
-        [[], undefined],
-        [[{id: "", name: "任务打卡"}], undefined],
-        [[{id: "auto-9", name: "任务打卡", archived: null}], "auto-9"],
+    const explicitTargets = [
+        ["auto-1", [{id: "auto-1", name: "任务打卡"}], "ready"],
+        ["auto-2", [{id: "old", name: "任务打卡", archived: true}, {id: "auto-2", name: "任务打卡"}], "ready"],
+        ["auto-3", [{id: "other", name: "其它"}, {id: "auto-3", name: "任务打卡"}], "ready"],
+        ["auto-4", [{id: "auto-4", name: "任务打卡"}, {id: "later", name: "任务打卡"}], "ready"],
+        ["auto-5", [null, {id: "auto-5", name: "任务打卡"}], "ready"],
+        ["auto-6", [false, {id: "auto-6", name: "任务打卡"}], "ready"],
+        ["auto-7", [{id: "auto-7", name: "任务打卡", archived: false}], "ready"],
+        ["auto-8", [{id: "auto-8", name: "任务打卡", archived: 0}], "ready"],
+        ["missing-1", [{id: "missing-1", name: "任务打卡", archived: true}], "target-archived"],
+        ["missing-2", [{id: "missing-2", name: "Task check-in"}], "ready"],
+        ["missing-3", [{id: "missing-3", name: "任务打卡 "}], "ready"],
+        ["missing-4", [{id: "missing-4", name: ""}], "ready"],
+        ["missing-5", [], "target-missing"],
+        ["missing-6", [{id: "", name: "任务打卡"}], "target-missing"],
+        ["missing-7", [{id: "missing-7", name: "任务打卡", direction: "atMost"}], "target-incompatible"],
     ];
     const targetMatrix = [];
-    for (const [index, [items, expected]] of automaticTargets.entries()) {
-        const status = await createTaskHorizonBridge({checkin: {...checkin, getItems: () => items}}).start();
-        targetMatrix.push([`automatic target ${index}`, expected ? status.ready === true && status.itemId === expected : status.reason === "target-missing"]);
+    for (const [index, [itemId, items, expected]] of explicitTargets.entries()) {
+        const status = await createRawTaskHorizonBridge({checkin: {...checkin, getItems: () => items}, itemId}).start();
+        targetMatrix.push([`explicit target ${index}`, expected === "ready" ? status.ready === true && status.itemId === itemId : status.reason === expected]);
     }
-    const explicitTargets = ["explicit-1", "explicit-2", "中文目标", "target_4", "target-5", "target.6", "7", "A", "z9", "task#10", "target/11", "target:12", " spaced ", "é-14", "final-target"];
-    for (const [index, itemId] of explicitTargets.entries()) {
-        const status = await createTaskHorizonBridge({checkin, itemId}).start();
-        targetMatrix.push([`explicit target ${index}`, status.ready === true && status.itemId === itemId]);
-    }
+    const unbound = await createRawTaskHorizonBridge({checkin}).start();
+    targetMatrix.push(["missing explicit binding", unbound.ready === true && unbound.writeEnabled === false]);
+    const unknown = await createRawTaskHorizonBridge({checkin, itemId: "does-not-exist"}).start();
+    targetMatrix.push(["unknown explicit binding", unknown.reason === "target-missing"]);
+    const whitespace = await createRawTaskHorizonBridge({checkin, itemId: "  "}).start();
+    targetMatrix.push(["blank explicit binding", whitespace.reason === "target-missing"]);
+    const typeMismatch = await createRawTaskHorizonBridge({checkin: {...checkin, getItems: () => [{id: "bad", name: "x", direction: "atMost"}]}, itemId: "bad"}).start();
+    targetMatrix.push(["at-most binding", typeMismatch.reason === "target-incompatible"]);
+    const archived = await createRawTaskHorizonBridge({checkin: {...checkin, getItems: () => [{id: "archived", name: "x", archived: true}]}, itemId: "archived"}).start();
+    targetMatrix.push(["archived binding", archived.reason === "target-archived"]);
     for (const [label, passed] of targetMatrix) assert.equal(passed, true, `target matrix case: ${label}`);
-    assert.equal(targetMatrix.length, 30, "eighth 30-case target matrix remains complete");
+    assert.equal(targetMatrix.length, 20, "explicit target matrix remains complete");
     const payloadCalls = [];
     const payloadBridge = createTaskHorizonBridge({checkin: {...checkin,
         recordEvent: async (payload) => { payloadCalls.push(payload); return {id: `payload-${payloadCalls.length}`, ...payload}; },
@@ -416,9 +444,17 @@ const checkin = {
     const payloadMatrix = [];
     for (const [index, itemId] of payloadItemIds.entries()) {
         const blockId = `payload-item-${index}`;
-        await payloadBridge.recordTaskCompletion({blockId, localDate: "2026-09-18", itemId});
+        const boundItemId = itemId.trim();
+        const itemBridge = createRawTaskHorizonBridge({itemId, checkin: {...checkin,
+            getItems: () => [{id: boundItemId, name: "测试项目"}],
+            recordEvent: async (payload) => { payloadCalls.push(payload); return {id: `payload-${payloadCalls.length}`, ...payload}; },
+        }});
+        const itemStatus = await itemBridge.start();
+        assert.equal(itemStatus.ready, true, `payload item ${index} target validates before write`);
+        await itemBridge.recordTaskCompletion({blockId, localDate: "2026-09-18"});
         const payload = payloadCalls.at(-1);
-        payloadMatrix.push([`payload item ${index}`, payload.itemId === itemId && payload.value === 1 && payload.unit === "个" && payload.source === "api" && payload.externalRef === `taskhorizon:${blockId}:2026-09-18` && Object.keys(payload).length === 5]);
+        payloadMatrix.push([`payload item ${index}`, payload.itemId === boundItemId && payload.value === 1 && payload.unit === "个" && payload.source === "api" && payload.externalRef === `taskhorizon:${blockId}:2026-09-18` && Object.keys(payload).length === 5]);
+        itemBridge.stop();
     }
     for (const [index, blockId] of payloadBlocks.entries()) {
         await payloadBridge.recordTaskCompletion({blockId, localDate: "2026-09-19", itemId: "task-item"});
@@ -428,28 +464,49 @@ const checkin = {
     for (const [label, passed] of payloadMatrix) assert.equal(passed, true, `payload matrix case: ${label}`);
     assert.equal(payloadMatrix.length, 30, "ninth 30-case payload matrix remains complete");
     let identityWrites = 0;
-    const identityKeyBridge = createTaskHorizonBridge({checkin: {...checkin,
-        recordEvent: async (payload) => {
-            identityWrites += 1;
-            await new Promise((resolve) => setImmediate(resolve));
-            return {id: `identity-${identityWrites}`, ...payload};
-        },
-    }});
     const identityKeyMatrix = [];
     for (let index = 0; index < 15; index += 1) {
         const before = identityWrites;
-        const input = {blockId: `same-identity-${index}`, localDate: "2026-09-20", itemId: `same-item-${index}`};
-        const [first, second] = await Promise.all([identityKeyBridge.recordTaskCompletion(input), identityKeyBridge.recordTaskCompletion(input)]);
+        const boundItemId = `same-item-${index}`;
+        const itemBridge = createRawTaskHorizonBridge({itemId: boundItemId, checkin: {...checkin,
+            getItems: () => [{id: boundItemId, name: "测试项目"}],
+            recordEvent: async (payload) => {
+                identityWrites += 1;
+                await new Promise((resolve) => setImmediate(resolve));
+                return {id: `identity-${identityWrites}`, ...payload};
+            },
+        }});
+        assert.equal((await itemBridge.start()).ready, true);
+        const input = {blockId: `same-identity-${index}`, localDate: "2026-09-20"};
+        const [first, second] = await Promise.all([itemBridge.recordTaskCompletion(input), itemBridge.recordTaskCompletion(input)]);
         identityKeyMatrix.push([`same identity ${index}`, identityWrites === before + 1 && first.id === second.id]);
+        itemBridge.stop();
     }
     for (let index = 0; index < 15; index += 1) {
         const before = identityWrites;
         const shared = {blockId: `cross-item-${index}`, localDate: "2026-09-21"};
+        const leftItemId = `left-${index}`;
+        const rightItemId = `right-${index}`;
+        const makeItemBridge = (itemId) => createRawTaskHorizonBridge({itemId, checkin: {...checkin,
+            getItems: () => [{id: itemId, name: "测试项目"}],
+            recordEvent: async (payload) => {
+                identityWrites += 1;
+                await new Promise((resolve) => setImmediate(resolve));
+                return {id: `identity-${identityWrites}`, ...payload};
+            },
+        }});
+        const leftBridge = makeItemBridge(leftItemId);
+        const rightBridge = makeItemBridge(rightItemId);
+        const [leftStatus, rightStatus] = await Promise.all([leftBridge.start(), rightBridge.start()]);
+        assert.equal(leftStatus.ready, true);
+        assert.equal(rightStatus.ready, true);
         const [first, second] = await Promise.all([
-            identityKeyBridge.recordTaskCompletion({...shared, itemId: `left-${index}`}),
-            identityKeyBridge.recordTaskCompletion({...shared, itemId: `right-${index}`}),
+            leftBridge.recordTaskCompletion(shared),
+            rightBridge.recordTaskCompletion(shared),
         ]);
         identityKeyMatrix.push([`cross item ${index}`, identityWrites === before + 2 && first.itemId !== second.itemId && first.externalRef === second.externalRef]);
+        leftBridge.stop();
+        rightBridge.stop();
     }
     for (const [label, passed] of identityKeyMatrix) assert.equal(passed, true, `identity-key matrix case: ${label}`);
     assert.equal(identityKeyMatrix.length, 30, "tenth 30-case identity-key matrix remains complete");
@@ -463,7 +520,7 @@ const checkin = {
         const day = String((index % 28) + 1).padStart(2, "0");
         const blockId = `stress-valid-${index}`;
         const localDate = `2026-${month}-${day}`;
-        const result = await stressBridge.recordTaskCompletion({blockId, localDate, itemId: `stress-item-${index}`});
+        const result = await stressBridge.recordTaskCompletion({blockId, localDate});
         stressMatrix.push(result && result.externalRef === `taskhorizon:${blockId}:${localDate}`);
     }
     for (let index = 0; index < 100; index += 1) {
@@ -487,7 +544,7 @@ const checkin = {
     }});
     const replayMatrix = [];
     for (let index = 0; index < 150; index += 1) {
-        const input = {blockId: `replay-block-${index}`, localDate: `2026-${String((index % 12) + 1).padStart(2, "0")}-${String((index % 28) + 1).padStart(2, "0")}`, itemId: `replay-item-${index % 15}`};
+        const input = {blockId: `replay-block-${index}`, localDate: `2026-${String((index % 12) + 1).padStart(2, "0")}-${String((index % 28) + 1).padStart(2, "0")}`};
         const first = await replayBridge.recordTaskCompletion(input);
         const second = await replayBridge.recordTaskCompletion(input);
         const preserved = first.externalRef === second.externalRef && first.itemId === second.itemId && replayBridge.getPendingCompletions().length === 0;

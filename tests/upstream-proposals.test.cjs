@@ -67,10 +67,9 @@ assert.ok(ecosystem.includes(`format: "siplayer:<itemId>:<startUnixMs>:<localDat
 const apiContract = fs.readFileSync(path.join(root, "src", "api-contract.ts"), "utf8");
 assert.ok(apiContract.includes('"calendar.read"'), "calendar.read capability must exist in the api contract");
 assert.match(apiContract, /"calendar\.read": 5,/, "calendar.read must be a since-5 capability");
-for (const event of consumer.consumerRules
-    .find((rule) => rule.startsWith("refresh only on")).replace("refresh only on ", "")
-    .split(", ")) {
-    const normalized = `checkin:${event.trim().replace(/^checkin:/, "")}`;
+const refreshRule = consumer.consumerRules.find((rule) => rule.includes("re-read on"));
+assert.ok(refreshRule, "consumer draft must define a projection refresh rule");
+for (const normalized of refreshRule.match(/checkin:[a-z-]+/g) || []) {
     assert.ok(apiContract.includes(`"${normalized}"`), `refresh event ${normalized} must exist in the api contract`);
 }
 

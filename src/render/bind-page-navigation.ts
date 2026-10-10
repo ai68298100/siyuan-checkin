@@ -77,6 +77,7 @@ export interface BindPageNavigationHost {
     disposed: boolean;
     disposing: boolean;
     pageForRoot?(root: HTMLElement): string;
+    returnPageForRoot?(root: HTMLElement): "today" | "review" | "insights" | "more" | undefined;
     reviewStateForRoot?(root: HTMLElement): ReviewRootContext;
     setReviewStateForRoot?(root: HTMLElement, patch: Partial<ReviewRootContext>): void;
     syncReviewCompatibilityForRoot?(root: HTMLElement): void;
@@ -511,6 +512,17 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         host.reminderUserAction(id, action);
     }));
     root.querySelector<HTMLElement>("[data-action='back']")?.addEventListener("click", () => {
+        /* Archived can be opened from Review, Insights, or More. Keep that
+           one-hop source on the root so Back returns to the user's context
+           instead of always dropping them on Today. */
+        if (pageForRoot() === "archived") {
+            const returnPage = host.returnPageForRoot?.(root) ?? "today";
+            if (returnPage === "review") { host.showReview(root); return; }
+            if (returnPage === "insights") { host.showInsights(undefined, root); return; }
+            if (returnPage === "more") { host.showMore?.(root); return; }
+            host.showToday(root);
+            return;
+        }
         /* T-1576：返回路径统一走 SurfaceContext 读侧——insights 会话返回栈优先，其余按默认返回表回落 today。 */
         if (root.dataset.moreActive === "true") { host.showMore?.(root); return; }
         const context = readSurfaceContext({...host, ...insightsState, currentPage: pageForRoot() as BindPageNavigationHost["currentPage"]});

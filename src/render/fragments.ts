@@ -543,8 +543,17 @@ export function renderTodayView(ctx: TodayViewContext): string {
                     <li><span class="lc-checkin__onboard-num" aria-hidden="true">2</span><div><strong>${t("today.step2Title")}</strong><small>${t("today.step2Desc")}</small></div></li>
                     <li><span class="lc-checkin__onboard-num" aria-hidden="true">3</span><div><strong>${t("today.step3Title")}</strong><small>${t("today.step3Desc", {checkin: t("item.checkin"), entry: t("item.exactShort"), duration: t("item.manualShort")})}</small></div></li>
                 </ol>`}
-                <button class="lc-checkin__text-button" type="button" data-action="add">${t("today.addFirst")}</button>
-                ${onboardingSkipped ? "" : `<button class="lc-checkin__text-button" type="button" data-action="skip-onboard">${t("today.onboardSkip")}</button>`}
+                ${onboardingSkipped ? "" : `<details class="lc-checkin__onboard-features">
+                    <summary>${t("today.featureOverviewTitle")}</summary>
+                    <ul>
+                        <li><strong>${t("nav.today")}</strong><span>${t("today.featureToday")}</span></li>
+                        <li><strong>${t("nav.review")}</strong><span>${t("today.featureReview")}</span></li>
+                        <li><strong>${t("nav.occasions")}</strong><span>${t("today.featureOccasions")}</span></li>
+                        <li><strong>${t("nav.more")}</strong><span>${t("today.featureMore")}</span></li>
+                    </ul>
+                </details>`}
+                <button class="lc-checkin__primary-button lc-checkin__onboard-start" type="button" data-action="add">${t("today.addFirst")}</button>
+                ${onboardingSkipped ? "" : `<button class="lc-checkin__text-button lc-checkin__onboard-skip" type="button" data-action="skip-onboard">${t("today.onboardSkip")}</button>`}
             </div>` : !scheduledItems.length ? `
             <div class="lc-checkin__empty">
                 <div class="lc-checkin__empty-mark">◷</div>

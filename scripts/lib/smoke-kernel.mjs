@@ -1,5 +1,9 @@
 /* Shared safety boundary for kernel-writing smoke/E2E tools. Never imports or starts a kernel. */
 export const SCRATCH_PREFIXES = Object.freeze(["lv-checkin-smoke-"]);
+/* A brand-new SiYuan workspace creates this notebook before the first API
+   call. It is bootstrap state, not a user workspace; sweepOrphans never
+   removes it and all test-created notebooks still require the scratch prefix. */
+const BOOTSTRAP_NOTEBOOK_NAMES = new Set(["My Notebook", "未命名笔记本"]);
 
 export function isScratchName(name) {
     return typeof name === "string" && SCRATCH_PREFIXES.some(prefix => name.startsWith(prefix));
@@ -74,7 +78,7 @@ function assertScratchNotebooks(notebooks, base, env) {
     if (notebooks.some(notebook => !notebook || typeof notebook.id !== "string" || !notebook.id || typeof notebook.name !== "string")) {
         throw new Error("无法确认内核笔记本清单，拒绝写型测试");
     }
-    if (env.SIYUAN_E2E_ALLOW_SHARED !== "1" && notebooks.some(notebook => !isScratchName(notebook.name))) {
+    if (env.SIYUAN_E2E_ALLOW_SHARED !== "1" && notebooks.some(notebook => !isScratchName(notebook.name) && !BOOTSTRAP_NOTEBOOK_NAMES.has(notebook.name))) {
         throw new Error(`目标内核 ${base || ""} 不是隔离靶场：存在非小驴打卡测试笔记本或无效清单；拒绝写入和清扫。请改用独立 workspace 的第二实例（默认端口 6807），或确认风险后显式设置 SIYUAN_E2E_ALLOW_SHARED=1`);
     }
 }

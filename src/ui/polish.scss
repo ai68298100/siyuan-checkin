@@ -140,6 +140,10 @@
    while the seven-day load stays below the queue so a single collapsed card
    cannot create a large, empty right gutter beside the check-in actions. */
 @container lc5 (min-width: 900px) {
+    /* The load preview is secondary evidence: keep grid auto-placement in
+       document order so it can never be inserted into an empty side column
+       beside the actionable Today queue. */
+    .lc-checkin--today .lc-checkin__list:has(> .lc-checkin__week-load) { grid-auto-flow: row; }
     .lc-checkin--today .lc-checkin__list:has(> .lc-checkin__this-day) {
         grid-template-columns: minmax(0, 1.25fr) minmax(240px, .75fr);
         align-items: start;

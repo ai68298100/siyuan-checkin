@@ -30,6 +30,9 @@ export interface NavigationHost {
     openQuickDialog(): void;
     render(root?: HTMLElement): void;
     setPageForRoot?(page: PageId, root?: HTMLElement): void;
+    /** 详情页之间跳转时保留发起页，供归档页返回使用。 */
+    setReturnPageForRoot?(root: HTMLElement | undefined, page: "today" | "review" | "insights" | "more"): void;
+    returnPageForRoot?(root: HTMLElement): "today" | "review" | "insights" | "more" | undefined;
     applyNavigation(root: HTMLElement | undefined, page: CheckinPageId): boolean;
     pageForRoot?(root: HTMLElement): PageId;
     pageOfRoot(root: HTMLElement): CheckinPageId;
@@ -83,7 +86,10 @@ export function showReviewFor(host: NavigationHost, root?: HTMLElement): void {
 }
 
 export function showArchivedFor(host: NavigationHost, root?: HTMLElement): void {
+    const sourcePage = root && host.pageForRoot ? host.pageForRoot(root) : host.currentPage;
     if (!setPage(host, "archived", root)) return;
+    const returnPage = sourcePage === "review" || sourcePage === "insights" || sourcePage === "more" ? sourcePage : "today";
+    host.setReturnPageForRoot?.(root, returnPage);
     cancelSummary(host, root);
     clearEditor(host, root);
     host.render(root);
@@ -135,7 +141,8 @@ export function showInsightsFor(host: NavigationHost, item?: CheckinItem, root?:
     cancelSummary(host, root);
     const currentPage = root && host.pageForRoot ? host.pageForRoot(root) : host.currentPage;
     const returnPage = currentPage === "review" ? "review"
-        : currentPage === "editor" || currentPage === "insights" ? insights?.insightsReturnPage ?? host.insightsReturnPage : "today";
+        : currentPage === "editor" || currentPage === "insights" || currentPage === "archived"
+            ? insights?.insightsReturnPage ?? host.insightsReturnPage : "today";
     if (!setPage(host, "insights", root)) return;
     if (host.setInsightsStateForRoot) host.setInsightsStateForRoot(root, {insightsReturnPage: returnPage, insightsItemId: candidate.id});
     else {

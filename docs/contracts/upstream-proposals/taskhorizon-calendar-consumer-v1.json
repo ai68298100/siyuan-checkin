@@ -2,7 +2,7 @@
   "status": "draft",
   "proposal": "taskhorizon-calendar-consumer",
   "version": 1,
-  "updatedAt": "2026-09-23",
+  "updatedAt": "2026-10-10",
   "direction": "provider-side API is stable and shipped; this draft specifies the consumer layer Task Horizon would add",
   "targetPlugin": "Task Horizon",
   "consumes": {
@@ -19,9 +19,9 @@
   },
   "consumerRules": [
     "capability negotiation on protocol/version>=5/calendar.read before enabling the layer",
-    "timeout + AbortSignal + single-flight on every query (dockTomato queryFocus discipline)",
-    "refresh only on checkin:event-recorded, checkin:analytics-updated, checkin:item-archived, checkin:item-updated",
-    "degrade to hidden layer on missing plugin, missing capability, timeout or error; auto-refresh on recovery",
+    "getCalendarProjection is synchronous and bounded: validate the half-open range, debounce/coalesce refresh events, and do not claim timeout or AbortSignal can interrupt the provider call",
+    "coalesce and re-read on checkin:item-created, checkin:item-updated, checkin:item-deleted, checkin:item-archived, checkin:event-recorded, checkin:event-deleted, or checkin:analytics-updated; ignore only suggestion-workflow-updated for this projection",
+    "degrade to hidden layer on missing plugin, missing capability, unload, or error; clear stale cached projection and refresh on recovery",
     "legacy v4-only consumers must not surface hidden items from stale caches: keep legacy aggregate or hide the fine-grained layer",
     "display-only: never writes task state back from the projection; task completion write-back stays on recordEvent with taskhorizon:<blockId>:<localDate>, decoupled from the visibility switch"
   ],

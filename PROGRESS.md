@@ -1,3 +1,9 @@
+# 2026-10-10 新用户首次使用体验（T-1838，D-466）
+
+新用户第一次打开 Today 空态时，继续看到“选模板→命名→打卡”三步说明，并可按需展开功能概览，了解今天、回顾、事项和更多入口的用途。创建第一个打卡项现在使用明确的主按钮，跳过引导保留为次级按钮；跳过后仍只保留创建入口，不对已有用户增加持续提示。
+
+验证证据：`node tests/first-success.test.cjs`、`node tests/ui-state-ledger.test.cjs`、`node tests/responsive-layout.test.cjs`、`node tests/i18n-parity.test.cjs`、`node tests/width-walkthrough.cjs`、`pnpm run check`、`pnpm run build`、`git diff --check` 全部通过。宽度走查覆盖 56 个表面、32 个交互状态、双主题/多色板、混合记录类型和真实记录动作；新手概览在 320/640/844/1180px 均通过折叠、展开和主按钮顺序检查。
+
 # 2026-10-10 R-RELEASE-18.17.2 发布验收
 
 版本 `18.17.2` 已从 `main` 完成正式发布：提交 `76eb614fc0faf1d3efd6b4091e150bea49ee8014`，tag `v18.17.2`，GitHub Release 为 https://github.com/ai68298100/siyuan-checkin/releases/tag/v18.17.2，上传 `package.zip` SHA-256 为 `5b8a7dcac0718a0e9c2c4a7730e2c46ba065f4a0d9f16b4b089b8b0e2bfec1d0`。`origin/main` 已核对到同一提交。
@@ -5,6 +11,16 @@
 发布前完整质量链通过：构建、类型、主测试、UI、旧样式、移动、生态、扩展、回顾对比、性能、发布清单和四步回滚演练；扩展链无障碍审计为 0 缺名、0 正向 tabindex、0 键盘不可达、0 对比度违规（1325 组），覆盖 266 个测试文件。生产 CSS 为 657,246 bytes；按 D-463 采用 620 KB 软提醒 / 660 KiB 硬阻断，零死类、重复规则和提醒密度门禁保持通过。
 
 本机 Edge 明暗主题 `visual-qa.cjs` 均通过，页面错误为空。宽度走查已覆盖所有静态/短屏页面和前段交互状态；高负载进程在后续交互矩阵中被系统终止，因此该次运行不作为“全矩阵通过”证据。真实思源宿主生命周期、Android/TalkBack、第三方账号、缩放和保存面板仍需现场验收。
+
+# 2026-10-10 Task Horizon 打卡能力与合作边界核对（T-1834/T-1835，D-464）
+
+针对本插件重新核对 Task Horizon 最新源码，而不是沿用此前属于其它插件的 Issue/PR 结论。对方当前版本 v3.1.8（commit `58ec06f`）确实包含两类“打卡相关”内容：一是 `repeatRule.trigger === "checkin"` 的内部打卡循环，按日期维护 `repeatState.checkinHistory`，支持今日/补录/额外打卡/取消，并在日历生成 `checkin:<taskId>:<localDate>` 内部事件；二是旧“凡人修仙传:打卡插件”积分联动，任务完成时广播 `task-horizon:task-completed` 并使用 `siyuan-points-reward-*` 事件。前者没有公开跨插件能力，后者传递积分和任务信息，都不能直接作为小驴 `recordEvent` 写入契约。
+
+已把匹配关系落到 `docs/checkin-taskhorizon-cooperation.md` 和 `docs/contracts/upstream-proposals/taskhorizon-issue-draft.md`：先建议 Task Horizon 消费小驴 v5 `calendar.read/getCalendarProjection`，再对普通原生复选框完成按用户选择的项目 ID 调用幂等 `recordEvent`；内部打卡循环更接近小驴习惯项目，但由于对方可取消而小驴公开写入是追加事实，必须另立版本化可撤回/对账契约，不能监听私有状态或把两种来源写进同一项目。Issue 草案进一步冻结项目创建/删除和事件删除刷新、缓存失效、历史 `occurredAt`、`undefined` 原身份重试、目标映射和撤销边界；本地参考 bridge 已同步这些守门。
+
+本轮继续核对可直接联调的失败边界：bridge 的订阅刷新改为同时失效缓存和在途读请求，旧摘要/投影结果只能被丢弃，不能覆盖事件后的新读取；显式绑定项目在启动前也保留同一身份，但禁止调用时临时改投其他项目。参考测试不再假设按名称自动选项目，单位按绑定项目快照传递，跨午夜/`undefined`/transport 失败继续保留原身份待处理。
+
+验证：`node tests/task-horizon-contract.test.cjs`、`node tests/task-horizon-bridge.test.cjs`、`node tests/task-horizon-mock-consumer.test.cjs`、`node tests/calendar-consumer-kit.test.cjs`、`node tests/upstream-proposals.test.cjs`、`pnpm run check` 和 `git diff --check` 均通过。尚未创建外部 Issue/PR，等待用户授权及 Task Horizon 维护者确认。
 
 # 2026-10-09 R-RELEASE-18.17.1 发布验收
 
@@ -2784,3 +2800,13 @@ Today 条目附件的 `FileReader.onload/onerror` 现在复核绑定时页面、
 定向验证（本轮当前变更）：`pnpm run check`、`node tests/view-scope.test.cjs`、`node tests/batch-backfill.test.cjs`、`node tests/weekly-review.test.cjs` 已通过。宽屏提醒结构新回归与全部并行修复合并后待复跑完整 UI/浏览器链。
 
 2026-09-30 T-1621 步骤一交付：多 root 独立页面（RootContext Map + currentPage 代理层 + 导航可选 root）（local-auto，架构级专职轮；口径 D-324/D-325）：①新纯模块 features/root-page-store.ts——RootContext Map（HTMLElement→{page}）+孤儿页（承接早于 root 注册的启动写入，新 root 继承）+最后活跃标记；②index.ts currentPage 字段改读写代理：读=最后活跃 root 页、写=全局同步全部 root+孤儿页（既有宿主级写入零语义变化）；applyNavigation/pageOfRoot/releaseRootContext 宿主方法 + primaryRoot（dock 优先页签回落）；renderInto 按 root ensure 注册取页——页面选择/绑定分派/滚动恢复/renderedPages/导航 chrome（topnav/rail/底栏/移动顶栏/getPageTitle）全部按 root 页；回顾快照按任一回顾 root 判定、renderInto 直调（弹窗全屏切换）快照回落兜底；③navigation.ts 全 showXFor+showEditorReturnFor 可选 root 参数经 applyNavigation 单一落点，洞察返回页按发起表面判定；④分发接线：bindMobileNavFor（rail/底栏/顶栏统一分发）、bind-today/bind-page-navigation/bind-editor 动作、设置卡跳转五点、saveForm→saveEditorForm options.root、渲染块跳转 primaryRoot、BPN 草案编辑器；⑤快速弹窗页记忆归弹窗 root：关闭按 pageOfRoot 记取+释放上下文，退役「关闭写回宿主 currentPage」（旧实现 dock/页签跟随弹窗跳页=跨表面串页，D-325 纠正）；⑥dock/页签 destroy 释放上下文+最后活跃释放回落 dock→页签。守门：tests/root-page-store.test.cjs 入主链（223 文件，行为级 7 组：per-root 独立/代理读回落/全局写同步/孤儿页继承/释放回落）；cross-page-consistency 新增 T-1621 步骤一块 18 断言（含导航函数仅 openTabPageFor 保留宿主级写、反代理页断言）；mobile-dialog/desktop-dialog/responsive-layout/stability-9_8/checkin-block/template-gallery/priority-reminder/insight-a11y/stat-denominators/recording-history-structure/project-draft 十文件旧形态断言随签名现代化。**剩余**：编辑器归档/删除后 showToday（异步无 root）仍全局；步骤二折叠态/步骤三滚动复合键另批；真机多 root 同屏走查归 T-1608。验证：check、pnpm test 主链（223 文件）、build、test:ui、test:quality（CSS 635929B 不变）、双主题 visual-qa、宽度走查全 EXIT=0；未 push。
+
+# 2026-10-10 全量体验复核第十六轮（T-1839）
+
+事项统计筛选、归档返回上下文和编辑器锚点创建互斥已修复。事项页现在把全部/启用/今天/错过/已结束统计作为真实筛选入口，归档从 Review/Insights/More/Today 返回时按 owning root 恢复原上下文，锚点文档创建在请求期间锁定按钮并在失败或销毁后释放。定向与全量链均通过：`pnpm run check`、`pnpm run build`、`pnpm test`、`pnpm run test:ui`、`pnpm run test:mobile`、`pnpm run test:ecosystem`、`node tests/cross-page-consistency.test.cjs`、`node tests/surface-session-browser.cjs`、`node tests/occasion-stats.test.cjs`、`node tests/note-anchor-picker.test.cjs`、`node tests/width-walkthrough.cjs`、`node tests/visual-qa.cjs`、`git diff --check`。构建保留既有体积 warning；真实宿主、Android/TalkBack、第三方来源、缩放和保存面板仍按阻塞记录开放。
+
+# 2026-10-11 真实独立内核 E2E 与 v18.17.3 发版准备（T-1840）
+
+独立思源内核 v3.8.7-alpha.6 验证通过：可写套件 23/23、只读套件 1/1。过程中修复 E2E 基础设施兼容问题：API token 写入 `conf.api.token`、允许思源自动生成的 `icons`/`themes` 目录、识别默认引导笔记本、只读内核 `bootProgress` 不到 100 时按已 booted + version 回退；问卷重填测试先展开已配置目标抽屉再切换目标。只读实例实际使用独立空闲端口 6818，避免本机既有 6808 内核冲突。
+
+本轮发布材料切换到 v18.17.3：README、发布说明、变更记录和 E2E 安全约定已同步；待完整质量链、资产门禁和 `gh` 发布完成后收口。真实思源桌面、Android/TalkBack、第三方账号、缩放与保存面板现场证据仍按既有阻塞边界记录。

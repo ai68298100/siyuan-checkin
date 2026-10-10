@@ -88,7 +88,7 @@ MVP 采用“项目 × 日期”的只读投影：
 1. Task Horizon 探测 `window.siyuanCheckin`，等待 `whenReady()`，协商基础只读能力与新的日历投影能力。
 2. 小驴侧只返回有界、只读、无备注/附件/私有存储字段的日历投影。服务端按 `taskHorizonCalendarVisible !== false` 过滤隐藏项目，不能让消费者先读全量再靠 UI 过滤。
 3. 投影按 `[startDate, endDateExclusive)` 返回项目摘要和日期状态，并附 `truncated`/限制信息；范围、项目数和日期点均有限制。
-4. Task Horizon 缓存当前范围；收到既有四类刷新事件后取消旧请求、合并刷新并重读。`item-updated` 覆盖显示开关变化，`item-archived` 覆盖生命周期变化。
+4. Task Horizon 缓存当前范围；收到项目创建/更新/删除/归档或事件新增/删除、分析刷新事件后取消旧请求、合并刷新并重读。`item-updated` 覆盖显示开关变化，`item-archived` 覆盖生命周期变化；不能遗漏 `item-created`、`item-deleted` 或 `event-deleted`。
 5. 投影不可用、超时、能力缺失或版本不兼容时，图层进入可诊断的 `unavailable/degraded`，不显示陈旧的全量内容，也不影响小驴本地使用。
 
 首选 API 方向是新增一个**通用只读 `calendar.read` 能力及有界 `getCalendarProjection()`**，而不是让 Task Horizon 复制排期、配额、跳过和负向习惯算法。具体字段和上限在 T-1389/T-1391 的双方契约评审中冻结。若双方决定暂不增加新能力，最低可行退路是：`queryItems()` 返回可见性字段，`getEventsInRange()` 只读取可见项目并由消费方按文档口径聚合；这只能作为兼容/实验路径，不能替代长期投影契约。

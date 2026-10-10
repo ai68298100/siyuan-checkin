@@ -72,6 +72,8 @@ const makeFixture = () => {
     /* —— 夹具 2：渲染结构钉——口径同源、激活态、missed 选项、空态清除。 —— */
     const renderSource = fs.readFileSync(path.join(__dirname, "..", "src", "render", "occasions.ts"), "utf8");
     assert.match(renderSource, /data-occasion-stat=/, "stats render as clickable filter entries");
+    assert.match(renderSource, /class="lc-checkin__occasion-stats"[^>]*>[\s\S]*\$\{stats\}/, "rendered occasion stats use the interactive stat markup");
+    assert.doesNotMatch(renderSource, /class="lc-checkin__occasion-stats"><span>/, "legacy static occasion stats must not bypass interactive filters");
     assert.match(renderSource, /data-stat-status=/, "each stat carries its status dimension");
     assert.match(renderSource, /data-stat-time=/, "each stat carries its time dimension");
     assert.match(renderSource, /is-active/, "the active stat is highlighted");
@@ -82,6 +84,9 @@ const makeFixture = () => {
     const bindSource = fs.readFileSync(path.join(__dirname, "..", "src", "render", "bind-occasions.ts"), "utf8");
     assert.match(bindSource, /\[data-occasion-stat\]/, "the binder wires the stat entries");
     assert.match(bindSource, /(?:host\.occasionStatusFilter = \(button\.dataset\.statStatus|occasionStatusFilter: \(button\.dataset\.statStatus)/, "the click applies the status dimension");
+    const componentStyles = fs.readFileSync(path.join(__dirname, "..", "src", "ui", "components.scss"), "utf8");
+    assert.match(componentStyles, /occasion-stats :where\(span, button\)/, "interactive occasion stats retain the shared pill styling");
+    assert.match(componentStyles, /occasion-stats button\.is-active/, "active occasion stat has a visible selected state");
 
     /* —— 夹具 3：i18n 双语键在位。 —— */
     const i18nSource = fs.readFileSync(path.join(__dirname, "..", "src", "i18n.ts"), "utf8");

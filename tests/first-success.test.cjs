@@ -138,6 +138,13 @@ for (const language of ["zh-CN", "en-US"]) {
     assert.ok(fresh.includes(text("today.emptyOnboardDesc")));
     assert.match(fresh, /<ol class="lc-checkin__onboard-steps">/);
     assert.match(fresh, /data-action="skip-onboard"/);
+    assert.match(fresh, /class="lc-checkin__primary-button lc-checkin__onboard-start" type="button" data-action="add"/, `${language}: first-use primary action opens item creation`);
+    assert.match(fresh, /class="lc-checkin__text-button lc-checkin__onboard-skip" type="button" data-action="skip-onboard"/, `${language}: skip remains a secondary action`);
+    assert.ok(fresh.indexOf("lc-checkin__onboard-start") < fresh.indexOf("lc-checkin__onboard-skip"), `${language}: create precedes skip`);
+    assert.match(fresh, /class="lc-checkin__onboard-features"/, `${language}: first-use feature overview is discoverable`);
+    for (const featureKey of ["today.featureToday", "today.featureReview", "today.featureOccasions", "today.featureMore"]) {
+        assert.ok(fresh.includes(text(featureKey)), `${language}: feature overview includes ${featureKey}`);
+    }
     assert.doesNotMatch(fresh, /data-action="archived"/);
     const guidance = text("today.step3Desc", {checkin: text("item.checkin"), entry: text("item.exactShort"), duration: text("item.manualShort")});
     assert.ok(fresh.includes(guidance), `${language}: guidance uses the actual record controls`);
@@ -145,8 +152,9 @@ for (const language of ["zh-CN", "en-US"]) {
 
     const skipped = renderFixture([], {firstSuccessSkipped: true}).html;
     assert.ok(skipped.includes(text("today.emptyNewDesc")));
-    assert.match(skipped, /data-action="add"/);
-    assert.doesNotMatch(skipped, /onboard-steps|data-action="skip-onboard"|data-action="archived"/,
+    assert.match(skipped, /class="lc-checkin__primary-button lc-checkin__onboard-start" type="button" data-action="add"/);
+    assert.doesNotMatch(skipped, /onboard-skip/);
+    assert.doesNotMatch(skipped, /onboard-steps|onboard-features|data-action="skip-onboard"|data-action="archived"/,
         "skipping guidance on an empty library keeps creation, without inventing archived items");
     for (const firstSuccessSkipped of [false, true]) {
         const archived = renderFixture([makeItem("archived", {archived: true})], {firstSuccessSkipped}).html;

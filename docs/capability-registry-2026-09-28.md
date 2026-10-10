@@ -196,7 +196,7 @@
 
 ## 14. Task Horizon（消费方参考层）——外部待验
 
-- 契约对象 TASK_HORIZON_CONTRACT（ecosystem.ts:11-26：read=analytics.read/getEventRangeSummary、write=events.record*、source="api"、externalRefPrefix "taskhorizon:"、刷新 4 事件）；身份 createTaskHorizonExternalRef（taskhorizon:<blockId>:<localDate>，54-60）；前缀注册表 8 前缀（85-94）。
+- 契约对象 TASK_HORIZON_CONTRACT（ecosystem.ts：read=analytics.read/getEventRangeSummary、write=events.record*、source="api"、externalRefPrefix "taskhorizon:"、日历刷新 7 个数据变化事件）；身份 createTaskHorizonExternalRef（taskhorizon:<blockId>:<localDate>）；前缀注册表 8 前缀。
 - 读面数据层 buildCalendarProjection（calendar-projection.ts，at-most-safe/breach 专用状态）；能力协商参考层 contracts/siyuan-checkin-contract/calendar-consumer.mjs（negotiateCalendarRead 拒绝三态、planProjectionRange 366 天钳制、planCalendarRefresh 四类）。
 - 设置页状态恒 waiting（settings.ts:465）；**对方未实现，全链外部待验**（T-1392/1394/1165/1228-1230）。证据：task-horizon-bridge/contract/mock-consumer/calendar-consumer-kit/ecosystem/external-ref/dependency-status。
 
