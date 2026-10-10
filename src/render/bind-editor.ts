@@ -21,6 +21,7 @@ import {sanitizeDiagnosticDetail} from "../features/diagnostics";
 import {fetchSyncPost, showMessage} from "siyuan";
 import {buildAnchorDocumentPath, filterAnchorChoices} from "../features/note-anchor-picker";
 import {describeEditorPreviewActions, describeEditorPreviewMeta} from "./editor";
+import {runExclusiveAction} from "./action-busy";
 import {buildSchedulePreview, type SchedulePreviewDraft} from "../features/schedule-preview";
 import {buildRuleChangeDiff, type RuleChangeSide} from "../features/rule-change-diff";
 import type {CheckinItem, CheckinKind, CheckinSchedule, CheckinStore, ScheduleType, UserTemplate, EditorRootContext} from "../types";
@@ -71,7 +72,7 @@ export interface BindEditorHost {
     /** T-1632：按预览中勾选的目录索引创建新增条目；宿主会在保存前重建计划。 */
     applyTemplatePackSelected?(packId: string, templateIndexes: readonly number[]): Promise<number>;
     /** T-1632：冲突行进入现有项目编辑，避免静默覆盖或重复创建。 */
-    showEditor?(item?: CheckinItem, returnTo?: "today" | "review" | "insights", root?: HTMLElement): void;
+    showEditor?(item?: CheckinItem, returnTo?: "today" | "review" | "insights" | "more", root?: HTMLElement): void;
     /** T-1519 模板分享导出（宿主保存通道；可选：旧桩缺省安全跳过）。 */
     downloadTemplateShare?(content: string): void;
     /** T-1520 模板包导入会话（宿主持有；确认/取消后清空）。 */
@@ -274,8 +275,15 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
        index.applyNavigation 单一咽喉点比对，附件走独立 pending 管线。 */
     const draftForm = root.querySelector<HTMLFormElement>("form");
     if (draftForm) root.dataset.editorDraftBaseline = formSignatureFromData(new FormData(draftForm));
-    root.querySelector<HTMLElement>("[data-action='archive']")?.addEventListener("click", () => host.archiveEditingItem(root));
-    root.querySelector<HTMLElement>("[data-action='delete-item']")?.addEventListener("click", () => host.deleteEditingItem(root));
+    const editorActions = root.querySelector<HTMLElement>("[data-editor-section='danger']");
+    root.querySelector<HTMLButtonElement>("[data-action='archive']")?.addEventListener("click", (event) => {
+        const button = event.currentTarget as HTMLButtonElement;
+        runExclusiveAction(button, () => host.archiveEditingItem(root), editorActions, "button", editor?.editingId ? `item:${editor.editingId}` : undefined);
+    });
+    root.querySelector<HTMLButtonElement>("[data-action='delete-item']")?.addEventListener("click", (event) => {
+        const button = event.currentTarget as HTMLButtonElement;
+        runExclusiveAction(button, () => host.deleteEditingItem(root), editorActions, "button", editor?.editingId ? `item:${editor.editingId}` : undefined);
+    });
     const scheduleSelect = root.querySelector<HTMLSelectElement>("select[name='schedule']");
     const directionField = root.querySelector<HTMLElement>("[data-direction-at-most-field]");
     const anchorInput = root.querySelector<HTMLInputElement>("input[name='anchorBlockId']");

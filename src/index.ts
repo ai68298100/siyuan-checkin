@@ -52,6 +52,7 @@ import {bindTodayHandlers, type BindTodayHost} from "./render/bind-today";
 import {bindOccasionsHandlers, type BindOccasionsHost} from "./render/bind-occasions";
 import {bindEditorHandlers, type BindEditorHost} from "./render/bind-editor";
 import {bindPageNavigationHandlers, type BindPageNavigationHost} from "./render/bind-page-navigation";
+import {bindMoreNavigationFor, renderMoreView, type MoreNavigationHost} from "./render/more";
 import {saveEditorForm, type SaveFormHost} from "./render/save-form";
 import {cloneItemForDateValue, cloneItemValue, cloneStoreValue, computeStreaksValue, getSummaryEventsValue, itemFingerprintValue, makeEventValue, revisionFingerprintValue} from "./model-helpers";
 import {persistNormalizedStoreWithVerification, persistStoreWithReconciliation, reconcileNormalizedStoreSnapshots} from "./storage-transaction";
@@ -79,7 +80,7 @@ import {NOTE_QUERY_INTERVAL_MS, NOTE_QUERY_MAX_ROWS, buildNoteQuerySql, isNoteQu
 import {createSourceIngestReport, type DocumentSourceKey, type SourceIngestReport} from "./features/source-ingest-report";
 import {SOURCE_SCAN_MAX_PAGES, blockIdCursorClause, scanBoundedPages} from "./features/scan-cursor";
 import {normalizeSourceGovernance, settleSegmentsToDays, sourceDayMinutes} from "./features/source-framework";
-import {openTabPageFor, showArchivedFor, showEditorFor, showEditorReturnFor, showInsightsFor, showOccasionsFor, showReviewFor, showSettingsFor, showTodayFor, type NavigationHost} from "./navigation";
+import {openTabPageFor, showArchivedFor, showEditorFor, showEditorReturnFor, showInsightsFor, showMoreFor, showOccasionsFor, showReviewFor, showSettingsFor, showTodayFor, type NavigationHost} from "./navigation";
 import {createRootPageStore, type CheckinPageId, type RootPageStore} from "./features/root-page-store";
 import {bindQuickDialogViewportFor, closeQuickDialogFor, ensureMobileTopBarButtonFor, ensureSpeedSwitchQuickActionsFor, handleQuickDialogDestroyedFor, openQuickDialogFor, quickDialogSizeOf, toggleQuickDialogFor, type QuickDialogHost} from "./render/quick-dialog";
 import {bindBulkModeFor, bindItemContextMenuFor, bindItemDragFor, bindPageKeyboardFor, bindQuickKeyboardFor, type TodayBindingsHost} from "./render/today-bindings";
@@ -1909,6 +1910,7 @@ export default class CheckinPlugin extends Plugin {
     private occasionFormDraft?: OccasionsRootContext["formDraft"];
     private occasionSubmitting = false;
     private occasionDeletingIds = new Set<string>();
+    private readonly occasionActionBusyIds = new Set<string>();
     private celebration?: {message: string; itemName: string};
     private lastExportAt?: string;
     private pendingAttachments = new Map<string, string>();
@@ -1918,20 +1920,34 @@ export default class CheckinPlugin extends Plugin {
     private bestStreakItem?: CheckinItem;
     private bestStreakValue = 0;
     private readonly rootPages: RootPageStore = createRootPageStore();
-    private get currentPage(): CheckinPageId { return this.rootPages.activePage(); }
-    private set currentPage(page: CheckinPageId) { this.rootPages.navigate(undefined, page); }
-    public applyNavigation(root: HTMLElement | undefined, page: CheckinPageId): void {
+    private get currentPage(): CheckinPageId {
+        const active = this.activeRoot ? this.rootContexts.get(this.activeRoot) : undefined;
+        return active?.page ?? this.rootPages.activePage();
+    }
+    private set currentPage(page: CheckinPageId) {
+        /* A no-root legacy write remains a broadcast for compatibility. Once a
+           surface is active, mirror only that surface so rendering one root
+           cannot silently change another root's dirty/editor page. */
+        if (this.activeRoot && this.rootContexts.has(this.activeRoot)) {
+            this.rootContexts.get(this.activeRoot)!.page = page;
+            this.rootPages.navigate(this.activeRoot, page);
+        } else {
+            this.rootPages.navigate(undefined, page);
+        }
+    }
+    public applyNavigation(root: HTMLElement | undefined, page: CheckinPageId): boolean {
         if (root && page !== "editor" && this.pageOfRoot(root) === "editor") {
             const form = root.querySelector("form");
             const baseline = root.dataset.editorDraftBaseline;
-            if (isEditorFormDirty(form ? new FormData(form) : undefined, baseline) && !window.confirm(t("editor.dirtyLeaveConfirm"))) return;
+            if (isEditorFormDirty(form ? new FormData(form) : undefined, baseline) && !window.confirm(t("editor.dirtyLeaveConfirm"))) return false;
         }
         /* 全局兼容入口（root 未传）也必须同步已注册 rootContexts；新注册的
            surface 保留 today 初始页，避免一个旧的无 root 调用污染后来打开的
            dock/tab。显式 root 仍只更新当前 surface。 */
         this.setPageForRoot(page, root);
+        return true;
     }
-    public pageOfRoot(root: HTMLElement): CheckinPageId { return this.rootPages.pageOf(root); }
+    public pageOfRoot(root: HTMLElement): CheckinPageId { return this.rootContexts.get(root)?.page ?? this.rootPages.pageOf(root); }
     public releaseRootContext(root: HTMLElement): void {
         this.rootPages.release(root);
         if (!this.rootPages.lastActiveRoot()) {
@@ -1994,7 +2010,7 @@ private reviewCompatibilitySnapshot?: {
     private insightsItemQuery = "";
     private editingId?: string;
     private editingFingerprint?: string;
-    private editorReturnPage?: "today" | "review" | "insights";
+    private editorReturnPage?: "today" | "review" | "insights" | "more";
     private saveQueue: Promise<void> = Promise.resolve();
     private auxiliarySaveQueue: Promise<void> = Promise.resolve();
     private mutationQueue: Promise<void> = Promise.resolve();
@@ -3474,7 +3490,11 @@ this.scheduleMidnightRefresh();
         showSettingsFor(this as unknown as NavigationHost, root);
     }
 
-    private showEditor(item?: CheckinItem, returnTo?: "today" | "review" | "insights", root?: HTMLElement) {
+    private showMore(root?: HTMLElement) {
+        showMoreFor(this as unknown as NavigationHost, root);
+    }
+
+    private showEditor(item?: CheckinItem, returnTo?: "today" | "review" | "insights" | "more", root?: HTMLElement) {
         /* 新建/编辑是一段新的表单会话，必须从标题和模板入口开始；表单内部
            的普通重渲染仍由所属 RootContext 保留当前位置。 */
         const roots = root ? [root] : [this.dockElement, this.tabElement, this.quickDialogElement];
@@ -4162,6 +4182,8 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
         return this.rootContexts.get(root)?.page ?? this.currentPage;
     }
 
+    public hasRootContext(root: HTMLElement): boolean { return this.rootContexts.has(root); }
+
     public isSurfaceRoot(root: HTMLElement, page?: PageId): boolean {
         const context = this.rootContexts.get(root);
         return Boolean(context && root.isConnected && (!page || context.page === page));
@@ -4284,6 +4306,12 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
 
     public occasionStateForRoot(root: HTMLElement): OccasionsRootContext {
         return this.ensureRootContext(root).occasions ??= this.createOccasionsRootContext();
+    }
+
+    public renderOccasionSurfaces(): void {
+        for (const root of this.roots()) {
+            if (this.rootContexts.get(root)?.page === "occasions") this.render(root);
+        }
     }
 
     private syncOccasionsCompatibilityForRoot(root: HTMLElement): void {
@@ -4421,7 +4449,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
         this.activeRoot = root;
         const context = this.ensureRootContext(root);
         this.syncTodayCompatibilityForRoot(root);
-        this.currentPage = context.page;
+        this.rootPages.navigate(root, context.page);
         this.pendingFocusItemId = context.pendingFocusItemId;
         this.syncReviewCompatibilityForRoot(root);
         this.syncInsightsCompatibilityForRoot(root);
@@ -4431,8 +4459,11 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
 
     public setPageForRoot(page: PageId, root?: HTMLElement): void {
         if (root) {
-            if (this.ensureRootContext(root).page === "review" && page !== "review") this.cancelReviewSummary(root);
-            this.ensureRootContext(root).page = page;
+            const context = this.ensureRootContext(root);
+            if (context.page === "review" && page !== "review") this.cancelReviewSummary(root);
+            context.page = page;
+            if (page === "more") context.moreActive = true;
+            else if (page === "today" || page === "review" || page === "occasions" || page === "editor") context.moreActive = false;
             this.rootPages.navigate(root, page);
             this.activeRoot = root;
             return;
@@ -4443,8 +4474,11 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
             return;
         }
         for (const surface of surfaces) {
-            if (this.ensureRootContext(surface).page === "review" && page !== "review") this.cancelReviewSummary(surface);
-            this.ensureRootContext(surface).page = page;
+            const context = this.ensureRootContext(surface);
+            if (context.page === "review" && page !== "review") this.cancelReviewSummary(surface);
+            context.page = page;
+            if (page === "more") context.moreActive = true;
+            else if (page === "today" || page === "review" || page === "occasions" || page === "editor") context.moreActive = false;
             this.rootPages.navigate(surface, page);
         }
     }
@@ -4524,6 +4558,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
         this.setActiveRoot(root);
         const page = this.rootPages.ensure(root).page;
         const context = this.ensureRootContext(root);
+        root.dataset.moreActive = String(Boolean(context.moreActive));
         /* A short, explicit mobile host marker keeps the final responsive
            layer deterministic without repeating long :has() selectors for
            every child rule.  Desktop docks remain on their container-query
@@ -4570,7 +4605,8 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
                 : page === "insights" ? this.renderInsights(root)
             : page === "archived" ? this.renderArchived(root)
             : page === "occasions" ? this.renderOccasions(root)
-                    : page === "settings" ? this.renderSettings(root, this.settingsStateForRoot(root).openSourcePanels) : this.renderToday(root);
+            : page === "settings" ? this.renderSettings(root, this.settingsStateForRoot(root).openSourcePanels)
+                : page === "more" ? renderMoreView() : this.renderToday(root);
         this.normalizeUiIcons(root);
         const surface = root.querySelector<HTMLElement>(".lc-checkin");
         if (surface) {
@@ -4601,14 +4637,14 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
            Give that surface its own persistent rail instead of leaving the
            navigation unreachable (the rail is hidden again below 720px). */
         if (root === this.dockElement && !root.querySelector(".lc-checkin__rail")) {
-            root.insertAdjacentHTML("afterbegin", this.renderRail(page));
+            root.insertAdjacentHTML("afterbegin", this.renderRail(page, context.moreActive));
         }
         const layout = root.querySelector<HTMLElement>(".lc-checkin__layout");
         if (layout) {
             /* 顶部导航只服务桌面宽容器；移动端顶栏自带导航 tabs（renderMobileTopbar），
                窄 dock 面板由 CSS 隐藏 —— v9.5.1 曾在窄容器裸渲染出独立导航行（用户点名）。
                桌面导航挂在宿主而不是滚动的 .lc-checkin__layout 上，切页/滚动时几何基线保持不变。 */
-            if (!this.isMobileFrontend) root.insertAdjacentHTML("afterbegin", this.renderTopNav(root, page));
+            if (!this.isMobileFrontend) root.insertAdjacentHTML("afterbegin", this.renderTopNav(root, page, context.moreActive));
             if (this.focusTimerState && this.focusTimerRoot === root) layout.insertAdjacentHTML("beforeend", this.renderFocusTimerPanel());
             else if (this.focusTimerState) layout.insertAdjacentHTML("beforeend", renderFocusMiniStripFor(this as unknown as FocusTimerHost));
             layout.querySelector<HTMLElement>("[data-focus-mini-back]")?.addEventListener("click", () => {
@@ -4619,7 +4655,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
         /* 底部导航在所有表面都渲染（含桌面侧边栏面板）：宽容器由 CSS 隐藏、
            窄容器（手机弹窗 / 侧边栏 dock）显示 —— 侧边栏此前完全没有导航入口。 */
         if (!root.querySelector(".lc-checkin__mobile-nav")) {
-            root.insertAdjacentHTML("beforeend", this.renderMobileNav(page));
+            root.insertAdjacentHTML("beforeend", this.renderMobileNav(page, context.moreActive));
         }
         /* 页面重绘会替换滚动区；移动端提醒属于宿主流内横幅，重绘后把同一节点
            放回当前表面，避免通知被 innerHTML 清掉或退回固定浮层。 */
@@ -4642,6 +4678,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
             this.bindSettings(root);
         } else {
             this.bindPageNavigation(root);
+            if (page === "more") bindMoreNavigationFor(this as unknown as MoreNavigationHost, root);
         }
         if (this.quickDialog && this.quickDialogElement === root) this.bindQuickKeyboard(root);
         /* 桌面弹窗打开/重渲染后把焦点收进弹窗容器：键盘流（j/k/e）立即生效，
@@ -4834,6 +4871,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
             hapticFeedback: this.hapticFeedback,
             focusTimerProvider: this.focusTimerProvider,
             reminderQuietHours: this.reminderQuietHours,
+            dailyReminder: {...this.dailyReminder},
             occasionRemindOnce: this.occasionRemindOnce,
             focusTimerAdapterCount: this.focusAdapters.has(DOCK_TOMATO_ADAPTER_ID) ? 1 : 0,
             dockTomatoDiagnostics: inspectDockTomatoProvider(),
@@ -5033,7 +5071,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
                     this.recordImportFailure(session.format === "loop-csv" ? "loop-import" : "obsidian-import", "persist");
                     settingsFeedback(t("msg.importPersistFail"));
                 }
-            }, "[data-mobile-nav='settings']");
+            }, "[data-mobile-nav='more']");
         });
         root.querySelector<HTMLElement>("[data-import-conflict-cancel]")?.addEventListener("click", () => {
             settings.importConflictSession = undefined;
@@ -5078,7 +5116,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
         }
         this.bindDialogClose(root);
         this.bindMobileNav(root);
-        root.querySelector<HTMLElement>("[data-action='back']")?.addEventListener("click", () => this.showToday(root));
+        root.querySelector<HTMLElement>("[data-action='back']")?.addEventListener("click", () => root.dataset.moreActive === "true" ? this.showMore(root) : this.showToday(root));
         const settingsBusy = new WeakSet<HTMLElement>();
         const settingsRootOpen = () => this.isSurfaceRoot(root, "settings");
         const settingsFeedback = (message: string) => {
@@ -5142,7 +5180,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
                     } else if (focusSelector !== "[data-action='back']") {
                         /* A successful destructive action may disable/remove its retry control;
                            fall back to the live settings return entry in that case. */
-                        const fallback = [...root.querySelectorAll<HTMLElement>("[data-action='back'], [data-mobile-nav='settings']")];
+                        const fallback = [...root.querySelectorAll<HTMLElement>("[data-action='back'], [data-mobile-nav='more']")];
                         const visibleFallback = fallback.find((candidate) => !candidate.hidden && candidate.getClientRects().length > 0);
                         (visibleFallback || fallback[0])?.focus();
                     }
@@ -6680,12 +6718,12 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
         return `<div class="lc-checkin__mobile-topbar" data-appearance="${this.resolvedAppearance()}" data-palette="${this.palette}" data-page="${page}"><div class="lc-checkin__topbar-leading">${leadingAction}</div><strong class="lc-checkin__topbar-title">${this.getPageTitle(page)}</strong><div class="lc-checkin__topbar-trailing">${progress ? `<span class="lc-checkin__topbar-meta" role="status" aria-label="${t("today.progressAria")}">${progress}</span>` : ""}${occasionAction}</div></div>`;
     }
 
-    private renderMobileNav(page: CheckinPageId): string {
-        const entries = [["today", t("nav.today"), "home"], ["review", t("nav.review"), "summary"], ["occasions", t("nav.occasions"), "calendar"], ["settings", t("nav.settings"), "settings"]] as const;
-        const buttons = entries.map(([navPage, label, icon]) => `<button type="button" data-mobile-nav="${navPage}" class="${page === navPage ? "is-selected" : ""}" aria-current="${page === navPage ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`);
-        /* 底栏需要短标签保持五列等宽；完整动作名称继续用于辅助名称与 tooltip。 */
-        const add = `<button class="lc-checkin__mobile-nav-add ${page === "editor" ? "is-selected" : ""}" type="button" data-mobile-nav="add" aria-label="${t("nav.add")}" title="${t("nav.add")}"><span>${uiIcon("add")}</span><small>${t("common.add")}</small></button>`;
-        return `<nav class="lc-checkin__mobile-nav" aria-label="${t("app.navAria")}">${buttons.slice(0, 2).join("")}${add}${buttons.slice(2).join("")}</nav>`;
+    private renderMobileNav(page: CheckinPageId, moreActive = false): string {
+        const isSelected = (navPage: string) => navPage === "record" ? page === "editor"
+            : navPage === "more" ? page === "more" || moreActive
+                : page === navPage;
+        const entries = [["today", t("nav.today"), "home"], ["review", t("nav.review"), "summary"], ["occasions", t("nav.occasions"), "calendar"], ["record", t("nav.record"), "add"], ["more", t("nav.more"), "more"]] as const;
+        return `<nav class="lc-checkin__mobile-nav" aria-label="${t("app.navAria")}">${entries.map(([navPage, label, icon]) => `<button type="button" data-mobile-nav="${navPage}" class="${navPage === "record" ? "lc-checkin__mobile-nav-add " : ""}${isSelected(navPage) ? "is-selected" : ""}" aria-current="${isSelected(navPage) ? "page" : "false"}" aria-label="${label}" title="${label}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}</nav>`;
     }
     /* 顶栏进度：与今日页口径一致（未归档 + 当日可用 + 当日排期）。 */
     private todayProgressLabel(): string {
@@ -6698,15 +6736,21 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
 
     /* Desktop-wide containers show a labelled left rail instead of the bottom bar.
        Both use data-mobile-nav so one binding covers them. */
-    private renderRail(page: CheckinPageId): string {
-        const entries = [["today", "今日", "home"], ["review", "回顾", "summary"], ["occasions", "事项", "calendar"], ["settings", "设置", "settings"]] as const;
-        return `<nav class="lc-checkin__rail" aria-label="${t("app.navAria")}">${entries.map(([railPage, label, icon]) => `<button type="button" data-mobile-nav="${railPage}" class="${page === railPage ? "is-selected" : ""}" aria-current="${page === railPage ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}</nav>`;
+    private renderRail(page: CheckinPageId, moreActive = false): string {
+        const entries = [["today", t("nav.today"), "home"], ["review", t("nav.review"), "summary"], ["occasions", t("nav.occasions"), "calendar"], ["record", t("nav.record"), "add"], ["more", t("nav.more"), "more"]] as const;
+        const isSelected = (navPage: string) => navPage === "record" ? page === "editor"
+            : navPage === "more" ? page === "more" || moreActive
+                : page === navPage;
+        return `<nav class="lc-checkin__rail" aria-label="${t("app.navAria")}">${entries.map(([railPage, label, icon]) => `<button type="button" data-mobile-nav="${railPage}" class="${isSelected(railPage) ? "is-selected" : ""}" aria-current="${isSelected(railPage) ? "page" : "false"}" aria-label="${label}" title="${label}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}</nav>`;
     }
 
     /* 桌面顶栏：左侧五个导航项，右侧 全屏/关闭 —— 正常软件的标题栏布局（T-030/T-031）。
        窄容器由 CSS 隐藏（改用底部导航）。 */
-    private renderTopNav(root: HTMLElement, page: CheckinPageId): string {
-        const entries = [["today", t("nav.today"), "home"], ["review", t("nav.review"), "summary"], ["occasions", t("nav.occasions"), "calendar"], ["settings", t("nav.settings"), "settings"]] as const;
+    private renderTopNav(root: HTMLElement, page: CheckinPageId, moreActive = false): string {
+        const entries = [["today", t("nav.today"), "home"], ["review", t("nav.review"), "summary"], ["occasions", t("nav.occasions"), "calendar"], ["record", t("nav.record"), "add"], ["more", t("nav.more"), "more"]] as const;
+        const isSelected = (navPage: string) => navPage === "record" ? page === "editor"
+            : navPage === "more" ? page === "more" || moreActive
+                : page === navPage;
         const ownsDialogChrome = Boolean(this.quickDialog) && root === this.quickDialogElement && !this.isMobileFrontend;
         const fullscreen = ownsDialogChrome
             ? `<button class="lc-checkin__topnav-action" type="button" data-action="toggle-fullscreen" aria-label="${t(this.quickDialogFullscreen ? "common.exitFullscreen" : "common.fullscreen")}" title="${t(this.quickDialogFullscreen ? "common.exitFullscreen" : "common.fullscreen")}">${uiIcon("expand")}</button>`
@@ -6716,7 +6760,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
             : "";
         const avatarPresetGlyph: Record<string, string> = {star: "★", horse: "🐴", leaf: "🌿", sun: "☀", target: "🎯"};
         const avatar = this.avatarImage ? `<img src="${escapeHtml(this.avatarImage)}" alt="" />` : this.avatar === "check" ? uiIcon("check") : escapeHtml(avatarPresetGlyph[this.avatar] || this.avatar);
-        return `<nav class="lc-checkin__topnav" aria-label="${t("app.navAria")}"><span class="lc-checkin__topnav-brand"><span class="lc-checkin__topnav-avatar" aria-hidden="true">${avatar}</span>${t("dock.title")}</span><div class="lc-checkin__topnav-tabs">${entries.map(([navPage, label, icon]) => `<button type="button" data-mobile-nav="${navPage}" class="${page === navPage ? "is-selected" : ""}" aria-current="${page === navPage ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}</div>${dialogActions}</nav>`;
+        return `<nav class="lc-checkin__topnav" aria-label="${t("app.navAria")}"><span class="lc-checkin__topnav-brand"><span class="lc-checkin__topnav-avatar" aria-hidden="true">${avatar}</span>${t("dock.title")}</span><div class="lc-checkin__topnav-tabs">${entries.map(([navPage, label, icon]) => `<button type="button" data-mobile-nav="${navPage}" class="${isSelected(navPage) ? "is-selected" : ""}" aria-current="${isSelected(navPage) ? "page" : "false"}" aria-label="${label}" title="${label}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}</div>${dialogActions}</nav>`;
     }
 
     /* 8.6 连续记录：按项目统计当前连续打卡天数（自然日粒度，从事件推导）。 */
@@ -7073,6 +7117,7 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
         const state = root ? this.occasionStateForRoot(root) : this.createOccasionsRootContext();
         return renderOccasionsView({
             occasionStore: this.occasionStore,
+            sharedActionBusyIds: this.occasionActionBusyIds,
             reminderUserActions: this.reminderUserActions,
             linkedItems: this.store.items.filter((item) => Boolean(item.linkedOccasionId)).map((item) => ({id: item.id, name: item.name, linkedOccasionId: item.linkedOccasionId || "", archived: item.archived === true})),
             ...state,
@@ -8703,6 +8748,7 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
             case "archived": return t("archived.title");
             case "insights": return t("insights.title");
             case "settings": return t("settings.title");
+            case "more": return t("nav.more");
             case "editor": return this.editingId ? t("editor.edit") : t("editor.create");
             default: return t("today.title");
         }
@@ -8919,10 +8965,10 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
 
     /* T-1494：单次实例改期——写入 Occasion overrides（additive，键=原发生日期），
         持久化失败恢复旧 store；仅列表行显式「改期」入口可触发。 */
-    private saveOccasionOverride(id: string, originalDate: string, newDate: string, root?: HTMLElement): void;
-    private saveOccasionOverride(id: string, originalDate: string, newDate?: string): void;
-    private saveOccasionOverride(id: string, originalDate: string, newDate?: string, root?: HTMLElement): void {
-        void this.enqueueMutation(async () => {
+    private saveOccasionOverride(id: string, originalDate: string, newDate: string, root?: HTMLElement): Promise<void>;
+    private saveOccasionOverride(id: string, originalDate: string, newDate?: string): Promise<void>;
+    private saveOccasionOverride(id: string, originalDate: string, newDate?: string, root?: HTMLElement): Promise<void> {
+        return this.enqueueMutation(async () => {
             const previous = this.occasionStore;
             const next = setOccasionOverride(previous, id, originalDate, newDate);
             if (next === previous) {

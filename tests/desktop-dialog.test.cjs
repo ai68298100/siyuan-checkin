@@ -127,19 +127,19 @@ assert.match(plugin, /root\.insertAdjacentHTML\("afterbegin", this\.renderMobile
 }
 assert.match(components, /\.lc-checkin--editor \.lc-checkin__editor-header \{ display: none; \}/,
     "the mobile editor must not reserve a duplicate internal header row");
-assert.match(plugin, /renderTopNav\(root, page\)\);/,
+assert.match(plugin, /renderTopNav\(root, page(?:, context\.moreActive)?\)\);/,
     "the desktop top nav keeps its render path");
 assert.doesNotMatch(plugin, /if \(layout\) \{\s*\/\*[^*]*\*\/\s*layout\.insertAdjacentHTML\("afterbegin", this\.renderTopNav\(root\)\)/,
     "the top nav must not render unconditionally (mobile now owns its own top bar)");
-assert.match(plugin, /if \(!this\.isMobileFrontend\) root\.insertAdjacentHTML\("afterbegin", this\.renderTopNav\(root, page\)\)/,
+assert.match(plugin, /if \(!this\.isMobileFrontend\) root\.insertAdjacentHTML\("afterbegin", this\.renderTopNav\(root, page(?:, context\.moreActive)?\)\)/,
     "the desktop top nav must be attached to the host, outside the scrolling layout");
-assert.match(plugin, /private renderTopNav\(root: HTMLElement, page: CheckinPageId\): string/,
+assert.match(plugin, /private renderTopNav\(root: HTMLElement, page: CheckinPageId, moreActive = false\): string/,
     "top navigation must know which host owns dialog chrome");
 assert.match(plugin, /ownsDialogChrome = Boolean\(this\.quickDialog\) && root === this\.quickDialogElement/,
     "only the quick dialog may render fullscreen and close actions");
 assert.doesNotMatch(plugin, /root\.insertAdjacentHTML\("afterbegin", `<button class="lc-checkin__dialog-close"/,
     "tabs and docks must not receive a second floating close button");
-assert.match(plugin, /root\.insertAdjacentHTML\("beforeend", this\.renderMobileNav\(page\)\)/,
+assert.match(plugin, /root\.insertAdjacentHTML\("beforeend", this\.renderMobileNav\(page, context\.moreActive\)\)/,
     "the mobile bottom bar must be attached to the host as well");
 assert.match(plugin, /private todayProgressLabel\(\): string \{/,
     "the mobile top bar shows today progress from the same rule set as the page");
@@ -155,7 +155,7 @@ assert.match(components, /\.lc-checkin-dialog-host--mobile \.lc-checkin__mobile-
 // 守门：侧边栏面板（dock）：窄面板要有自己的导航与结构，否则进去出不来
 assert.match(plugin, /plugin\.dockElement\.classList\.add\("lc-checkin-dock-host"\)/,
     "the dock panel needs its own host class for narrow-panel layout");
-assert.match(plugin, /if \(!root\.querySelector\("\.lc-checkin__mobile-nav"\)\) \{\s*root\.insertAdjacentHTML\("beforeend", this\.renderMobileNav\(page\)\);/,
+assert.match(plugin, /if \(!root\.querySelector\("\.lc-checkin__mobile-nav"\)\) \{\s*root\.insertAdjacentHTML\("beforeend", this\.renderMobileNav\(page, context\.moreActive\)\);/,
     "the bottom navigation must be rendered on every surface (wide containers hide it in CSS)");
 assert.match(plugin, /size: \{width: 420, height: 0\}/, "the dock default width must fit a readable card column");
 assert.match(components, /\.lc-checkin-dock-host \{[\s\S]*?container: lc-dock \/ inline-size;[\s\S]*?display: flex;/,

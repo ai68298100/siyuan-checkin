@@ -37,6 +37,14 @@ const transpileTo = (relPath) => {
 transpileTo("render/bind-occasions.ts");
 fs.writeFileSync(path.join(dir, "siyuan-stub.js"), "module.exports = {showMessage: () => {}};\n");
 const bindOccasions = require(path.join(dir, "render", "bind-occasions.js"));
+const bindSource = fs.readFileSync(path.join(__dirname, "..", "src", "render", "bind-occasions.ts"), "utf8");
+const occasionsViewSource = fs.readFileSync(path.join(__dirname, "..", "src", "render", "occasions.ts"), "utf8");
+assert.match(occasionsViewSource, /busyOccasionIds\.has\(item\.id\)/, "row rendering reflects the root-local and shared action mutexes");
+assert.match(occasionsViewSource, /rowBusy \? ` aria-busy="true"` : ""/, "busy occasion rows expose aria-busy");
+assert.match(occasionsViewSource, /rowBusy \? " disabled" : ""/, "all row action controls render disabled while a mutation is pending");
+const indexSource = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
+assert.match(indexSource, /sharedActionBusyIds: this\.occasionActionBusyIds/, "all visible roots render the shared occasion action lock");
+assert.match(bindSource, /host\.hasRootContext \? host\.hasRootContext\(root\)/, "late completions must not recreate a released root context");
 
 globalThis.window = {confirm: () => true};
 const makeField = (value = "") => ({value, addEventListener() {}});
@@ -67,12 +75,76 @@ const makeFixture = () => {
     return {host, button: toggles.get("p1")};
 };
 
+const makeRowActionFixture = (sharedBusyIds = new Set()) => {
+    const context = {occasionSearchQuery: "", occasionStatusFilter: "all", occasionKindFilter: "all", occasionTimeFilter: "all", occasionTemplatesOpen: false, occasionTemplateCategory: "recommended", helpOpen: false, actionsHelpOpen: false, noteExpandedIds: new Set(), occurrenceMoves: {}, formSession: 0, submitting: false, deletingOccasionIds: new Set(), occasionActionBusyIds: new Set()};
+    const rowAttributes = new Map();
+    const row = {
+        isConnected: true,
+        setAttribute(name, value) { rowAttributes.set(name, value); },
+        removeAttribute(name) { rowAttributes.delete(name); },
+        getAttribute(name) { return rowAttributes.get(name) ?? null; },
+        querySelectorAll(selector) { return selector === "button" ? [...controls] : []; },
+    };
+    const controls = [];
+    const actions = new Map();
+    const makeButton = (name, dataset) => {
+        const handlers = new Map();
+        const button = {
+            dataset, disabled: false, isConnected: true,
+            addEventListener(event, handler) { handlers.set(event, handler); },
+            closest(selector) { return selector === ".lc-checkin__occasion-manager-row" ? row : null; },
+            fire(ignoreDisabled = false) { if (ignoreDisabled || !this.disabled) handlers.get("click")?.({currentTarget: this}); },
+        };
+        controls.push(button);
+        actions.set(name, button);
+        return button;
+    };
+    makeButton("toggle", {occasionToggle: "p1"});
+    makeButton("toitem", {occasionToitem: "p1"});
+    const root = {
+        isConnected: true,
+        querySelector: () => null,
+        querySelectorAll(selector) { return selector === "[data-occasion-toggle]" ? [actions.get("toggle")] : selector === "[data-occasion-toitem]" ? [actions.get("toitem")] : []; },
+    };
+    let releaseMutation;
+    let registered = true;
+    let surfaceOpen = true;
+    let stateWrites = 0;
+    const queued = [];
+    const host = {
+        occasionStore: {version: 1, occasions: [{id: "p1", name: "事项一", kind: "scheduled", date: "2026-09-15", recurrence: "weekly", enabled: true, completedDates: [], overrides: {}}]},
+        occasionActionBusyIds: sharedBusyIds,
+        occasionStateForRoot: () => context,
+        setOccasionStateForRoot: (_root, patch) => { stateWrites += 1; Object.assign(context, patch); },
+        hasRootContext: () => registered,
+        pageForRoot: () => "occasions",
+        isSurfaceRoot: () => surfaceOpen,
+        renderOccasionSurfaces() { host.surfaceRenders = (host.surfaceRenders || 0) + 1; },
+        render() {},
+        enqueueMutation(operation) { queued.push(operation); return new Promise((resolve, reject) => { releaseMutation = {resolve, reject}; }); },
+        updateOccasion: async item => { host.updates.push(item); },
+        createOccasionLinkedItem: async () => { host.created += 1; },
+        updates: [], created: 0,
+    };
+    for (const name of ["bindDialogClose", "bindMobileNav", "showToday", "syncOccasionLunarHint", "deleteOccasion", "setOccasionCompleted", "persistOccasions", "saveOccasionForm"]) host[name] = () => Promise.resolve();
+    bindOccasions.bindOccasionsHandlers(root, host);
+    return {host, context, root, row, controls, actions, queued, releaseRoot() { registered = false; surfaceOpen = false; }, get stateWrites() { return stateWrites; }, settle: async (failure = false) => {
+        await Promise.resolve();
+        const pending = releaseMutation;
+        assert.ok(pending, "the action reaches the mutation queue");
+        if (failure) pending.reject(new Error("controlled failure"));
+        else pending.resolve(await queued[0]());
+        await new Promise(resolve => setImmediate(resolve));
+    }};
+};
+
 (async () => {
     /* —— 夹具 1：点击后、队列执行前另一入口改名 → 执行保留改名只翻转启用态。 —— */
     const fixture = makeFixture();
     const queued = [];
     fixture.host.enqueueMutation = (operation) => { queued.push(operation); return Promise.resolve(); };
     fixture.button.fire();
+    await Promise.resolve();
     assert.equal(queued.length, 1, "the click queues exactly one operation");
     /* 队列等待期间另一窗口/入口改名+改期。 */
     fixture.host.occasionStore.occasions[0].name = "改名后";
@@ -83,11 +155,56 @@ const makeFixture = () => {
     assert.equal(fixture.host.updates[0].date, "2026-10-20", "the in-lock re-read keeps the concurrent reschedule");
     assert.equal(fixture.host.updates[0].enabled, false, "only the enabled flag flips");
 
+    /* One row shares a busy boundary across its controls and releases it after success/failure. */
+    const rowAction = makeRowActionFixture();
+    rowAction.actions.get("toggle").fire();
+    assert.equal(rowAction.actions.get("toggle").disabled, true, "the clicked row action disables immediately");
+    assert.equal(rowAction.actions.get("toitem").disabled, true, "competing controls on the row disable together");
+    assert.equal(rowAction.row.getAttribute("aria-busy"), "true", "the row announces its pending mutation");
+    rowAction.actions.get("toggle").fire(true);
+    rowAction.actions.get("toitem").fire(true);
+    await Promise.resolve();
+    assert.equal(rowAction.queued.length, 1, "double clicks and cross-action clicks queue one mutation per occasion");
+    assert.equal(rowAction.host.created, 0, "the competing conversion action is rejected while toggle is pending");
+    await rowAction.settle();
+    assert.equal(rowAction.actions.get("toggle").disabled, false, "successful writes release the control");
+    assert.equal(rowAction.row.getAttribute("aria-busy"), null, "successful writes clear the busy state");
+    assert.equal(rowAction.context.occasionActionBusyIds.size, 0, "successful writes clear root-local mutex state");
+    rowAction.actions.get("toggle").fire();
+    await Promise.resolve();
+    await rowAction.settle(true);
+    assert.equal(rowAction.actions.get("toggle").disabled, false, "failed writes restore controls for retry");
+    assert.equal(rowAction.row.getAttribute("aria-busy"), null, "failed writes clear aria-busy");
+    assert.equal(rowAction.context.occasionActionBusyIds.size, 0, "failed writes clear root-local mutex state");
+
+    /* Separate visible roots share one operation lock for the same occasion. */
+    const sharedIds = new Set();
+    const firstSurface = makeRowActionFixture(sharedIds);
+    const secondSurface = makeRowActionFixture(sharedIds);
+    firstSurface.actions.get("toggle").fire();
+    secondSurface.actions.get("toggle").fire();
+    await Promise.resolve();
+    assert.equal(firstSurface.queued.length, 1, "the first root queues the shared occasion mutation");
+    assert.equal(secondSurface.queued.length, 0, "another root cannot queue a conflicting toggle while it is pending");
+    assert.ok(firstSurface.host.surfaceRenders > 0, "a visible surface redraws all roots from the shared busy set");
+    await firstSurface.settle();
+    assert.equal(sharedIds.size, 0, "the shared occasion lock is released after settlement");
+
+    /* A destroyed quick-dialog root remains released after an async completion. */
+    const closedSurface = makeRowActionFixture(new Set());
+    closedSurface.actions.get("toggle").fire();
+    await Promise.resolve();
+    const writesBeforeRelease = closedSurface.stateWrites;
+    closedSurface.releaseRoot();
+    await closedSurface.settle();
+    assert.equal(closedSurface.stateWrites, writesBeforeRelease, "settlement does not write into or recreate a released root context");
+
     /* —— 夹具 2：锁内重读发现条目已删除 → 跳过。 —— */
     const deleted = makeFixture();
     const deletedQueue = [];
     deleted.host.enqueueMutation = (operation) => { deletedQueue.push(operation); return Promise.resolve(); };
     deleted.button.fire();
+    await Promise.resolve();
     deleted.host.occasionStore.occasions.splice(0, 1);
     await deletedQueue[0]();
     assert.equal(deleted.host.updates.length, 0, "a concurrently deleted item is skipped");
@@ -96,7 +213,7 @@ const makeFixture = () => {
     const indexSource = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
     const overrideStart = indexSource.indexOf("private saveOccasionOverride");
     const overrideBody = indexSource.slice(overrideStart, indexSource.indexOf("private async retrySave", overrideStart));
-    assert.match(overrideBody, /void this\.enqueueMutation/, "the override write runs inside the mutation queue");
+    assert.match(overrideBody, /return this\.enqueueMutation/, "the override write runs inside the mutation queue and exposes its completion");
     const enqueueAt = overrideBody.indexOf("enqueueMutation");
     assert.ok(overrideBody.indexOf("this.occasionStore = next") > enqueueAt, "the memory application happens inside the lock, not before enqueueing");
     const reminderStart = indexSource.indexOf('reminderUserAction(id: string, action: "snooze"');

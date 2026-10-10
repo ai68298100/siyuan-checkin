@@ -53,6 +53,19 @@ async function boot(page, storage, theme) {
                         window.__storage[bucket] = structuredClone(value);
                     }
                 },
+                Dialog: class {
+                    constructor(options) {
+                        this.element = document.createElement("div");
+                        this.element.className = "b3-dialog";
+                        this.element.innerHTML = `<div class="b3-dialog__container"><div class="b3-dialog__body">${options.content}</div></div>`;
+                        this.destroyCallback = options.destroyCallback;
+                        document.body.append(this.element);
+                    }
+                    destroy() {
+                        this.element.remove();
+                        this.destroyCallback?.();
+                    }
+                },
                 getFrontend: () => "desktop", openTab: async () => ({close() {}}),
                 showMessage(message) { window.__messages.push(String(message)); },
                 fetchSyncPost: async () => ({code: 0, data: []}),
@@ -115,7 +128,8 @@ async function verifyPreferenceResets(browser, page, scope, width, language, the
             plugin.applyViewPreferences(prefs);
             await plugin.persistViewPreferences();
         }, {language, theme});
-        await scope.locator('[data-mobile-nav="settings"]:visible').click();
+        await scope.locator('[data-mobile-nav="more"]:visible').click();
+        await scope.locator('[data-more-action="data"]:visible').click();
         await scope.locator(`[data-action="${action}"]`).waitFor();
         const before = await preferenceSnapshot(page);
         assert.equal(before.memory.wereadIntegration.enabled, true, "fixture has an enabled valid source");
@@ -205,42 +219,51 @@ async function verifyPreferenceResets(browser, page, scope, width, language, the
                     assert.equal(await page.evaluate(() => window.__plugin.store.items.length), 0);
 
                     const records = [];
+                    let journeyRoot = scope;
                     for (const [kind, templateName] of [["binary", "早餐"], ["count", "背单词"], ["quantity", "喝水"], ["duration", "阅读"]]) {
-                        await page.evaluate(() => {
-                            const root = document.querySelector("#dock");
+                        const entry = await journeyRoot.evaluate(root => {
                             const isVisible = candidate => {
                                 const rect = candidate.getBoundingClientRect();
                                 const style = getComputedStyle(candidate);
                                 return rect.width > 0 && rect.height > 0 && style.visibility !== "hidden" && style.display !== "none";
                             };
                             const button = [...root.querySelectorAll("[data-action='add']")].find(isVisible)
-                                || [...root.querySelectorAll("[data-mobile-nav='add']")].find(isVisible);
+                                || [...root.querySelectorAll("[data-mobile-nav='record']")].find(isVisible)
+                                || root.querySelector("[data-mobile-nav='record']");
                             if (!(button instanceof HTMLElement)) throw new Error("no visible editor entry on the current Today surface");
+                            const nav = button.getAttribute("data-mobile-nav");
                             button.click();
+                            return nav;
                         });
-                        const disclosure = scope.locator("[data-template-disclosure]");
+                        if (entry === "record" && journeyRoot === scope) {
+                            await page.waitForFunction(() => window.__plugin.quickDialogElement instanceof HTMLElement);
+                            journeyRoot = page.locator(".lc-checkin-dialog-host");
+                            await journeyRoot.locator("[data-mobile-nav='record']").first().evaluate(button => button.click());
+                        }
+                        await journeyRoot.locator(".lc-checkin--editor").waitFor();
+                        const disclosure = journeyRoot.locator("[data-template-disclosure]");
                         if (!await disclosure.evaluate(element => element.open)) await disclosure.locator("summary").click();
-                        await scope.locator('[data-template-query]').fill(catalog.templateName({name: templateName}));
+                        await journeyRoot.locator('[data-template-query]').fill(catalog.templateName({name: templateName}));
                         const templateIndex = catalog.CHECKIN_TEMPLATES.findIndex(item => item.name === templateName);
                         assert.ok(templateIndex >= 0, `${templateName} is a real catalog template`);
-                        await scope.locator(`[data-template-list] [data-template-index="${templateIndex}"]`).click();
+                        await journeyRoot.locator(`[data-template-list] [data-template-index="${templateIndex}"]`).click();
                         const itemName = `T1646-${kind}`;
-                        await scope.locator('input[name="name"]').fill(itemName);
-                        const submit = scope.locator('.lc-checkin__save-button[type="submit"]');
+                        await journeyRoot.locator('input[name="name"]').fill(itemName);
+                        const submit = journeyRoot.locator('.lc-checkin__save-button[type="submit"]');
                         if (kind === "binary") {
                             await page.evaluate(() => { window.__failMainWrite = true; });
                             await submit.click();
                             await page.waitForFunction(() => window.__messages.some(message => message.includes("保存失败") || message.includes("Save failed")));
                             assert.equal(await page.evaluate(() => window.__plugin.store.items.length), 0);
-                            assert.equal(await scope.locator('input[name="name"]').inputValue(), itemName);
+                            assert.equal(await journeyRoot.locator('input[name="name"]').inputValue(), itemName);
                             assert.equal(await page.evaluate(() => window.__plugin.firstSuccessState.stage), "not-started");
                             await page.evaluate(() => { window.__failMainWrite = false; });
                         }
                         await submit.click();
-                        await scope.locator(".lc-checkin--today").waitFor();
+                        await journeyRoot.locator(".lc-checkin--today").waitFor();
                         const itemId = await page.evaluate(itemName => window.__plugin.store.items.find(item => item.name === itemName)?.id, itemName);
                         assert.ok(itemId);
-                        const card = scope.locator(`article[data-item-id="${itemId}"]`);
+                        const card = journeyRoot.locator(`article[data-item-id="${itemId}"]`);
                         const expected = kind === "binary" ? 1 : kind === "duration" ? 3.5
                             : Number(await card.locator('[data-action="quick-record"]').first().getAttribute("data-amount"));
                         if (kind === "binary") {
@@ -258,15 +281,15 @@ async function verifyPreferenceResets(browser, page, scope, width, language, the
                         const actual = await page.evaluate(itemId => window.__storage["checkin-store"].events.filter(event => event.itemId === itemId), itemId);
                         assert.equal(actual.length, 1, "one record action writes one fact");
                         assert.equal(actual[0].value, expected);
-                        await page.evaluate(() => window.__plugin.showReview(window.__plugin.dockElement));
-                        await page.waitForFunction(() => window.__plugin.pageForRoot(window.__plugin.dockElement) === "review");
+                        await page.evaluate(() => window.__plugin.showReview(window.__plugin.quickDialogElement || window.__plugin.dockElement));
+                        await page.waitForFunction(() => window.__plugin.pageForRoot(window.__plugin.quickDialogElement || window.__plugin.dockElement) === "review");
                         assert.equal(await page.evaluate(() => window.__plugin.firstSuccessState.stage), "review-visited");
                         records.push({kind, value: actual[0].value, events: actual.length});
-                        await page.evaluate(() => window.__plugin.showToday(window.__plugin.dockElement));
-                        await scope.locator(".lc-checkin--today").waitFor();
+                        await page.evaluate(() => window.__plugin.showToday(window.__plugin.quickDialogElement || window.__plugin.dockElement));
+                        await journeyRoot.locator(".lc-checkin--today").waitFor();
                     }
                     const resets = await verifyPreferenceResets(browser, page, scope, width, language, theme);
-                    const overflow = await scope.evaluate(root => root.scrollWidth - root.clientWidth);
+                    const overflow = await journeyRoot.evaluate(root => root.scrollWidth - root.clientWidth);
                     assert.ok(overflow <= 1, `journey fits ${width}px: overflow ${overflow}`);
                     assert.deepEqual(errors, []);
                     report.cases.push({language, theme, width, skippedRestart: true, cancelWithoutCreate: true,

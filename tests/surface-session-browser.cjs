@@ -70,6 +70,22 @@ const artifactRoot = path.join(projectRoot, ".artifacts", "surface-session");
                         };
                     };
                 }, theme);
+                const reminderPreferenceEcho = await page.evaluate(() => {
+                    const plugin = window.__plugin;
+                    const root = plugin.dockElement;
+                    const saved = {...plugin.dailyReminder, slots: [...plugin.dailyReminder.slots]};
+                    plugin.dailyReminder = {enabled: false, slots: ["08:30", "19:00"]};
+                    plugin.showSettings(root);
+                    const echoed = {
+                        enabled: root.querySelector("[data-setting-reminder-toggle]").checked,
+                        slots: root.querySelector("[data-setting-reminder-slots]").value,
+                    };
+                    plugin.dailyReminder = saved;
+                    plugin.showToday(root);
+                    return echoed;
+                });
+                assert.deepEqual(reminderPreferenceEcho, {enabled: false, slots: "08:30, 19:00"},
+                    "Settings must echo the saved daily reminder state and scheduled times");
                 const freshSurfaces = await page.evaluate(async () => {
                     const plugin = window.__plugin, primary = plugin.dockElement, secondary = plugin.tabElement;
                     const savedPreferences = plugin.collectViewPreferences();
@@ -484,7 +500,7 @@ const artifactRoot = path.join(projectRoot, ".artifacts", "surface-session");
                     window.__releaseSave(false);
                     await plugin.mutationQueue;
                     await new Promise(resolve => setTimeout(resolve, 0));
-                    const back = [...primary.querySelectorAll("[data-mobile-nav='settings']")].find(node => node.getClientRects().length > 0);
+                    const back = [...primary.querySelectorAll("[data-mobile-nav='more']")].find(node => node.getClientRects().length > 0);
                     return {
                         ...failed,
                         successPending,
@@ -543,10 +559,10 @@ const artifactRoot = path.join(projectRoot, ".artifacts", "surface-session");
                     releaseSave(false);
                     await waitFor(() => {
                         const next = currentButton();
-                        const back = [...primary.querySelectorAll("[data-mobile-nav='settings'], [data-action='back']")].find(node => node.getClientRects().length > 0);
+                        const back = [...primary.querySelectorAll("[data-mobile-nav='more'], [data-action='back']")].find(node => node.getClientRects().length > 0);
                         return plugin.auditEntries.length === 0 && next && next.disabled && !next.hasAttribute("aria-busy") && document.activeElement === back;
                     });
-                    const back = [...primary.querySelectorAll("[data-mobile-nav='settings'], [data-action='back']")].find(node => node.getClientRects().length > 0);
+                    const back = [...primary.querySelectorAll("[data-mobile-nav='more'], [data-action='back']")].find(node => node.getClientRects().length > 0);
                     plugin.saveData = nativeSaveData;
                     return {during, duplicate, failed, successPending, success: {cleared: plugin.auditEntries.length === 0, focusedBack: document.activeElement === back}};
                 });
@@ -599,10 +615,10 @@ const artifactRoot = path.join(projectRoot, ".artifacts", "surface-session");
                     releaseSave(false);
                     await waitFor(() => {
                         const next = currentButton();
-                        const back = [...primary.querySelectorAll("[data-mobile-nav='settings'], [data-action='back']")].find(node => node.getClientRects().length > 0);
+                        const back = [...primary.querySelectorAll("[data-mobile-nav='more'], [data-action='back']")].find(node => node.getClientRects().length > 0);
                         return !next && document.activeElement === back;
                     });
-                    const back = [...primary.querySelectorAll("[data-mobile-nav='settings'], [data-action='back']")].find(node => node.getClientRects().length > 0);
+                    const back = [...primary.querySelectorAll("[data-mobile-nav='more'], [data-action='back']")].find(node => node.getClientRects().length > 0);
                     plugin.saveData = nativeSaveData;
                     return {during, duplicate, failed, successPending, success: {cleared: !currentButton(), focusedBack: document.activeElement === back}};
                 });

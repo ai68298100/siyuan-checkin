@@ -313,8 +313,21 @@ export function bindSettingsNavigationFor(root: HTMLElement, options: SettingsNa
         }
     };
 
+    const deferPendingNavigationSync = () => {
+        if (!pendingNavigationId) return false;
+        if (pendingNavigationTimer !== undefined) clearTimeout(pendingNavigationTimer);
+        /* Keep the clicked category selected while smooth scrolling emits
+           intermediate positions; resume geometry-based syncing once it rests. */
+        pendingNavigationTimer = setTimeout(() => {
+            pendingNavigationId = undefined;
+            pendingNavigationTimer = undefined;
+            scheduleSync();
+        }, 180);
+        return true;
+    };
+
     const onScroll = () => {
-        clearPendingNavigation();
+        if (deferPendingNavigationSync()) return;
         scheduleSync();
     };
     const onResize = () => scheduleSync();

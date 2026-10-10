@@ -24,6 +24,8 @@ export interface OccasionsRootContext {
     formSession: number;
     submitting: boolean;
     deletingOccasionIds: Set<string>;
+    /** Row-level async action mutex; all competing actions for one occasion share it. */
+    occasionActionBusyIds?: Set<string>;
 }
 
 export interface OccasionsRootStateHost {
@@ -51,6 +53,7 @@ export function createOccasionsRootContext(seed: Partial<OccasionsRootContext> =
         formSession: 0, submitting: false, ...seed,
         noteExpandedIds: new Set(seed.noteExpandedIds),
         deletingOccasionIds: new Set(seed.deletingOccasionIds),
+        occasionActionBusyIds: new Set(seed.occasionActionBusyIds),
         occurrenceMoves: Object.fromEntries(Object.entries(seed.occurrenceMoves ?? {}).map(([id, move]) => [id, {...move}])),
         formDraft: seed.formDraft ? {values: {...seed.formDraft.values}, focus: seed.formDraft.focus ? {...seed.formDraft.focus} : undefined} : undefined,
     };

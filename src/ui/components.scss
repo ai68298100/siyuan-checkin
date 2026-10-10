@@ -7112,7 +7112,7 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 }
 @container lc5 (max-width: 719px) {
     :is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile, .lc-checkin-tab-host:has(.lc-checkin__mobile-topbar))
-        :is(.lc-checkin--review, .lc-checkin--editor, .lc-checkin--occasions, .lc-checkin--archived)
+        :is(.lc-checkin--review, .lc-checkin--editor, .lc-checkin--occasions, .lc-checkin--archived, .lc-checkin--more)
         .lc-checkin__editor-header .lc-checkin__title,
     :is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile, .lc-checkin-tab-host:has(.lc-checkin__mobile-topbar))
         .lc-checkin__editor-header .lc-checkin__eyebrow { display: none; }
@@ -7151,6 +7151,9 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
         background: var(--lc-checkin-accent-soft);
     }
 }
+
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile, .lc-checkin-tab-host:has(.lc-checkin__mobile-topbar))
+    .lc-checkin--more .lc-checkin__editor-header { display: none; }
 
 /* 手机端细节收口（截图反馈）：顶栏不重复计算宿主已占用的安全区，
    提醒卡更扁平且展开后保持稳定，底栏图标统一在固定轨道内居中。 */
@@ -7717,8 +7720,10 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     .lc-checkin--editor .lc-checkin__editor-header { display: none; }
     .lc-checkin--editor .lc-checkin__layout {
         position: static;
-        padding-bottom: calc(64px + env(safe-area-inset-bottom));
-        scroll-padding-bottom: calc(70px + env(safe-area-inset-bottom));
+        padding-bottom: calc(var(--lc-checkin-nav-height) + 78px + env(safe-area-inset-bottom));
+    }
+    .lc-checkin--editor {
+        scroll-padding-bottom: calc(var(--lc-checkin-nav-height) + 78px + env(safe-area-inset-bottom));
     }
     .lc-checkin--editor .lc-checkin__form-scroll {
         display: flex;
@@ -8963,7 +8968,11 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 :is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) {
     .lc-checkin--editor .lc-checkin__layout {
         position: static;
-        padding-bottom: calc(64px + env(safe-area-inset-bottom));
+        padding-bottom: calc(var(--lc-checkin-nav-height) + 78px + env(safe-area-inset-bottom));
+    }
+
+    .lc-checkin--editor {
+        scroll-padding-bottom: calc(var(--lc-checkin-nav-height) + 78px + env(safe-area-inset-bottom));
     }
 
     .lc-checkin--editor .lc-checkin__form-scroll {

@@ -10,7 +10,7 @@ import type {PageId, EditorRootContext, InsightsRootContext, SettingsRootContext
 export type {EditorRootContext, InsightsRootContext, SettingsRootContext, TodayRootContext} from "../types";
 import type {OccasionsRootContext} from "./occasion-session";
 
-/** 七页联合（同 navigation.ts 的 currentPage；契约 1 PageId）。 */
+/** 页面联合（同 navigation.ts 的 currentPage；契约 1 PageId）。 */
 export type {PageId} from "../types";
 
 export interface ReviewSummarySession {
@@ -55,6 +55,8 @@ export interface ReviewRootContext {
 export interface RootContext {
     page: PageId;
     returnTo?: PageId;
+    /** 详情页从 More 进入时保留其导航选中态，直到用户切回主入口。 */
+    moreActive?: boolean;
     /** Root-local view restoration state; it is released with the surface. */
     renderedPage?: PageId;
     scrollTops: Partial<Record<PageId, number>>;
@@ -131,7 +133,7 @@ export interface SurfaceContext {
 
 export function readSurfaceContext(snapshot: {
     currentPage: PageId;
-    editorReturnPage?: "today" | "review" | "insights";
+    editorReturnPage?: "today" | "review" | "insights" | "more";
     insightsReturnPage: "today" | "review";
     editingId?: string;
     insightsItemId?: string;

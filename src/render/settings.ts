@@ -319,7 +319,7 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
     const targetSummaryRow = (point: "diary" | "summary" | "health", docId: string): string => {
         const label = docId ? bindingTargetLabel(docId, ctx.targetSummaries?.get(docId) ?? undefined) : t("set.targetNone");
         /* T-1615：摘要小字附 title 全值——长名称/路径/ID 悬停可读完整目标，不截断信息。 */
-        return `<div class="lc-checkin__settings-row" data-target-summary="${point}"><span class="lc-checkin__settings-label"><span>${t("set.targetSummaryTitle")}</span><small data-target-summary-label="${escapeHtml(docId)}" title="${escapeHtml(label)}">${escapeHtml(label)}</small></span><span class="lc-checkin__settings-inline"><button class="lc-checkin__text-button" type="button" data-open-binding="${escapeHtml(docId)}" ${docId ? "" : "disabled"}>${t("set.targetOpen")}</button><button class="lc-checkin__text-button" type="button" data-target-recheck="${point}" ${docId ? "" : "disabled"}>${t("set.targetRecheck")}</button><button class="lc-checkin__text-button" type="button" data-target-edit="${point}">${t("set.targetEdit")}</button><button class="lc-checkin__text-button" type="button" data-target-clear="${point}" ${docId ? "" : "disabled"}>${t("set.targetClear")}</button></span></div>`;
+        return `<div class="lc-checkin__settings-row" data-target-summary="${point}"><span class="lc-checkin__settings-label"><span>${t("set.targetSummaryTitle")}</span><small data-target-summary-label="${escapeHtml(docId)}" title="${escapeHtml(label)}">${escapeHtml(label)}</small>${docId ? "" : `<small>${t("set.targetRequiredHint")}</small>`}</span><span class="lc-checkin__settings-inline"><button class="lc-checkin__text-button" type="button" data-open-binding="${escapeHtml(docId)}" ${docId ? "" : "disabled"}>${t("set.targetOpen")}</button><button class="lc-checkin__text-button" type="button" data-target-recheck="${point}" ${docId ? "" : "disabled"}>${t("set.targetRecheck")}</button><button class="lc-checkin__text-button" type="button" data-target-edit="${point}">${t("set.targetEdit")}</button><button class="lc-checkin__text-button" type="button" data-target-clear="${point}" ${docId ? "" : "disabled"}>${t("set.targetClear")}</button></span></div>`;
     };
     /* T-1552 五段式之「触发方式 / 最近结果」——触发口径逐卡显式；最近结果读审计
        单一事实（appendStoreAudit type:"anchor" 的 channel 记录），失败注明事实不受影响。 */
@@ -765,6 +765,108 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
             ${(() => {
                 const overview = ctx.settingsOverview;
                 if (!overview) return "";
+                const healthCard = (key: string, titleKey: string, state: string, status: string, recent: string, missing: string, target: "appearance" | "data" | "external"): string => {
+                    const statusClass = state === "error" ? "is-error" : state === "ready" ? "is-success" : state === "enabled-local" ? "is-muted" : state === "warning" ? "is-warning" : "is-muted";
+                    return `<section class="lc-checkin__settings-card" data-settings-health-card="${key}" data-health-state="${state}"><h2>${t(titleKey)}</h2><div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.healthStatusLabel")}</span></span><span class="lc-checkin__settings-value ${statusClass}" role="status" data-health-status>${escapeHtml(status)}</span></div><div class="lc-checkin__settings-row" data-health-recent><span class="lc-checkin__settings-label"><span>${t("set.healthRecentLabel")}</span><small>${escapeHtml(recent)}</small></span></div><div class="lc-checkin__settings-row" data-health-missing><span class="lc-checkin__settings-label"><span>${t("set.healthMissingLabel")}</span><small>${escapeHtml(missing)}</small></span></div><div class="lc-checkin__settings-row"><span></span><button class="lc-checkin__text-button" type="button" data-overview-jump="${target}">${t("set.healthConfigure")}</button></div></section>`;
+                };
+
+                const localEmpty = ctx.store.items.length === 0 && ctx.store.events.length === 0;
+                const localStatus = t(localEmpty ? "set.healthLocalEmpty" : "set.healthLocalReady");
+                const localMetrics = t("set.healthLocalMetrics", {items: ctx.store.items.length, events: ctx.store.events.length});
+                const localMissing = [
+                    ctx.store.items.length === 0 ? t("set.healthLocalNoItems") : "",
+                    ctx.store.events.length === 0 ? t("set.healthLocalNoEvents") : "",
+                    snapshots.length === 0 ? t("set.healthLocalNoSnapshot") : "",
+                ].filter(Boolean).join(" · ") || t("set.healthNoMissing");
+                const localRecent = snapshots[0]?.capturedAt
+                    ? t("set.healthLocalSnapshot", {time: formatHistoryDate(snapshots[0].capturedAt)})
+                    : t("set.healthLocalNoRecentSnapshot");
+
+                /* Duplicate/user-removed completion notices are audit context,
+                   not unresolved work. Only inbox rows and actionable issue
+                   reasons should drive the health card into an error state. */
+                const unresolvedCompletionIssueCount = (ctx.dockTomatoCompletionIssues || [])
+                    .filter((issue) => issue.reason !== "duplicate" && issue.reason !== "user-removed")
+                    .reduce((sum, issue) => sum + (issue.count || 1), 0);
+                const focusIssueCount = unresolvedCompletionIssueCount + (inboxState?.entries.length || 0);
+                const focusProviderUnavailable = ctx.focusTimerProvider === "docktomato" && !tomatoHealthy;
+                const focusError = focusIssueCount > 0 || (ctx.focusTimerProvider === "docktomato" && tomatoDependencyState === "error");
+                const focusWarning = !focusError && focusProviderUnavailable;
+                const reminderState = focusError ? "error" : focusWarning ? "warning" : ctx.dailyReminder ? (ctx.dailyReminder.enabled ? "ready" : "disabled") : "unknown";
+                const reminderStatus = t(focusError ? "set.healthReminderFocusError" : focusWarning ? "set.healthReminderFocusWarning" : !ctx.dailyReminder ? "set.healthReminderUnknown" : ctx.dailyReminder.enabled ? "set.healthReminderEnabled" : "set.healthReminderDisabled");
+                const focusProviderText = ctx.focusTimerProvider === "builtin" ? t("set.tomatoBuiltin") : tomatoStatus;
+                const focusResult = focusIssueCount
+                    ? t("set.healthFocusIssues", {n: focusIssueCount})
+                    : t("set.healthFocusProvider", {provider: focusProviderText});
+                const reminderRecent = focusResult;
+                const reminderMissing = ctx.dailyReminder?.enabled === false
+                    ? t("set.healthReminderOffHint")
+                    : focusWarning ? t("set.healthFocusFallbackHint")
+                        : focusError ? t("set.healthFocusResolveHint") : t("set.healthNoMissing");
+
+                const outputBindings = noteBindings.filter((row) => ["diary-report", "summary-resident", "journal-target"].includes(row.key));
+                const missingOutputCount = outputBindings.filter((row) => row.enabled && row.required && !row.targetId).length;
+                const outputHasTarget = outputBindings.some((row) => Boolean(row.targetId)) || Boolean(diary.docId || summaryResident.docId || journalTarget.notebookId || journalTarget.docId);
+                const outputEnabled = outputBindings.some((row) => row.enabled) || diary.enabled || summaryResident.enabled;
+                const outputResults = ["diary-report", "summary-resident", "journal"]
+                    .map((channel) => latestWriteResult(channel))
+                    .filter((result): result is {ok?: boolean; reason?: string; at: string} => Boolean(result))
+                    .sort((left, right) => Date.parse(right.at) - Date.parse(left.at));
+                const latestOutput = outputResults[0];
+                const failedOutputs = outputResults.filter((result) => result.ok === false);
+                const outputFailed = failedOutputs.length > 0;
+                const outputState = outputFailed ? "error" : missingOutputCount > 0 ? "warning" : outputHasTarget || outputEnabled ? "ready" : "empty";
+                const outputStatus = t(outputFailed ? "set.healthNoteWriteFailed" : missingOutputCount ? "set.healthNoteNeedsTarget" : outputHasTarget || outputEnabled ? "set.healthNoteConfigured" : "set.healthNoteNotConfigured");
+                const outputRecent = !latestOutput ? t("set.writeResultNone") : failedOutputs.length
+                    ? failedOutputs.slice(0, 3).map((result) => t("set.writeResultFail", {reason: result.reason || "-"})).join(" · ")
+                    : t("set.writeResultOk", {time: formatHistoryDate(latestOutput.at)});
+                const outputMissing = missingOutputCount > 0
+                    ? t("set.healthNoteMissingTargets", {n: missingOutputCount})
+                    : !outputHasTarget && !outputEnabled ? t("set.healthNoteNoTargets") : t("set.healthNoMissing");
+
+                const externalSources: Array<{enabled: boolean; state: SourceState}> = [
+                    {enabled: sireader.enabled, state: sireaderState},
+                    {enabled: siplayer.enabled, state: siplayerState},
+                    {enabled: weread.enabled, state: wereadState},
+                    {enabled: healthInbox.enabled, state: healthState},
+                    {enabled: noteQuery.enabled, state: noteQueryState},
+                    {enabled: yeguif.enabled, state: yeguifState},
+                ];
+                const locallyEnabledSources = externalSources.filter((source) => source.enabled).length;
+                const enabledSourceNeedsSetup = externalSources.filter((source) => source.enabled && (source.state === "setup" || source.state === "rebind")).length;
+                const sourceReportNameKeys: Record<string, string> = {
+                    health: "set.healthIntegration",
+                    notequery: "set.noteQueryIntegration",
+                    yeguif: "set.yeguifIntegration",
+                };
+                const sourceReportEntries = Object.entries(ctx.sourceIngestReports || {}) as Array<[DocumentSourceKey, SourceIngestReport | undefined]>;
+                const availableSourceReports = sourceReportEntries.filter((entry): entry is [DocumentSourceKey, SourceIngestReport] => Boolean(entry[1]));
+                const sourceRecentResults = availableSourceReports
+                    .map(([source, report]) => t("set.healthExternalSourceResult", {source: t(sourceReportNameKeys[source] || "set.thirdPartySourcesTitle"), result: t(`set.sourceReportOutcome.${report.outcome}`)}));
+                if (ctx.wereadLastPull) sourceRecentResults.push(ctx.wereadLastPull.ok
+                    ? t("set.healthExternalWereadOk", {days: ctx.wereadLastPull.days, written: ctx.wereadLastPull.written})
+                    : t("set.healthExternalWereadFailed"));
+                const todaySourceCount = Object.values(ctx.sourceTodayCounts || {}).reduce((sum, count) => sum + (Number.isSafeInteger(count) && count > 0 ? count : 0), 0);
+                const externalFailure = availableSourceReports.some(([, report]) => report.outcome === "read-failed" || report.outcome === "write-failed")
+                    || ctx.wereadLastPull?.ok === false
+                    || (siplayer.enabled && ctx.siplayerControllerAvailable === false);
+                const externalState = externalFailure ? "error" : enabledSourceNeedsSetup > 0 ? "warning" : locallyEnabledSources > 0 ? "enabled-local" : "disabled";
+                const externalStatusKey = externalFailure ? "set.healthExternalError" : enabledSourceNeedsSetup > 0 ? "set.healthExternalNeedsSetup" : locallyEnabledSources > 0 ? "set.healthExternalLocallyEnabled" : "set.healthExternalDisabled";
+                const externalStatus = externalStatusKey === "set.healthExternalLocallyEnabled"
+                    ? t(externalStatusKey, {enabled: locallyEnabledSources})
+                    : t(externalStatusKey);
+                const externalRecent = sourceRecentResults.length
+                    ? sourceRecentResults.slice(0, 3).join(" · ")
+                    : todaySourceCount > 0 ? t("set.healthExternalToday", {n: todaySourceCount}) : t("set.healthExternalNoResult");
+                const externalMissing = enabledSourceNeedsSetup > 0
+                    ? t("set.healthExternalMissing", {n: enabledSourceNeedsSetup}) : t("set.healthNoMissing");
+
+                const cards = [
+                    healthCard("local-data", "set.healthLocalTitle", localEmpty ? "empty" : "ready", localStatus, `${localMetrics} · ${localRecent}`, localMissing, "data"),
+                    healthCard("reminders-focus", "set.healthReminderFocusTitle", reminderState, reminderStatus, reminderRecent, reminderMissing, "appearance"),
+                    healthCard("note-output", "set.healthNoteTitle", outputState, outputStatus, outputRecent, outputMissing, "external"),
+                    healthCard("external-sources", "set.healthExternalTitle", externalState, externalStatus, externalRecent, externalMissing, "external"),
+                ].join("");
                 /* T-1562 总览：只读聚合（待处理直达控件 / 最近活动 / 配置入口）；
                    文本插值嵌套 i18n（feature/source 名走各自键）。 */
                 const problemText = (problem: NonNullable<SettingsViewContext["settingsOverview"]>["problems"][number]): string => {
@@ -775,7 +877,7 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                 };
                 const activityText = (activity: NonNullable<SettingsViewContext["settingsOverview"]>["activities"][number]): string => t(activity.labelKey, {feature: t(activity.featureKey)});
                 const entries = [["set.overviewEntryNew", "new"], ["set.overviewEntrySources", "external"], ["set.overviewEntryDocs", "external"], ["set.overviewEntryData", "data"]] as const;
-                return `<div class="lc-checkin__external-overview" data-settings-overview><strong>${t("set.overviewTitle")}</strong>${overview.problems.length ? overview.problems.map((problem) => `<div class="lc-checkin__settings-row" data-overview-problem="${escapeHtml(problem.key)}"><span class="lc-checkin__settings-label"><span>${escapeHtml(problemText(problem))}</span></span>${problem.selector ? `<button class="lc-checkin__text-button" type="button" data-goto-binding="${escapeHtml(problem.selector)}">${t("bind.locate")}</button>` : ""}</div>`).join("") : `<small data-overview-clear>${t("set.overviewAllClear")}</small>`}<strong>${t("set.overviewRecentTitle")}</strong>${overview.activities.length ? overview.activities.map((activity) => `<small data-overview-activity="${escapeHtml(activity.key)}">${escapeHtml(activityText(activity))}</small>`).join("") : `<small data-overview-activity-empty>${t("set.writeResultNone")}</small>`}<strong>${t("set.overviewEntriesTitle")}</strong><span class="lc-checkin__settings-inline">${entries.map(([labelKey, target]) => target === "new" ? `<button class="lc-checkin__text-button" type="button" data-overview-new-item>${t(labelKey)}</button>` : `<button class="lc-checkin__text-button" type="button" data-overview-jump="${target}">${t(labelKey)}</button>`).join("")}</span></div>`;
+                return `<div class="lc-checkin__settings-groups" data-settings-health-overview>${cards}</div><div class="lc-checkin__external-overview" data-settings-overview><strong>${t("set.overviewTitle")}</strong>${overview.problems.length ? overview.problems.map((problem) => `<div class="lc-checkin__settings-row" data-overview-problem="${escapeHtml(problem.key)}"><span class="lc-checkin__settings-label"><span>${escapeHtml(problemText(problem))}</span></span>${problem.selector ? `<button class="lc-checkin__text-button" type="button" data-goto-binding="${escapeHtml(problem.selector)}">${t("bind.locate")}</button>` : ""}</div>`).join("") : `<small data-overview-clear>${t("set.overviewAllClear")}</small>`}<strong>${t("set.overviewRecentTitle")}</strong>${overview.activities.length ? overview.activities.map((activity) => `<small data-overview-activity="${escapeHtml(activity.key)}">${escapeHtml(activityText(activity))}</small>`).join("") : `<small data-overview-activity-empty>${t("set.writeResultNone")}</small>`}<strong>${t("set.overviewEntriesTitle")}</strong><span class="lc-checkin__settings-inline">${entries.map(([labelKey, target]) => target === "new" ? `<button class="lc-checkin__text-button" type="button" data-overview-new-item>${t(labelKey)}</button>` : `<button class="lc-checkin__text-button" type="button" data-overview-jump="${target}">${t(labelKey)}</button>`).join("")}</span></div>`;
             })()}
             ${(() => {
                 /* T-1521 保存前变更清单：草稿≠已保存才显示；敏感值遮罩；撤回/分节恢复走草稿通道。 */

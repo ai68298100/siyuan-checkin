@@ -2,7 +2,7 @@
    纯模块零宿主依赖——dock/页签/快速弹窗各自持有独立 RootContext，互不覆盖；
    宿主 currentPage 以「最后活跃 root」为读写代理（读=最后活跃页，写=全局同步
    全部 root，与既有单字段行为兼容）。 */
-export type CheckinPageId = "today" | "editor" | "review" | "archived" | "insights" | "occasions" | "settings";
+export type CheckinPageId = "today" | "editor" | "review" | "archived" | "insights" | "occasions" | "settings" | "more";
 
 export interface RootPageContext {
     page: CheckinPageId;

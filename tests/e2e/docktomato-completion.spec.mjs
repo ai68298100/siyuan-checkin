@@ -162,7 +162,8 @@ test('跳过日解析旅程:设置页撤销跳过并计入,同单元落库', asy
     }, {timeout: 20000}).toBe('blocked:skipped-day');
 
     await page.click('#lcCheckinMobileTopBarButton');
-    await page.click("[data-mobile-nav='settings']");
+    await page.click("[data-mobile-nav='more']");
+    await page.click("[data-more-action='external']");
     const undo = page.locator(`[data-inbox-undo-skip='${sessionId}']`)
     await expect(undo).toBeVisible();
     page.once("dialog", (dialog) => dialog.accept());

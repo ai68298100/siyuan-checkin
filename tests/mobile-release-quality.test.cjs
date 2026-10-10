@@ -7,6 +7,7 @@ const manifest = JSON.parse(fs.readFileSync(path.join(root, "plugin.json"), "utf
 const packageJson = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
 const styles = fs.readFileSync(path.join(root, "src", "index.scss"), "utf8");
 const components = fs.readFileSync(path.join(root, "src", "ui", "components.scss"), "utf8");
+const polish = fs.readFileSync(path.join(root, "src", "ui", "polish.scss"), "utf8");
 const plugin = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
 const browserEntry = fs.readFileSync(path.join(root, "tests", "mobile-visual-browser.cjs"), "utf8");
 
@@ -102,6 +103,16 @@ assert.match(components, /\.lc-checkin__item-topline \.lc-checkin__streak-badge 
 /* 移动端页内标题与顶栏重复:窄档隐藏文字保留按钮 */
 assert.match(components, /:is\(\.lc-checkin-host--mobile, \.lc-checkin-dialog-host--mobile, \.lc-checkin-tab-host:has\(\.lc-checkin__mobile-topbar\)\)[\s\S]*?\.lc-checkin__editor-header \.lc-checkin__title,[\s\S]*?\.lc-checkin__editor-header \.lc-checkin__eyebrow \{ display: none; \}/,
     "duplicate in-page titles must hide only on hosts that provide a mobile topbar");
+assert.match(components, /:is\(\.lc-checkin--review, \.lc-checkin--editor, \.lc-checkin--occasions, \.lc-checkin--archived, \.lc-checkin--more\)/,
+    "More must follow the same mobile topbar title de-duplication rule");
+assert.match(components, /:is\(\.lc-checkin-host--mobile, \.lc-checkin-dialog-host--mobile, \.lc-checkin-tab-host:has\(\.lc-checkin__mobile-topbar\)\)\s+\.lc-checkin--more \.lc-checkin__editor-header \{ display: none; \}/,
+    "More must hide its duplicate page header at every width when a mobile topbar is present");
+const narrowInlineReminderRule = polish.indexOf("max-height: 112px;");
+const shortViewportReminderRule = polish.indexOf("@media (max-height: 420px)");
+assert.match(polish, /@media \(max-height: 420px\) \{[\s\S]*?\.lc-checkin__daily-reminder-notice--inline \{\s*max-height: 64px;/,
+    "short mobile surfaces must leave room for fixed editor actions below the inline reminder");
+assert.ok(shortViewportReminderRule > narrowInlineReminderRule,
+    "short-height reminder limit must override the narrow-width limit when both apply");
 /* 无记录的正向目标不生成最佳/优先建议；戒除目标无记录仍可能真实达成。
    语义由实际 renderer fixtures 验证，不绑定已退役的 hero 局部变量名。 */
 assert.match(packageJson.scripts["test:ui"], /review-workspace\.test\.cjs/,

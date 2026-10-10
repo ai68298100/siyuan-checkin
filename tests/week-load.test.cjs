@@ -80,6 +80,9 @@ assert.match(fragmentsSource, /data-week-load-edit=/, "item names jump back to t
 assert.match(fragmentsSource, /buildWeekLoadPreview\(store\.items/, "preview consumes the store projection");
 const bindSource = fs.readFileSync(path.join(root, "src", "render", "bind-today.ts"), "utf8");
 assert.match(bindSource, /"\[data-week-load-edit\]"/, "editor jump is bound on the today page");
+const polishSource = fs.readFileSync(path.join(root, "src", "ui", "polish.scss"), "utf8");
+assert.match(polishSource, /\.lc-checkin__list > \.lc-checkin__week-load\s*\{[\s\S]*?grid-column:\s*1\s*\/\s*-1;/, "wide Today keeps the week-load card below the full queue");
+assert.doesNotMatch(polishSource, /\.lc-checkin__list:has\(>\.lc-checkin__this-day\)>\.lc-checkin__week-load\s*\{\s*grid-row:\s*2;/, "week-load must not be pinned into the evidence rail's second row");
 const i18nSource = fs.readFileSync(path.join(root, "src", "i18n.ts"), "utf8");
 for (const key of ["today.weekLoadTitle", "today.weekLoadHint", "today.weekLoadQuotaTitle", "today.weekLoadQuota", "today.weekLoadWeek", "today.weekLoadMonth"]) {
     const count = i18nSource.split(`"${key}"`).length - 1;

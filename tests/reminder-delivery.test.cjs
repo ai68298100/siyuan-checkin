@@ -160,6 +160,33 @@ async function check(name, run) {
         assert.equal(first.notices().length + second.notices().length, 1);
         assert.equal(first.shared.writes.length, 1);
     });
+    await check("wide desktop surfaces mount notices in flow instead of covering page content", async () => {
+        const fixture = harness();
+        const host = fixture.makeHost();
+        const surface = new fixture.Element("div");
+        surface.classList = {contains: (name) => name === "lc-checkin-tab-host"};
+        surface.insertBefore = (child, before) => {
+            const index = surface.children.indexOf(before);
+            if (child.parent) child.remove();
+            surface.children.splice(index < 0 ? surface.children.length : index, 0, child);
+            child.parent = surface;
+            return child;
+        };
+        const page = new fixture.Element("main");
+        page.classList = {contains: () => false};
+        page.querySelector = () => null;
+        surface.querySelector = (selector) => selector === ".lc-checkin" ? page : null;
+        surface.getBoundingClientRect = () => ({width: 1180, height: 760});
+        surface.getClientRects = () => [{}];
+        surface.appendChild(page);
+        fixture.document.body.appendChild(surface);
+        host.tabElement = surface;
+        await fixture.delivery.maybeSendDailyReminderFor(host, "launch", fixture.now());
+        const notice = surface.children.find((child) => child.dataset.dailyReminderNotice);
+        assert.ok(notice);
+        assert.equal(notice.parent, surface);
+        assert.equal(surface.children.indexOf(notice) < surface.children.indexOf(page), true);
+    });
     await check("overdue slots coalesce on launch and each later slot delivers only once", async () => {
         const fixture = harness();
         const host = fixture.makeHost();

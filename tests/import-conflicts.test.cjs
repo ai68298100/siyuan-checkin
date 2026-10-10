@@ -119,7 +119,7 @@ assert.match(indexSource, /private importConflictSession/, "host holds the confl
 assert.match(indexSource, /settings\.importConflictSession = \{format: "loop-csv"/, "loop conflict plans are held by the owning settings root");
 assert.match(indexSource, /settings\.importConflictSession = \{format: "obsidian-habits"/, "Obsidian conflict plans are held by the owning settings root");
 assert.match(indexSource, /"\[data-import-conflict-confirm\]"\)\?\.addEventListener\("click", \(event\) => \{/, "confirm is bound through a stable click handler");
-assert.match(indexSource, /runSettingsAction\(control, async \(\) => \{[\s\S]*this\.persist\(\)[\s\S]*\}, "\[data-mobile-nav='settings'\]"\)/, "conflict confirmation uses the settings busy lifecycle and focuses the live settings navigation after success");
+assert.match(indexSource, /runSettingsAction\(control, async \(\) => \{[\s\S]*this\.persist\(\)[\s\S]*\}, "\[data-mobile-nav='more'\]"\)/, "conflict confirmation uses the settings busy lifecycle and focuses the live More navigation after success");
 assert.doesNotMatch(indexSource, /"\[data-import-conflict-confirm\]"\)\?\.addEventListener\("click", async \(\)/, "conflict confirmation must not bypass the busy lifecycle");
 assert.match(indexSource, /"\[data-import-conflict-cancel\]"/, "cancel is bound");
 assert.match(indexSource, /this\.store = previousStore/, "save failure rolls the store back");

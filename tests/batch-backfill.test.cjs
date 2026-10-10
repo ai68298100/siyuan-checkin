@@ -91,6 +91,8 @@ assert.match(bindingsSource, /"\[data-batch-submit\]"/, "submit is bound");
 assert.match(bindingsSource, /"\[data-batch-cancel\]"/, "cancel is bound");
 assert.match(bindingsSource, /review\.batchSubmitConfirm/, "submit asks for confirmation with the count");
 assert.match(bindingsSource, /input\.addEventListener\("input", /, "value draft updates without re-render (IME safe)");
+assert.match(bindingsSource, /try \{[\s\S]*host\.recordHistoryBatch\([\s\S]*catch \{[\s\S]*msg\.saveFail/, "skip batch rejects surface a recoverable save failure");
+assert.match(bindingsSource, /data-batch-cancel[\s\S]*\.disabled = true/, "submit disables cancel while the batch is pending");
 
 /* —— 5. 双语。 —— */
 const i18nSource = fs.readFileSync(path.join(root, "src", "i18n.ts"), "utf8");

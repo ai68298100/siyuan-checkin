@@ -152,6 +152,14 @@ const qaFrontend = process.env.CHECKIN_QA_FRONTEND || "desktop";
         }));
     };
     const openSurface = async (surface, desktopSelector) => {
+        /* Settings and its secondary pages are intentionally reached through
+           More. Keep the visual harness on the same user path as production;
+           the old standalone settings action was removed in the v3 nav. */
+        if (surface === "settings") {
+            await openSurface("more", ".lc-checkin__topnav [data-mobile-nav='more']");
+            await page.locator('[data-more-action="appearance"]').click();
+            return;
+        }
         const railButton = page.locator(`.lc-checkin__topnav [data-mobile-nav="${surface}"]`);
         const mobileButton = page.locator(`.lc-checkin__mobile-nav [data-mobile-nav="${surface}"]`);
         if (await mobileButton.count() && await mobileButton.isVisible().catch(() => false)) {
@@ -237,6 +245,7 @@ const qaFrontend = process.env.CHECKIN_QA_FRONTEND || "desktop";
     const priorityGroupCount = await page.locator("[data-group-toggle]").count();
     await page.evaluate(() => { const el = document.querySelector("[data-group-mode]"); el.value = "group"; el.dispatchEvent(new Event("change", {bubbles: true})); });
     const customGroupCount = await page.locator("[data-group-toggle]").count();
+    await page.waitForFunction(() => [...document.querySelectorAll("[data-action='toggle-completed']")].some((button) => button.checkVisibility?.() ?? Boolean(button.getClientRects().length)), undefined, {timeout: 30000});
     await page.click("[data-action='toggle-completed']");
     const completedExpanded = await page.locator(".lc-checkin__completed-section [data-item-id]").count();
     const completedExpandedState = await page.locator("[data-action='toggle-completed']").getAttribute("aria-expanded");
@@ -273,6 +282,15 @@ const qaFrontend = process.env.CHECKIN_QA_FRONTEND || "desktop";
     await page.locator("[data-action='archived']").click();
     await page.waitForTimeout(60);
     results.archived = await inspect("archived");
+    await goToday();
+    await openSurface("more", ".lc-checkin__topnav [data-mobile-nav='more']");
+    results.more = await inspect("more");
+    results.moreChrome = await page.locator(".lc-checkin--more").evaluate((surface) => {
+        const title = surface.querySelector(".lc-checkin__editor-header .lc-checkin__title");
+        const topbar = document.querySelector(".lc-checkin__mobile-topbar");
+        const visible = (element) => Boolean(element?.checkVisibility?.() ?? element?.getClientRects().length);
+        return {inPageTitleVisible: visible(title), mobileTopbarVisible: visible(topbar), destinationCount: surface.querySelectorAll("[data-more-action]").length};
+    });
     await goToday();
     await openSurface("settings", "[data-action='settings']");
     results.settings = await inspect("settings");
@@ -557,7 +575,7 @@ const qaFrontend = process.env.CHECKIN_QA_FRONTEND || "desktop";
         form.dispatchEvent(new Event("submit", {bubbles: true, cancelable: true}));
         form.dispatchEvent(new Event("submit", {bubbles: true, cancelable: true}));
     });
-    await page.waitForSelector("[data-mobile-nav='add']");
+    await page.waitForFunction(() => [...document.querySelectorAll("[data-mobile-nav='record']")].some((button) => button.checkVisibility?.() ?? Boolean(button.getClientRects().length)), undefined, {timeout: 30000});
     /* 保存走变更队列（异步）：必须轮询等待条目落地，不能用即时快照（历史竞态曾让走查误报崩溃）。 */
     results.savedFields = await page.evaluate(async () => {
         const find = () => window.siyuanCheckin.getItems().find((candidate) => candidate.name === "双击提交验证");
@@ -652,6 +670,13 @@ const qaFrontend = process.env.CHECKIN_QA_FRONTEND || "desktop";
         const item = document.querySelector("[data-item-id='stretch']");
         return item && !item.classList.contains("is-complete");
     }, {timeout: 8000}).catch(() => {});
+    /* The optimistic store changes before persist and the cross-render action
+       lock settles. Wait for the queue plus its busy-state cleanup before
+       starting the next intentional record gesture. */
+    await page.evaluate(async () => {
+        await window.__plugin.mutationQueue.catch(() => {});
+        await new Promise((resolve) => setTimeout(resolve, 0));
+    });
     await page.evaluate(() => {
         const button = document.querySelector("[data-item-id='stretch'] [data-action='record']");
         button.click();
@@ -659,6 +684,7 @@ const qaFrontend = process.env.CHECKIN_QA_FRONTEND || "desktop";
     });
     await page.waitForTimeout(500);
     results.binaryDoubleToggleCount = await page.evaluate(() => window.siyuanCheckin.getEvents().filter((event) => event.itemId === "stretch").length);
+    const binaryDoubleToggleDebug = await page.evaluate(() => ({events: window.siyuanCheckin.getEvents().filter((event) => event.itemId === "stretch"), messages: window.__messages || [], queue: (window.__queueLog || []).slice(-12)}));
     results.api = await page.evaluate(async () => {
         const api = window.siyuanCheckin;
         const readyBefore = window.__readyBefore;
@@ -885,7 +911,7 @@ const qaFrontend = process.env.CHECKIN_QA_FRONTEND || "desktop";
     });
     results.pageErrors = pageErrors;
 
-    for (const layout of [results.today, results.history, results.summary, results.occasions, results.insights, results.archived, results.settings, results.editor, results.narrow, results.narrowHistory, results.narrowSummary, results.narrowEditor]) {
+    for (const layout of [results.today, results.history, results.summary, results.occasions, results.insights, results.archived, results.more, results.settings, results.editor, results.narrow, results.narrowHistory, results.narrowSummary, results.narrowEditor]) {
         assert.equal(layout.scrollWidth, layout.clientWidth);
     }
     for (const width of [320, 360, 390, 430]) {
@@ -948,7 +974,7 @@ const qaFrontend = process.env.CHECKIN_QA_FRONTEND || "desktop";
         );
         assert.equal(results.wideDock.scrollWidth, results.wideDock.clientWidth);
         assert.equal(results.wideDock.railDisplay, "flex");
-        assert.equal(results.wideDock.visibleRailButtons, 4);
+        assert.equal(results.wideDock.visibleRailButtons, 5);
         assert.equal(results.wideDock.mobileNavDisplay, "none");
         assert.ok(results.wideDock.railWidth > 0);
     }
@@ -959,11 +985,16 @@ const qaFrontend = process.env.CHECKIN_QA_FRONTEND || "desktop";
         assert.equal(results.narrowEditorChrome.titleVisible, false);
         assert.equal(results.narrowEditorChrome.mobileTopbarVisible, true);
         assert.equal(results.narrowEditorChrome.mobileTopbarTitle, "新建打卡项");
+        assert.equal(results.moreChrome.inPageTitleVisible, false);
+        assert.equal(results.moreChrome.mobileTopbarVisible, true);
     } else {
         assert.equal(results.narrowEditorChrome.headerVisible, true);
         assert.equal(results.narrowEditorChrome.titleVisible, true);
         assert.equal(results.narrowEditorChrome.title, "新建打卡项");
+        assert.equal(results.moreChrome.inPageTitleVisible, true);
+        assert.equal(results.moreChrome.mobileTopbarVisible, false);
     }
+    assert.equal(results.moreChrome.destinationCount, 7);
     assert.equal(results.narrowEditorChrome.templateSummaryVisible, true);
     assert.match(
         results.narrowEditorChrome.templateSummary,
@@ -1007,7 +1038,7 @@ const qaFrontend = process.env.CHECKIN_QA_FRONTEND || "desktop";
         conflictReported: true,
     });
     assert.deepEqual(results.savedFields, {group: "测试", priority: "high", timeSlot: "evening", sortOrder: 1});
-    assert.equal(results.binaryDoubleToggleCount, 1);
+    assert.equal(results.binaryDoubleToggleCount, 1, JSON.stringify(binaryDoubleToggleDebug));
     assert.equal(results.api.firstId, results.api.duplicateId);
     assert.equal(results.api.returnedEventIsolated, true);
     assert.equal(results.api.invalidRejected, true);

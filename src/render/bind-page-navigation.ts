@@ -21,7 +21,7 @@ import type {SaveOutcome} from "../download";
 export interface BindPageNavigationHost {
     openReviewAgent(): boolean;
     store: import("../types").CheckinStore;
-    currentPage: "today" | "editor" | "review" | "archived" | "insights" | "occasions" | "settings";
+    currentPage: "today" | "editor" | "review" | "archived" | "insights" | "occasions" | "settings" | "more";
     insightsItemId?: string;
     insightsReturnPage: "today" | "review";
     /** T-1590 洞察范围会话态与项目搜索词（可选：旧桩按默认 84/空处理）。 */
@@ -88,10 +88,11 @@ export interface BindPageNavigationHost {
     bindMobileNav(root: HTMLElement): void;
     showReview(root?: HTMLElement): void;
     /** T-1579：洞察行动入口——编辑规则（保留项目身份与返回页会话态）。 */
-    showEditor(item?: import("../types").CheckinItem, returnTo?: "today" | "review" | "insights", root?: HTMLElement): void;
+    showEditor(item?: import("../types").CheckinItem, returnTo?: "today" | "review" | "insights" | "more", root?: HTMLElement): void;
     jumpToHistoryDate(date: string, root?: HTMLElement): void;
     showToday(root?: HTMLElement): void;
     showArchived(root?: HTMLElement): void;
+    showMore?(root?: HTMLElement): void;
     showOccasions(root?: HTMLElement): void;
     showInsights(item?: import("../types").CheckinItem, root?: HTMLElement): void;
     render(root?: HTMLElement): void;
@@ -511,6 +512,7 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
     }));
     root.querySelector<HTMLElement>("[data-action='back']")?.addEventListener("click", () => {
         /* T-1576：返回路径统一走 SurfaceContext 读侧——insights 会话返回栈优先，其余按默认返回表回落 today。 */
+        if (root.dataset.moreActive === "true") { host.showMore?.(root); return; }
         const context = readSurfaceContext({...host, ...insightsState, currentPage: pageForRoot() as BindPageNavigationHost["currentPage"]});
         if (context.page === "insights" && context.returnTo === "review") host.showReview(root);
         else host.showToday(root);
@@ -653,8 +655,11 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         if (weeklyActionBusy) return;
         weeklyActionBusy = true;
         const controls = [...root.querySelectorAll<HTMLButtonElement>("[data-weekly-save], [data-weekly-export], [data-weekly-ai-copy], [data-weekly-clear]")];
+        const fields = [...root.querySelectorAll<HTMLTextAreaElement>("[data-weekly-friction], [data-weekly-adjustment]")];
         const disabledBefore = new Map(controls.map(control => [control, control.disabled]));
+        const fieldsDisabledBefore = new Map(fields.map(field => [field, field.disabled]));
         controls.forEach(control => { control.disabled = true; control.setAttribute("aria-busy", "true"); });
+        fields.forEach(field => { field.disabled = true; });
         Promise.resolve().then(operation).then((result) => {
             if (isCurrentSurface()) after?.(result);
         }).catch(() => { if (isCurrentSurface()) failed?.(); }).finally(() => {
@@ -664,6 +669,10 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
                 if (!control.isConnected) return;
                 control.removeAttribute("aria-busy");
                 control.disabled = disabledBefore.get(control) ?? false;
+            });
+            fields.forEach(field => {
+                if (!field.isConnected) return;
+                field.disabled = fieldsDisabledBefore.get(field) ?? false;
             });
         });
     };
@@ -942,10 +951,17 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         button.textContent = t("review.batchWorking");
         button.setAttribute("aria-busy", "true");
         root.querySelectorAll<HTMLButtonElement>("[data-history-batch-action]").forEach((control) => { control.disabled = true; });
-        const count = await host.recordHistoryBatch(reviewValue("selectedHistoryDate", host.selectedHistoryDate), ids, action, root);
-        if (!isCurrentSurface()) return;
-        showMessage(count ? t("review.batchDone", {n: count}) : t("review.batchNoop"));
-        renderReviewPage("[data-history-batch-item]");
+        root.querySelectorAll<HTMLInputElement>("[data-history-batch-item]").forEach((control) => { control.disabled = true; });
+        try {
+            const count = await host.recordHistoryBatch(reviewValue("selectedHistoryDate", host.selectedHistoryDate), ids, action, root);
+            if (!isCurrentSurface()) return;
+            showMessage(count ? t("review.batchDone", {n: count}) : t("review.batchNoop"));
+            renderReviewPage("[data-history-batch-item]");
+        } catch {
+            if (!isCurrentSurface()) return;
+            showMessage(t("msg.saveFail"));
+            renderReviewPreservingView("[data-history-batch-action='skip']");
+        }
     }));
     /* T-1511 预览面板：实际值输入（input 只更新草稿不重渲染防打断输入；
        change 时重渲染刷新可提交计数）、提交重校验、取消清草稿。 */
@@ -977,16 +993,35 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         const expected = Number(button.dataset.readyCount || entries.length);
         if (!expected || !entries.length) return;
         if (!window.confirm(t("review.batchSubmitConfirm", {n: expected}))) return;
+        const controls = [button, root.querySelector<HTMLButtonElement>("[data-batch-cancel]")]
+            .filter((control): control is HTMLButtonElement => Boolean(control));
+        const valueInputs = [...root.querySelectorAll<HTMLInputElement>("[data-batch-value]")];
+        const inputDisabledBefore = new Map(valueInputs.map((input) => [input, input.disabled]));
+        controls.forEach((control) => { control.disabled = true; control.setAttribute("aria-busy", "true"); });
+        valueInputs.forEach((input) => { input.disabled = true; });
         button.dataset.busy = "true";
-        button.setAttribute("aria-busy", "true");
-        const count = await host.recordHistoryBatchEntries?.(reviewValue("selectedHistoryDate", host.selectedHistoryDate), entries, root);
-        if (!isCurrentSurface()) return;
-        showMessage(count ? t("review.batchDone", {n: count}) : t("review.batchNoop"));
-        if (!count) {
-            button.dataset.busy = "false";
-            button.removeAttribute("aria-busy");
+        try {
+            const count = await host.recordHistoryBatchEntries?.(reviewValue("selectedHistoryDate", host.selectedHistoryDate), entries, root);
+            if (!isCurrentSurface()) return;
+            showMessage(count ? t("review.batchDone", {n: count}) : t("review.batchNoop"));
+            renderReviewPage("[data-history-batch-item]");
+        } catch {
+            if (!isCurrentSurface()) return;
+            showMessage(t("msg.saveFail"));
+            renderReviewPreservingView("[data-batch-submit]");
+        } finally {
+            if (!isCurrentSurface()) return;
+            controls.forEach((control) => {
+                if (!control.isConnected) return;
+                control.disabled = false;
+                control.removeAttribute("aria-busy");
+            });
+            valueInputs.forEach((input) => {
+                if (!input.isConnected) return;
+                input.disabled = inputDisabledBefore.get(input) ?? false;
+            });
+            delete button.dataset.busy;
         }
-        renderReviewPage("[data-history-batch-item]");
     });
     root.querySelector<HTMLButtonElement>("[data-batch-cancel]")?.addEventListener("click", () => {
         writeReviewValue("historyBatchPreviewOpen", false);
@@ -1519,7 +1554,10 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
     });
     /* T-1432 · R-A8：命名保存视图——应用/保存/删除。 */
     root.querySelector<HTMLSelectElement>("[data-saved-view]")?.addEventListener("change", (event) => {
-        host.applySavedView((event.currentTarget as HTMLSelectElement).value);
+        const select = event.currentTarget as HTMLSelectElement;
+        const deleteButton = root.querySelector<HTMLButtonElement>("[data-action='delete-saved-view']");
+        if (deleteButton) deleteButton.disabled = !select.value;
+        host.applySavedView(select.value);
     });
     root.querySelector<HTMLElement>("[data-action='save-saved-view']")?.addEventListener("click", () => {
         const name = window.prompt(t("review.savedViewSavePrompt"), "");

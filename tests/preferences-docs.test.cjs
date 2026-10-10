@@ -9,7 +9,7 @@ assert.match(readme, /跟随思源\/浅色\/深色/);
 assert.match(readme, /减少动效/);
 assert.match(readme, /显示偏好重置/);
 assert.match(settingsSource, /data-action=\"reset-all-preferences\"/);
-assert.match(source, /\[\"settings\", \"设置\",/);
+assert.match(source, /\[\"more\", t\(\"nav\.more\"\), \"more\"\]/);
 assert.match(settingsSource, /data-setting-appearance/);
 assert.match(settingsSource, /data-setting-motion/);
 const resetMarkupIndex = settingsSource.indexOf('data-action=\"reset-all-preferences\"');

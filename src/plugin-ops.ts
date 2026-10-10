@@ -20,7 +20,7 @@ import {serializeDockTomatoDiagnostics, type DockTomatoProviderDiagnostics} from
 
 export interface PluginOpsHost {
     store: CheckinStore;
-    currentPage: "today" | "editor" | "review" | "archived" | "insights" | "occasions" | "settings";
+    currentPage: "today" | "editor" | "review" | "archived" | "insights" | "occasions" | "settings" | "more";
     disposed: boolean;
     disposing: boolean;
     /** T-1445：今日页输入聚焦期间有被挂起的后台渲染，失焦后补渲染。 */
@@ -56,7 +56,9 @@ export interface PluginOpsHost {
     showArchived(root?: HTMLElement): void;
     showOccasions(root?: HTMLElement): void;
     showSettings(root?: HTMLElement): void;
-    showEditor(item?: CheckinItem, returnTo?: "insights", root?: HTMLElement): void;
+    showMore(root?: HTMLElement): void;
+    openQuickDialog(): void;
+    showEditor(item?: CheckinItem, returnTo?: "today" | "review" | "insights" | "more", root?: HTMLElement): void;
     persistViewPreferences(): Promise<void>;
     cloneStore(store?: CheckinStore): CheckinStore;
     itemFingerprint(item: CheckinItem): string;
@@ -138,7 +140,14 @@ export function bindMobileNavFor(host: PluginOpsHost, root: HTMLElement): void {
         else if (page === "archived") host.showArchived(root);
         else if (page === "occasions") host.showOccasions(root);
         else if (page === "settings") host.showSettings(root);
-        else if (page === "add") host.showEditor(undefined, undefined, root);
+        else if (page === "more") host.showMore(root);
+        else if (page === "record") {
+            /* The quick dialog already owns this root. Opening it again would
+               reset the dialog back to Today, so the record action must enter
+               the editor directly on the originating surface. */
+            if (host.quickDialogElement === root) host.showEditor(undefined, undefined, root);
+            else host.openQuickDialog();
+        }
     }));
 }
 

@@ -14,13 +14,13 @@ export interface NavigationHost {
     tabInstance?: {close: () => void};
     tabElement?: HTMLElement;
     app?: unknown;
-    currentPage: "today" | "editor" | "review" | "archived" | "insights" | "occasions" | "settings";
+    currentPage: "today" | "editor" | "review" | "archived" | "insights" | "occasions" | "settings" | "more";
     editingId?: string;
     editingFingerprint?: string;
     insightsItemId?: string;
     insightsReturnPage: "today" | "review";
     /** T-1599：编辑器单级返回栈——从洞察「编辑规则」等入口进入时记录来源页。 */
-    editorReturnPage?: "today" | "review" | "insights";
+    editorReturnPage?: "today" | "review" | "insights" | "more";
     summaryRequestId: number;
     summaryRefreshing?: boolean;
     cancelReviewSummary?(root?: HTMLElement): void;
@@ -30,7 +30,7 @@ export interface NavigationHost {
     openQuickDialog(): void;
     render(root?: HTMLElement): void;
     setPageForRoot?(page: PageId, root?: HTMLElement): void;
-    applyNavigation(root: HTMLElement | undefined, page: CheckinPageId): void;
+    applyNavigation(root: HTMLElement | undefined, page: CheckinPageId): boolean;
     pageForRoot?(root: HTMLElement): PageId;
     pageOfRoot(root: HTMLElement): CheckinPageId;
     insightsStateForRoot?(root: HTMLElement): InsightsRootContext;
@@ -53,11 +53,12 @@ function clearEditor(host: NavigationHost, root?: HTMLElement): void {
     setEditor(host, root, {editingId: undefined, editingFingerprint: undefined, editorReturnPage: undefined, appliedTemplateNote: undefined, pendingProjectDraft: undefined, templateImportSession: undefined, submitting: false, draft: undefined}, true);
 }
 
-function setPage(host: NavigationHost, page: PageId, root?: HTMLElement): void {
+function setPage(host: NavigationHost, page: PageId, root?: HTMLElement): boolean {
     /* T-1621：主线 per-root 导航含编辑器离开确认；旧宿主回落到 rootContexts 代理。 */
-    if (host.applyNavigation) host.applyNavigation(root, page);
-    else if (host.setPageForRoot) host.setPageForRoot(page, root);
+    if (host.applyNavigation) return host.applyNavigation(root, page);
+    if (host.setPageForRoot) host.setPageForRoot(page, root);
     else host.currentPage = page;
+    return true;
 }
 
 function cancelSummary(host: NavigationHost, root?: HTMLElement): void {
@@ -69,45 +70,52 @@ function cancelSummary(host: NavigationHost, root?: HTMLElement): void {
 }
 
 export function showTodayFor(host: NavigationHost, root?: HTMLElement): void {
+    if (!setPage(host, "today", root)) return;
     cancelSummary(host, root);
-    setPage(host, "today", root);
     clearEditor(host, root);
     host.render(root);
 }
 
 export function showReviewFor(host: NavigationHost, root?: HTMLElement): void {
-    setPage(host, "review", root);
+    if (!setPage(host, "review", root)) return;
     clearEditor(host, root);
     host.render(root);
 }
 
 export function showArchivedFor(host: NavigationHost, root?: HTMLElement): void {
+    if (!setPage(host, "archived", root)) return;
     cancelSummary(host, root);
-    setPage(host, "archived", root);
     clearEditor(host, root);
     host.render(root);
 }
 
 export function showOccasionsFor(host: NavigationHost, root?: HTMLElement): void {
+    if (!setPage(host, "occasions", root)) return;
     cancelSummary(host, root);
-    setPage(host, "occasions", root);
     clearEditor(host, root);
     host.render(root);
 }
 
 export function showSettingsFor(host: NavigationHost, root?: HTMLElement): void {
+    if (!setPage(host, "settings", root)) return;
     cancelSummary(host, root);
-    setPage(host, "settings", root);
+    clearEditor(host, root);
+    host.render(root);
+}
+
+export function showMoreFor(host: NavigationHost, root?: HTMLElement): void {
+    if (!setPage(host, "more", root)) return;
+    cancelSummary(host, root);
     clearEditor(host, root);
     host.render(root);
 }
 
 export function showEditorFor(host: NavigationHost, item?: CheckinItem, returnTo?: NavigationHost["editorReturnPage"], root?: HTMLElement): void {
     cancelSummary(host, root);
-    setPage(host, "editor", root);
+    if (!setPage(host, "editor", root)) return;
     /* T-1599：单级返回栈——记录来源页（白名单校验，未知/未传回落 today），编辑器返回时回放。 */
     setEditor(host, root, {editingId: item?.id, editingFingerprint: item ? host.itemFingerprint(item) : undefined,
-        editorReturnPage: returnTo === "review" || returnTo === "insights" ? returnTo : "today", appliedTemplateNote: undefined, pendingProjectDraft: undefined, templateImportSession: undefined, submitting: false}, true);
+        editorReturnPage: returnTo === "review" || returnTo === "insights" || returnTo === "more" ? returnTo : "today", appliedTemplateNote: undefined, pendingProjectDraft: undefined, templateImportSession: undefined, submitting: false}, true);
     host.render(root);
 }
 
@@ -115,6 +123,7 @@ export function showEditorFor(host: NavigationHost, item?: CheckinItem, returnTo
 export function showEditorReturnFor(host: NavigationHost, root?: HTMLElement): void {
     const returnPage = (root && host.editorStateForRoot ? host.editorStateForRoot(root).editorReturnPage : host.editorReturnPage) ?? "today";
     if (returnPage === "insights") { showInsightsFor(host, undefined, root); return; }
+    if (returnPage === "more") { showMoreFor(host, root); return; }
     if (returnPage === "review") { showReviewFor(host, root); return; }
     showTodayFor(host, root);
 }
@@ -127,12 +136,12 @@ export function showInsightsFor(host: NavigationHost, item?: CheckinItem, root?:
     const currentPage = root && host.pageForRoot ? host.pageForRoot(root) : host.currentPage;
     const returnPage = currentPage === "review" ? "review"
         : currentPage === "editor" || currentPage === "insights" ? insights?.insightsReturnPage ?? host.insightsReturnPage : "today";
+    if (!setPage(host, "insights", root)) return;
     if (host.setInsightsStateForRoot) host.setInsightsStateForRoot(root, {insightsReturnPage: returnPage, insightsItemId: candidate.id});
     else {
         host.insightsReturnPage = returnPage;
         host.insightsItemId = candidate.id;
     }
-    setPage(host, "insights", root);
     void host.persistViewPreferences();
     clearEditor(host, root);
     host.render(root);

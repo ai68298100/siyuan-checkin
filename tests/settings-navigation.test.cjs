@@ -175,6 +175,28 @@ function createFrameScheduler() {
     };
 }
 
+function createTimerScheduler() {
+    let nextId = 1;
+    const callbacks = new Map();
+    return {
+        setTimeout(callback, delay) {
+            const id = nextId++;
+            callbacks.set(id, {callback, delay});
+            return id;
+        },
+        clearTimeout(id) {
+            callbacks.delete(id);
+        },
+        runLatest() {
+            const [id, timer] = [...callbacks.entries()].at(-1) || [];
+            assert.ok(timer, "a deferred navigation timer should be pending");
+            callbacks.delete(id);
+            timer.callback();
+            return timer.delay;
+        },
+    };
+}
+
 function observerHarness() {
     class FakeIntersectionObserver {
         static instances = [];
@@ -264,6 +286,7 @@ function assertActive(fixture, expectedId) {
 // Full observer environment: exercise deterministic scroll syncing, click scrolling and cleanup.
 {
     const scheduler = createFrameScheduler();
+    const timerScheduler = createTimerScheduler();
     const {FakeIntersectionObserver, FakeResizeObserver} = observerHarness();
     const loaded = loadTypeScriptModule("src/render/settings-navigation.ts", {"../i18n": {t: (key, params) => params ? key + ":" + JSON.stringify(params) : key}}, {
         Element: FakeElement,
@@ -271,6 +294,8 @@ function assertActive(fixture, expectedId) {
         ResizeObserver: FakeResizeObserver,
         requestAnimationFrame: scheduler.requestAnimationFrame,
         cancelAnimationFrame: scheduler.cancelAnimationFrame,
+        setTimeout: timerScheduler.setTimeout,
+        clearTimeout: timerScheduler.clearTimeout,
         window: {getComputedStyle: (element) => ({flexDirection: element.flexDirection, flexWrap: element.flexWrap})},
     });
     const fixture = createNavigationFixture();
@@ -307,6 +332,16 @@ function assertActive(fixture, expectedId) {
 
     fixture.scroller.scrollTop = 0;
     fixture.nav.emit("click", {target: fixture.buttons[1]});
+    assertActive(fixture, "today");
+    fixture.scroller.scrollTop = 0;
+    fixture.scroller.emit("scroll");
+    assert.equal(scheduler.pending, 0, "intermediate smooth-scroll positions must not resync over the clicked category");
+    assertActive(fixture, "today");
+    fixture.scroller.scrollTop = 190;
+    fixture.scroller.emit("scroll");
+    assertActive(fixture, "today");
+    assert.equal(timerScheduler.runLatest(), 180, "geometry sync resumes after the scroll position settles");
+    scheduler.flush();
     assertActive(fixture, "today");
     assert.deepEqual(fixture.scroller.scrollCalls.at(-1), {left: 0, top: 168, behavior: "smooth"},
         "clicking a category should scroll the settings surface to that card with the desktop inset");
@@ -713,7 +748,7 @@ assert.match(settingsSourceT1442, /data-target-summary-label="\$\{escapeHtml\(do
 for (const action of ["data-target-recheck", "data-target-edit", "data-target-clear", "data-open-binding"]) {
     assert.match(settingsSourceT1442, new RegExp(action), `目标卡动作 ${action} 在位`);
 }
-for (const key of ["set.targetSummaryTitle", "set.targetNone", "set.targetOpen", "set.targetRecheck", "set.targetEdit", "set.targetClear", "set.targetCleared", "set.rebindConfirm", "set.targetClearConfirm"]) {
+for (const key of ["set.targetSummaryTitle", "set.targetNone", "set.targetRequiredHint", "set.targetOpen", "set.targetRecheck", "set.targetEdit", "set.targetClear", "set.targetCleared", "set.rebindConfirm", "set.targetClearConfirm"]) {
     assert.ok((i18nSourceT1553.match(new RegExp(`"${key}"`, "g")) || []).length >= 2, `${key} 必须中英双语齐备`);
 }
 assert.match(indexSourceT1553, /set\.rebindConfirm/, "换绑保存必须先经确认弹窗（旧/新目标+范围+保留说明）");

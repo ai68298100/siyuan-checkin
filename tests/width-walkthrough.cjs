@@ -12,7 +12,7 @@ const qaFrontend = process.env.CHECKIN_QA_FRONTEND || "desktop";
 const outputRoot = path.join(projectRoot, ".artifacts", "width-walkthrough", `${qaHost}-${qaTheme}-${qaFrontend}`);
 fs.mkdirSync(outputRoot, {recursive: true});
 
-const surfaces = ["today", "review", "editor", "settings", "occasions", "insights", "archived"];
+const surfaces = ["today", "review", "editor", "settings", "occasions", "insights", "archived", "more"];
 const cases = [
     {surface: "today", width: 2000},
     {surface: "review", width: 2000},
@@ -22,6 +22,7 @@ const cases = [
     ...surfaces.flatMap(surface => [280, 1180, 640, 360, 320].map(width => ({surface, width}))),
     {surface: "today", width: 330},
     {surface: "review", width: 330},
+    {surface: "editor", width: 320, height: 350, viewportHeight: 390},
     ...surfaces.map(surface => ({surface, width: 844, height: 350, viewportHeight: 390})),
 ];
 
@@ -117,6 +118,7 @@ const cases = [
         else if (name === "occasions") plugin.showOccasions();
         else if (name === "insights") plugin.showInsights(plugin.store.items.find(item => item.id === "reading"));
         else if (name === "archived") plugin.showArchived();
+        else if (name === "more") plugin.showMore();
     }, surface);
 
     const waitForVisualStability = () => page.evaluate(() => new Promise((resolve, reject) => {
@@ -216,7 +218,10 @@ const cases = [
                 const box = button.getBoundingClientRect();
                 const host = document.querySelector('#dock').getBoundingClientRect();
                 const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
-                return {width: box.width, height: box.height, insideHost: box.left >= host.left - 1 && box.right <= host.right + 1 && box.top >= host.top - 1 && box.bottom <= host.bottom + 1, hit: hit === button || button.contains(hit)};
+                return {top: box.top, bottom: box.bottom, width: box.width, height: box.height,
+                    hostTop: host.top, hostBottom: host.bottom, position: getComputedStyle(button).position,
+                    hit: hit === button || button.contains(hit), hitTarget: hit?.className || hit?.tagName || null,
+                    insideHost: box.left >= host.left - 1 && box.right <= host.right + 1 && box.top >= host.top - 1 && box.bottom <= host.bottom + 1};
             });
             assert.ok(geometry.insideHost && geometry.hit && geometry.width >= 44 && geometry.height >= 36, `${label}/${position}: save must remain reachable ${JSON.stringify(geometry)}`);
         }
@@ -239,7 +244,7 @@ const cases = [
             const host = document.querySelector('#dock').getBoundingClientRect();
             const rail = document.querySelector('.lc-checkin__editor-actions').getBoundingClientRect();
             const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
-            return {height: box.height, inside: box.top >= host.top && box.bottom <= Math.min(host.bottom, rail.top) + 1, hit: hit === element || element.contains(hit)};
+            return {top: box.top, bottom: box.bottom, left: box.left, right: box.right, height: box.height, railTop: rail.top, reminder: document.querySelector('.lc-checkin__daily-reminder-notice')?.getBoundingClientRect().toJSON?.() || null, hitTarget: hit?.className || hit?.tagName || null, inside: box.top >= host.top && box.bottom <= Math.min(host.bottom, rail.top) + 1, hit: hit === element || element.contains(hit)};
         });
         assert.ok(visible.height > 0 && visible.inside && visible.hit, `${label}: the whole preview can be read above the save rail ${JSON.stringify(visible)}`);
     };
@@ -290,6 +295,44 @@ const cases = [
         await sizeHost(width, height, viewportHeight);
         await goto(surface);
         await waitForVisualStability();
+        if (surface === "more") {
+            assert.equal(await page.locator(".lc-checkin--more [data-more-action]").count(), 7, `${label}: More destinations stay available`);
+            const titleState = await page.locator(".lc-checkin--more").evaluate(element => {
+                const title = element.querySelector(".lc-checkin__editor-header .lc-checkin__title");
+                const eyebrow = element.querySelector(".lc-checkin__editor-header .lc-checkin__eyebrow");
+                const mobileTopbar = document.querySelector(".lc-checkin__mobile-topbar");
+                const visible = node => Boolean(node && (node.checkVisibility?.() ?? node.getClientRects().length));
+                return {title: visible(title), eyebrow: visible(eyebrow), mobileTopbar: visible(mobileTopbar)};
+            });
+            if (titleState.mobileTopbar) {
+                assert.equal(titleState.title, false, `${label}: mobile topbar must be the single visible page title`);
+                assert.equal(titleState.eyebrow, false, `${label}: mobile More page hides its duplicate eyebrow`);
+            } else {
+                assert.equal(titleState.title, true, `${label}: desktop More page keeps its page title`);
+            }
+        }
+        if (surface === 'today' && width >= 900) {
+            const placement = await page.locator('.lc-checkin__list').evaluate(list => {
+                const load = list.querySelector(':scope > .lc-checkin__week-load');
+                if (!load) return null;
+                const loadBox = load.getBoundingClientRect();
+                const previousBox = load.previousElementSibling?.getBoundingClientRect();
+                const style = getComputedStyle(load);
+                return {
+                    gridColumnStart: style.gridColumnStart,
+                    gridColumnEnd: style.gridColumnEnd,
+                    width: loadBox.width,
+                    listWidth: list.clientWidth,
+                    followsPrevious: !previousBox || loadBox.top >= previousBox.bottom - 1,
+                };
+            });
+            if (placement) {
+                assert.equal(placement.gridColumnStart, '1', `${label}: week load starts at the first task column`);
+                assert.equal(placement.gridColumnEnd, '-1', `${label}: week load spans the task area`);
+                assert.ok(Math.abs(placement.width - placement.listWidth) <= 2, `${label}: week load occupies the full list width ${JSON.stringify(placement)}`);
+                assert.equal(placement.followsPrevious, true, `${label}: week load stays below the preceding task/evidence content`);
+            }
+        }
         const topnav = page.locator('.lc-checkin__topnav');
         if (await topnav.count() && await topnav.isVisible()) {
             const chrome = await topnav.evaluate(element => {
@@ -350,7 +393,11 @@ const cases = [
             }
         }
         if (surface === "editor") {
-            if (width === 320 || width === 1180 || height < 500) {
+            const saveReachabilityOnly = width === 320 && height === 350;
+            if (saveReachabilityOnly) {
+                await assertEditorSaveReachable(`${label}/open`);
+            }
+            if (!saveReachabilityOnly && (width === 320 || width === 1180 || height < 500)) {
                 const summary = page.locator('[data-template-disclosure] > summary');
                 assert.equal(await summary.isVisible(), true, 'template disclosure must not appear as an empty noninteractive pill');
                 const summaryBox = await summary.boundingBox();
@@ -376,14 +423,14 @@ const cases = [
                 const persistentRecent = page.locator('[data-template-recent] [data-template-apply]').first();
                 assert.equal(await persistentRecent.getAttribute('data-template-apply'), appliedIndex, 'recent row must survive a full re-render');
             }
-            await page.locator(".lc-checkin__field-check").evaluateAll((elements) => {
+            if (!saveReachabilityOnly) await page.locator(".lc-checkin__field-check").evaluateAll((elements) => {
                 for (const element of elements) {
                     for (let parent = element.parentElement; parent; parent = parent.parentElement) {
                         if (parent.tagName === "DETAILS") parent.open = true;
                     }
                 }
             });
-            for (const theme of ["light", "dark"]) {
+            for (const theme of saveReachabilityOnly ? [] : ["light", "dark"]) {
                 await page.locator(".lc-checkin--editor").evaluate((element, value) => { element.dataset.appearance = value; }, theme);
                 const fields = page.locator(".lc-checkin__field-check");
                 /* T-1233 起为三行：戒除方向 + 锚点追加备注 + Task Horizon 日历可见性。 */
@@ -461,7 +508,7 @@ const cases = [
                     console.log(`${label}/${theme}: live preview matches focus/manual, source, limit, quantity and custom recording actions`);
                 }
             }
-            await page.locator(".lc-checkin--editor").evaluate((element, theme) => { element.dataset.appearance = theme; }, qaTheme);
+            if (!saveReachabilityOnly) await page.locator(".lc-checkin--editor").evaluate((element, theme) => { element.dataset.appearance = theme; }, qaTheme);
         }
         if (surface === 'occasions') {
             assert.equal(await page.locator('.lc-checkin__occasion-manager-row').count(), 3, 'occasion fixture must exercise actual nonempty list');
@@ -608,8 +655,8 @@ const cases = [
         assert.equal(await nav.locator('button.is-selected').count(), 1, `${label}: only the current navigation item is selected`);
         assert.equal(await nav.locator('button.is-selected').getAttribute('data-mobile-nav'), current);
         assert.equal(await nav.locator('[aria-current="page"]').count(), 1, `${label}: only the current page is announced`);
-        if (current !== 'settings') {
-            const colors = await nav.locator('[data-mobile-nav="settings"]').evaluate(button => {
+        if (current !== 'settings' && current !== 'more') {
+            const colors = await nav.locator('[data-mobile-nav="more"]').evaluate(button => {
                 const probe = document.createElement('span');
                 probe.style.color = 'var(--lc-checkin-muted)';
                 button.append(probe);
@@ -893,8 +940,10 @@ const cases = [
             await assertTextContrast(record, `${label}/exact`);
             const nav = page.locator('.lc-checkin__mobile-nav:visible');
             if (await nav.count()) {
-                await nav.locator('[data-mobile-nav="settings"]').click();
-                await assertMobileNav('settings', `${label}/settings`);
+                await nav.locator('[data-mobile-nav="more"]').click();
+                await assertMobileNav('more', `${label}/more`);
+                await page.locator('[data-more-action="appearance"]').click();
+                await assertMobileNav('more', `${label}/settings-from-more`);
                 await nav.locator('[data-mobile-nav="today"]').click();
                 await assertMobileNav('today', `${label}/return-today`);
             }
@@ -1152,6 +1201,23 @@ const cases = [
     await page.evaluate(() => window.__plugin.showToday());
     console.log('DEBUG V5b after fresh clone + showToday:', await page.evaluate(() => JSON.stringify({n: window.__plugin.store.events.length, best: window.__plugin.bestStreakValue, item: window.__plugin.bestStreakItem?.name})));
     assert.match(await page.locator('.lc-checkin__overview-streak > strong').textContent(), /^3/, 'warm overview uses three actual completed days');
+    const reminderNotice = page.locator('.lc-checkin__daily-reminder-notice');
+    assert.equal(await reminderNotice.count(), 1, 'the workbench fixture should include its active daily reminder');
+    const reminderPlacement = await reminderNotice.evaluate(element => {
+        const notice = element.getBoundingClientRect();
+        const surface = element.closest('.lc-checkin-dock-host, .lc-checkin-tab-host, .lc-checkin-dialog-host');
+        const page = surface?.querySelector('.lc-checkin');
+        const layout = page?.querySelector('.lc-checkin__layout');
+        return {position: getComputedStyle(element).position,
+            parentPage: element.parentElement === page,
+            beforeLayout: element.nextElementSibling === layout,
+            noticeBottom: notice.bottom, layoutTop: layout?.getBoundingClientRect().top ?? null};
+    });
+    assert.equal(reminderPlacement.position, 'static', 'a visible desktop surface must keep its reminder in document flow');
+    assert.equal(reminderPlacement.parentPage, true, 'the reminder must belong to the visible page surface');
+    assert.equal(reminderPlacement.beforeLayout, true, 'the reminder must precede the scrollable page layout');
+    assert.ok(reminderPlacement.layoutTop !== null && reminderPlacement.noticeBottom <= reminderPlacement.layoutTop + 1,
+        `the reminder must finish before the scrollable page content starts ${JSON.stringify(reminderPlacement)}`);
     await screenshot({path: path.join(outputRoot, 'today-workbench.png')}, page.locator('#dock'));
     if (qaHost === "tab" || qaHost === "dialog") {
         /* T-1605：窗口 chrome 按前端分流——桌面渲染 topnav（品牌+页签/弹窗控制），
@@ -1376,6 +1442,7 @@ const cases = [
                 }
                 const note = page.locator('.lc-checkin__occasion-note-fold').first();
                 assert.equal(await note.getAttribute('open'), null, 'long notes start folded');
+                await note.scrollIntoViewIfNeeded();
                 await note.locator('summary').click();
                 assert.equal(await note.locator('.lc-checkin__occasion-row-note').isVisible(), true, 'long notes remain fully accessible');
                 assert.match(await note.locator('.lc-checkin__occasion-row-note').textContent(), /long-reference-/);

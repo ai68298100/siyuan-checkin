@@ -84,6 +84,8 @@ assert.match(bindSource, /"\[data-weekly-export\]"/, "export is bound");
 assert.match(bindSource, /"\[data-weekly-clear\]"/, "clear is bound");
 assert.match(bindSource, /let weeklyActionBusy = false/, "weekly actions keep a per-surface busy guard");
 assert.match(bindSource, /controls\.forEach\(control => \{ control\.disabled = true; control\.setAttribute\("aria-busy", "true"\); \}\)/, "weekly actions expose a shared busy state and block conflicting operations");
+assert.match(bindSource, /const fields = \[\.\.\.root\.querySelectorAll<HTMLTextAreaElement>\("\[data-weekly-friction\], \[data-weekly-adjustment\]"\)\]/, "weekly textareas are included in the busy lifecycle");
+assert.match(bindSource, /fields\.forEach\(field => \{ field\.disabled = true; \}\)/, "weekly textareas cannot change while an action is pending");
 assert.match(bindSource, /outcome === "failed" \? "review\.weeklyExportFail" : "review\.weeklyExported"/, "weekly export surfaces SaveOutcome failure");
 const indexSource = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
 assert.match(indexSource, /async saveWeeklyReviewDraft\(weekKey: string, friction: string, adjustment: string\)/, "host persists drafts");

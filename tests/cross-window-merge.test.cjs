@@ -195,8 +195,8 @@ for (const marker of ["this.importCsvRows(parsed.rows)", "this.importLoopPlan(pl
         `${marker} must restore the in-memory store when persistence fails`);
 }
 const occasionOverrideBlock = pluginSource.slice(pluginSource.indexOf("private saveOccasionOverride"), pluginSource.indexOf("private async retrySave"));
-assert.match(occasionOverrideBlock, /void this\.enqueueMutation\(async \(\) => \{[\s\S]*?const previous = this\.occasionStore;[\s\S]*?setOccasionOverride\(previous, id, originalDate, newDate\)[\s\S]*?await this\.persistOccasions\([^)]*\)/,
-    "occasion override must calculate and persist inside the mutation queue");
+assert.match(occasionOverrideBlock, /private saveOccasionOverride\([^)]*\): Promise<void>[\s\S]*?return this\.enqueueMutation\(async \(\) => \{[\s\S]*?const previous = this\.occasionStore;[\s\S]*?setOccasionOverride\(previous, id, originalDate, newDate\)[\s\S]*?await this\.persistOccasions\([^)]*\)/,
+    "occasion override must return its queued persistence task so callers can retain busy state until it settles");
 
 const blockRecordBody = pluginSource.slice(pluginSource.indexOf("private async recordBlockToday"), pluginSource.indexOf("private async jumpToItemAnchorDoc"));
 assert.match(blockRecordBody, /await this\.enqueueMutation\(\(\) => this\.recordEvent\(/,

@@ -136,26 +136,25 @@
     .lc-checkin__focus-mini > .lc-checkin__text-button { min-height: 40px; }
 }
 
-/* When factual projections are available, mirror the prototype's task column
-   and evidence rail without inventing a second data source. Empty Today
-   states keep their single column and therefore do not gain a dead gutter. */
+/* Keep the primary Today queue wide. "往年同日" is a compact evidence rail,
+   while the seven-day load stays below the queue so a single collapsed card
+   cannot create a large, empty right gutter beside the check-in actions. */
 @container lc5 (min-width: 900px) {
-    .lc-checkin--today .lc-checkin__list:has(> .lc-checkin__this-day, > .lc-checkin__week-load) {
+    .lc-checkin--today .lc-checkin__list:has(> .lc-checkin__this-day) {
         grid-template-columns: minmax(0, 1.25fr) minmax(240px, .75fr);
         align-items: start;
         column-gap: 16px;
     }
-    .lc-checkin--today .lc-checkin__list:has(> .lc-checkin__this-day, > .lc-checkin__week-load) > :not(.lc-checkin__this-day):not(.lc-checkin__week-load) { grid-column: 1; }
-    .lc-checkin--today .lc-checkin__list > :is(.lc-checkin__this-day, .lc-checkin__week-load) {
-        grid-column: 2;
-        grid-row: 1;
+    .lc-checkin__list:has(> .lc-checkin__this-day) > :not(.lc-checkin__this-day):not(.lc-checkin__week-load) { grid-column: 1; }
+    .lc-checkin__list > :is(.lc-checkin__this-day, .lc-checkin__week-load) {
         padding: 14px;
         border: 1px solid var(--lc-polish-line);
         border-radius: var(--lc-checkin-radius);
         background: var(--lc-checkin-surface);
         box-shadow: var(--lc-polish-lift);
     }
-    .lc-checkin__list:has(>.lc-checkin__this-day)>.lc-checkin__week-load { grid-row: 2; }
+    .lc-checkin__list > .lc-checkin__this-day { grid-column: 2; grid-row: 1; }
+    .lc-checkin__list > .lc-checkin__week-load { grid-column: 1 / -1; }
 }
 
 /* Empty states should end the page with a decision instead of a blank panel. */
@@ -175,9 +174,8 @@
     .lc-checkin__daily-reminder-notice .lc-checkin__daily-reminder-actions > .lc-checkin__text-button { min-height: 44px; padding-inline: 8px; font-size: 11px; }
 }
 
-/* On touch surfaces the notice participates in the host column so it cannot
-   cover the first task, editor fields, or the save rail. Desktop keeps the
-   compact fixed toast above the navigation chrome. */
+/* On a visible plugin surface the notice participates in the host column so
+   it cannot cover page content; only the body fallback remains fixed. */
 .lc-checkin__daily-reminder-notice--inline {
     position: static;
     order: 0;
@@ -188,6 +186,20 @@
     max-height: min(190px, calc(100dvh - 132px));
     margin: 8px 12px 0;
     overflow: auto;
+}
+
+/* Inline notices are either siblings of the scrollable page (fallback mount)
+   or the first child before its layout. Give the scrolling region an explicit
+   flex basis so a 100% height declaration cannot paint back underneath the
+   notice on short docks/tabs. */
+:is(.lc-checkin-dock-host, .lc-checkin-tab-host, .lc-checkin-dialog-host) > .lc-checkin__daily-reminder-notice--inline + .lc-checkin {
+    height: auto;
+    flex: 1 1 0;
+    min-height: 0;
+}
+.lc-checkin > .lc-checkin__daily-reminder-notice--inline + .lc-checkin__layout {
+    flex: 1 1 0;
+    min-height: 0;
 }
 
 @container lc5 (max-width: 719px) {
@@ -223,6 +235,13 @@
         padding-inline: 6px;
         font-size: 11px;
     }
+}
+
+@media (max-height: 420px) {
+    .lc-checkin__daily-reminder-notice--inline { max-height: 64px; margin-top: 4px; padding: 4px 8px; gap: 1px; }
+    .lc-checkin__daily-reminder-notice--inline .lc-checkin__daily-reminder-message { -webkit-line-clamp: 1; font-size: 11px; }
+    .lc-checkin__daily-reminder-notice--inline > p { display: none; }
+    .lc-checkin__daily-reminder-notice--inline .lc-checkin__daily-reminder-actions > .lc-checkin__text-button { min-height: 36px; }
 }
 
 @container lc5 (min-width: 900px) {

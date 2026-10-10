@@ -12,6 +12,8 @@
 
 18.17.1 汇总全插件功能与 UI 复核中的可靠性、失败恢复和交互修复；这里介绍本次更新与已实现功能，后续开发进展见 [PROGRESS](PROGRESS.md)。
 
+> **内测说明**：小驴考试、小驴管家、小驴闪卡和小驴常用目前仍处于内测阶段，部分功能和思源宿主兼容性正在验证中。欢迎通过交流 QQ 群 **871707735** 反馈问题、提交需求；对稳定性有较高要求时，请等待对应插件发布正式版。
+
 [![最新 Release](https://img.shields.io/github/v/release/ai68298100/siyuan-checkin?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-checkin/releases/latest) [![CI](https://github.com/ai68298100/siyuan-checkin/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-checkin/actions/workflows/ci.yml) [![License](https://img.shields.io/github/license/ai68298100/siyuan-checkin)](LICENSE)
 
 [最新 Release](https://github.com/ai68298100/siyuan-checkin/releases/latest) · [18.17.1 发布说明](docs/releases/release-notes-18.17.1.md) · [问题反馈](https://github.com/ai68298100/siyuan-checkin/issues) · [开发文档](docs/)
@@ -20,13 +22,15 @@
 
 ### 本次更新（18.17.1）
 
+本版围绕全插件功能与 UI 复核，集中完善异步操作的反馈、失败恢复、跨页面隔离和输入边界，让常用流程更容易理解、重试和完成。
+
+新增：更完整的交互状态与可访问性反馈
+- 周复盘保存、导出、复制 AI 和清除统一提供忙碌状态；日期格键盘操作、选择器无结果提示、中英文热力图和减少动效设置均有明确反馈。
+- 多窗口场景下，今日、事项、回顾和弹窗的导航、排序、焦点及异步结果按发起页面归属。
+
 优化：操作反馈与失败恢复
 - 设置、页面偏好、记录回执和来源待处理箱在保存失败时保留可重试状态。
 - 周复盘保存、导出、复制 AI 和清除统一显示忙碌状态，避免重复点击；导出失败会显示重试提示。
-
-优化：多窗口、键盘与显示体验
-- 今日、事项、回顾和弹窗的导航、排序、焦点及迟到反馈按发起页面隔离。
-- 补齐日期格键盘操作、文档选择器无结果提示、中英文热力图和减少动效设置的实际效果。
 
 修复：日期、导入与公开 API 边界
 - 拒绝无效日期、CSV 未闭合引号和被截断的半行，导入错误可查看行号与原因。
@@ -87,7 +91,12 @@
 - **反馈与可访问性**：周复盘按钮忙碌状态、键盘日期导航、选择器空结果和双语热力图提示更完整。
 - **输入与数据边界**：严格日期和 CSV 校验，公开 API 快照、重复回执和生命周期行为更稳定。
 
-### 18.17.0 历史重点
+<details>
+<summary>历史版本更新（点击展开）</summary>
+
+### 18.17.0
+
+「双机合并后的事项工作台、微信读书推荐与跨表面可靠性收口」版本。主存储、公开 API v5、最低思源版本和既有导入格式保持兼容，可直接从 18.16.0 升级。
 
 - **微信读书推荐**：根据已读取的来源事实生成分钟项目与阈值建议，预览与应用分离，只有用户明确点击才写入设置。
 - **事项工作台**：支持重复/相似名称确认、规则预览、排序、单次改期与冲突提示、逐次完成、提醒状态和关联打卡项目跳转。
@@ -102,6 +111,8 @@
 - **设置页字体**：统一标题、分组和说明的层级，减少视觉噪声。
 
 历史版本重点见 [发布说明目录](docs/releases/) 与 [18.14.0 变更记录](docs/v18.14.0-change-log.md)。
+
+</details>
 
 ## 记录、统计与导出
 
@@ -209,16 +220,20 @@ corepack pnpm run test:e2e:readonly
 
 ## 小驴系列与交流
 
-目前已开发的四款插件：
+小驴系列插件各自独立，可按需安装和组合使用：
 
-| 插件 | 定位 |
-| --- | --- |
-| **小驴打卡** | 思源里的低压力个人行动台：记录事实、回到笔记、决定下一步（本插件） |
-| **小驴雷切** | 思源笔记快速切片与模板管理 |
-| **小驴人脉** | 思源笔记人脉关系管理 |
-| **小驴拾遗** | 思源笔记碎片灵感收集 |
+| 插件名称 | 一句话简介 | GitHub 仓库 |
+| --- | --- | --- |
+| [小驴雷切](https://github.com/ai68298100/siyuan-speed-switch) | 思源中的统一导航与工作上下文平台，连接页签、工作台、片段和快捷入口。 | [ai68298100/siyuan-speed-switch](https://github.com/ai68298100/siyuan-speed-switch) |
+| [小驴打卡](https://github.com/ai68298100/siyuan-checkin) | 本地优先的习惯、目标打卡与复盘工作台。 | [ai68298100/siyuan-checkin](https://github.com/ai68298100/siyuan-checkin) |
+| [小驴人脉](https://github.com/ai68298100/siyuan-contacts) | 在思源中管理联系人、人际关系、组织归属和重要日期。 | [ai68298100/siyuan-contacts](https://github.com/ai68298100/siyuan-contacts) |
+| [小驴拾遗](https://github.com/ai68298100/siyuan-glean) | 整理思源剪藏和导入文章，支持状态分拣、阅读管理与日后回顾。 | [ai68298100/siyuan-glean](https://github.com/ai68298100/siyuan-glean) |
+| [小驴考试（内测版）](https://github.com/ai68298100/siyuan-exam) | 本地题库备考工作台，支持多格式导入、刷题、模考、错题复盘与 AI 辅助。 | [ai68298100/siyuan-exam](https://github.com/ai68298100/siyuan-exam) |
+| [小驴管家（内测版）](https://github.com/ai68298100/siyuan-home) | 管理家庭与生活资料、成员档案、台账、到期提醒和事务跟进。 | [ai68298100/siyuan-home](https://github.com/ai68298100/siyuan-home) |
+| [小驴闪卡（内测版）](https://github.com/ai68298100/siyuan-lv-cards) | 思源中的知识捕获、制卡、练习与复习平台，使用内核原生 FSRS 排期。 | [ai68298100/siyuan-lv-cards](https://github.com/ai68298100/siyuan-lv-cards) |
+| [小驴常用（内测版）](https://github.com/ai68298100/xiaolv-common) | 基于思源块保存、搜索并快速调用常用语、模板、代码和链接，支持变量填充。 | [ai68298100/xiaolv-common](https://github.com/ai68298100/xiaolv-common) |
 
-交流 QQ 群：**871707735**。反馈问题时请附上插件版本、思源版本、操作步骤和出现问题的页面。
+交流 QQ 群：**871707735**（反馈问题、提交需求、交流使用体验）。反馈问题时请附上插件版本、思源版本、操作步骤和出现问题的页面。
 
 ## License
 

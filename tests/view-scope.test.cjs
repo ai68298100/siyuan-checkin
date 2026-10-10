@@ -114,8 +114,11 @@ const reviewSource = fs.readFileSync(path.join(root, "src", "render", "review.ts
 assert.match(reviewSource, /data-saved-view/, "回顾页必须有保存视图选择器");
 assert.match(reviewSource, /data-action="save-saved-view"/, "必须提供保存当前为视图入口");
 assert.match(reviewSource, /data-action="delete-saved-view"/, "必须提供删除视图入口");
+assert.match(reviewSource, /hasActiveSavedView[\s\S]*data-action="delete-saved-view"\$\{hasActiveSavedView \? "" : " disabled"\}/, "没有已保存视图时删除按钮必须禁用");
+assert.match(reviewSource, /review\.futureDayUnavailable/, "未来日期的 aria-label 应说明禁用原因");
 const navBindSource = fs.readFileSync(path.join(root, "src", "render", "bind-page-navigation.ts"), "utf8");
 assert.match(navBindSource, /data-saved-view/, "选择器必须绑定应用方法");
+assert.match(navBindSource, /deleteButton\.disabled = !select\.value/, "切换回默认视图时必须同步禁用删除按钮");
 for (const key of ["review.savedViewLabel", "review.savedViewDefault", "review.savedViewSave", "review.savedViewSavePrompt", "review.savedViewDelete", "msg.savedViewSaved", "msg.savedViewLimit"]) {
     const occurrences = fs.readFileSync(path.join(root, "src", "i18n.ts"), "utf8").split(`"${key}"`).length - 1;
     assert.ok(occurrences >= 2, `${key} 必须中英双语齐备（当前 ${occurrences} 处）`);

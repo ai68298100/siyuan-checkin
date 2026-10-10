@@ -4,6 +4,7 @@ const path = require("node:path");
 
 const root = path.join(__dirname, "..");
 const source = fs.readFileSync(path.join(root, "src", "render", "today-bindings.ts"), "utf8");
+const busySource = fs.readFileSync(path.join(root, "src", "render", "action-busy.ts"), "utf8");
 const index = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
 const fragments = fs.readFileSync(path.join(root, "src", "render", "fragments.ts"), "utf8");
 const styles = fs.readFileSync(path.join(root, "src", "ui", "components.scss"), "utf8");
@@ -30,11 +31,16 @@ assert.match(source, /event\.key === "Tab"[\s\S]*?closeMenus\(true\)/, "Tab clos
 assert.match(source, /target\.closest\("\.lc-checkin__item-context-menu"\)[\s\S]*?closeMenus\(!target\.closest/, "outside click restores focus to the menu trigger");
 assert.match(source, /menu\.setAttribute\("aria-busy", "true"\)/, "context menu exposes its pending state");
 assert.match(source, /querySelectorAll<HTMLButtonElement>\("\[data-menu-action\]"\)[\s\S]*?button\.disabled = true/, "one menu mutation disables every competing action");
-assert.match(source, /function runExclusiveAction\(/, "bulk actions share an exclusive execution guard");
-assert.match(source, /button\.closest<HTMLElement>\("\[data-bulk-toolbar\]"\)/, "bulk action guard coordinates the whole toolbar");
-assert.match(source, /Promise\.resolve\(\)\.then\(operation\)/, "synchronous action failures also release the busy guard");
-assert.match(source, /button\.dataset\.actionBusy === "true"/, "repeated action clicks are ignored while a mutation is pending");
-assert.match(source, /button\.setAttribute\("aria-busy", "true"\)/, "pending actions expose busy state");
+assert.match(source, /import \{runExclusiveAction\} from "\.\/action-busy"/, "bulk actions share the common exclusive execution guard");
+assert.match(busySource, /button\.closest<HTMLElement>\("\[data-bulk-toolbar\]"\)/, "bulk action guard coordinates the whole toolbar");
+assert.match(busySource, /try \{[\s\S]*?result = operation\(\);[\s\S]*?catch \{[\s\S]*?showMessage\(t\("msg\.saveFailedShort"\)\)[\s\S]*?Promise\.resolve\(result\)\.catch\(\(\) => \{[\s\S]*?showMessage\(t\("msg\.saveFailedShort"\)\)/,
+    "sync and async failures expose fallback feedback before releasing the busy guard");
+assert.match(busySource, /button\.dataset\.actionBusy === "true"/, "repeated action clicks are ignored while a mutation is pending");
+assert.match(busySource, /const activeActionKeys = new Map<string, ActionLock>\(\)/, "rebinding a redrawn card keeps the item mutation locked");
+assert.match(busySource, /const existingLock = resolvedKey \? activeActionKeys\.get\(resolvedKey\)/, "item-keyed actions reject duplicate mutations across nodes");
+assert.match(busySource, /attachActionSurface\(existingLock, button, boundary, controlsSelector\)/, "redrawn controls join the pending busy state");
+assert.match(source, /const actionKey = `bulk:\$\{ids\.sort\(\)\.join\(\",\"\)\}`/, "bulk actions share a cross-surface item-set key");
+assert.match(busySource, /button\.setAttribute\("aria-busy", "true"\)/, "pending actions expose busy state");
 assert.match(source, /await host\.archiveItems\(ids\)/, "bulk archive delegates to one host transaction");
 assert.match(source, /await host\.completeItems\(ids\)/, "bulk completion delegates to one host transaction");
 assert.match(source, /await host\.deleteItemsWithRecords\(ids\)/, "bulk delete delegates to one host transaction");
@@ -73,6 +79,7 @@ const items = [
     {id: "stretch", kind: "binary", unit: "次"},
 ];
 const writes = [];
+const messages = [];
 let focusStarts = 0;
 const host = {
     currentPage: "today", bulkMode: false, store: {items},
@@ -81,6 +88,8 @@ const host = {
     revisionFingerprint() { return "same-revision"; },
 };
 const dependencies = {
+    "./action-busy": {runExclusiveAction(_button, operation) { return operation(); }},
+    "siyuan": {showMessage: value => messages.push(value)},
     "../i18n": {t: key => key},
     "../plugin-ops": {getQuickTodayItems: store => store.items},
     "../model": {
@@ -179,6 +188,13 @@ assert.equal(writes.length, 3, "tomato session shortcut does not add units or mi
 delete items[1].completionSource;
 delete items[1].tomatoMode;
 cards[1].primary.dataset.action = "quick-record";
+const hiddenKeyboardRoot = element();
+hiddenKeyboardRoot.querySelectorAll = () => [];
+bindings.bindQuickKeyboardFor(host, hiddenKeyboardRoot);
+const hiddenKeyEvent = {defaultPrevented: false, altKey: true, ctrlKey: false, metaKey: false, shiftKey: false, key: "2", target: hiddenKeyboardRoot, preventDefault() { this.defaultPrevented = true; }};
+for (const listener of hiddenKeyboardRoot.listeners.keydown || []) listener(hiddenKeyEvent);
+for (const listener of hiddenKeyboardRoot.listeners.keydown || []) listener(hiddenKeyEvent);
+assert.equal(writes.filter(([id]) => id === "water").length, 1, "repeated shortcuts for a filtered-out card share an item lock");
 dispatch("keydown", {key: "j"});
 assert.equal(doc.activeElement, cards[0].primary, "j focuses the visible duration primary, not hidden exact submit");
 dispatch("keydown", {key: "j"});

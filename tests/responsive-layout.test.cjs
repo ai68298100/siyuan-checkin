@@ -48,12 +48,12 @@ assert.match(components, /\.lc-checkin--today \.lc-checkin__item::before\s*\{\s*
 assert.match(components, /\.lc-checkin--today \.lc-checkin__section-toggle/,
     "completed items must collapse behind one toggle row");
 
-/* Navigation: five destinations, shared by top nav and bottom bar, plus the add action. */
-const navEntries = source.includes(`const entries = [["today", t("nav.today"), "home"], ["review", t("nav.review"), "summary"], ["occasions", t("nav.occasions"), "calendar"], ["settings", t("nav.settings"), "settings"]] as const;`);
-assert.ok(navEntries, "navigation must expose exactly today/review/occasions/settings in that order");
-assert.match(source, /private renderTopNav\(root: HTMLElement, page: CheckinPageId\): string/, "desktop surfaces need host-aware labelled top navigation (T-1621 per-root highlight)");
+/* Navigation: five destinations, shared by top nav and bottom bar, plus the record action. */
+const navEntries = source.includes(`const entries = [["today", t("nav.today"), "home"], ["review", t("nav.review"), "summary"], ["occasions", t("nav.occasions"), "calendar"], ["record", t("nav.record"), "add"], ["more", t("nav.more"), "more"]] as const;`);
+assert.ok(navEntries, "navigation must expose today/review/occasions/record/more in that order");
+assert.match(source, /private renderTopNav\(root: HTMLElement, page: CheckinPageId, moreActive = false\): string/, "desktop surfaces need host-aware labelled top navigation (T-1621 per-root highlight)");
 assert.match(components, /\.lc-checkin__mobile-nav \{[^}]*grid-template-columns:\s*repeat\(5,\s*minmax\(0,\s*1fr\)\)/,
-    "bottom navigation keeps five equal cells for four destinations plus the add action");
+    "bottom navigation keeps five equal cells for the primary destinations");
 assert.match(components, /\.lc-checkin__mobile-nav-add \{/,
     "the add action lives inside the bottom bar instead of floating over the list");
 assert.ok(!source.includes("lc-checkin__mobile-fab"),

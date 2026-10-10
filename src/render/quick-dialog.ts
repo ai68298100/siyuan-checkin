@@ -16,7 +16,7 @@ export interface QuickDialogHost {
     dialogFixedSize: {width: number; height: number};
     dialogRect?: {width: number; height: number};
     dialogOffset?: {x: number; y: number};
-    currentPage: "today" | "editor" | "review" | "archived" | "insights" | "occasions" | "settings";
+    currentPage: "today" | "editor" | "review" | "archived" | "insights" | "occasions" | "settings" | "more";
     editingId?: string;
     editingFingerprint?: string;
     quickDialog?: Dialog;
@@ -41,7 +41,7 @@ export interface QuickDialogHost {
     persistViewPreferences(): Promise<void>;
     applyPreferenceMutation?(mutate: () => void): void;
     /* T-1621 步骤一：弹窗页独立于 dock/页签（root-page-store 代理层）。 */
-    applyNavigation(root: HTMLElement | undefined, page: QuickDialogHost["currentPage"]): void;
+    applyNavigation(root: HTMLElement | undefined, page: QuickDialogHost["currentPage"]): boolean;
     pageOfRoot(root: HTMLElement): QuickDialogHost["currentPage"];
     releaseRootContext(root: HTMLElement): void;
 }
@@ -83,7 +83,7 @@ export function toggleQuickDialogFor(host: QuickDialogHost): void {
    重开时回放；同窗口会话内有效，不跨重载。 */
 type QuickPage = QuickDialogHost["currentPage"];
 let lastQuickPage: QuickPage = "today";
-const QUICK_PRESERVED_PAGES: ReadonlySet<QuickPage> = new Set(["today", "review", "insights", "archived", "occasions", "settings"]);
+const QUICK_PRESERVED_PAGES: ReadonlySet<QuickPage> = new Set(["today", "review", "insights", "archived", "occasions", "settings", "more"]);
 
 function rememberQuickPage(page: QuickPage): void {
     lastQuickPage = QUICK_PRESERVED_PAGES.has(page) ? page : "today";

@@ -101,13 +101,20 @@ const THEME_TOKENS = (dark) => (dark
 
         const nav = async (target) => {
             await page.evaluate((target) => {
+                const click = (selector) => document.querySelector(selector)?.dispatchEvent(new MouseEvent("click", {bubbles: true, cancelable: true}));
+                if (target === "add") return click(".lc-checkin__topnav [data-mobile-nav='record'], .lc-checkin__mobile-nav [data-mobile-nav='record']");
+                if (target === "settings") {
+                    click(".lc-checkin__topnav [data-mobile-nav='more'], .lc-checkin__mobile-nav [data-mobile-nav='more']");
+                    return click("[data-more-action='appearance']");
+                }
+                if (target === "archived") {
+                    click(".lc-checkin__topnav [data-mobile-nav='more'], .lc-checkin__mobile-nav [data-mobile-nav='more']");
+                    return click("[data-more-action='archived']");
+                }
                 const btn = document.querySelector(`.lc-checkin__topnav [data-mobile-nav="${target}"]`)
                     || document.querySelector(`.lc-checkin__mobile-nav [data-mobile-nav="${target}"]`);
-                if (btn) btn.click();
-                else {
-                    const action = document.querySelector(`[data-action='${target}']`);
-                    if (action) action.click();
-                }
+                if (btn) btn.dispatchEvent(new MouseEvent("click", {bubbles: true, cancelable: true}));
+                else click(`[data-action='${target}']`);
             }, target);
             await page.waitForTimeout(170);
         };
@@ -171,10 +178,7 @@ const THEME_TOKENS = (dark) => (dark
         await page.waitForTimeout(120);
         await shot("settings-shortcuts");
 
-        await page.evaluate(() => {
-            const archived = document.querySelector(".lc-checkin__topnav [data-mobile-nav='archived'], [data-action='archived']");
-            if (archived) archived.click();
-        });
+        await nav("archived");
         await page.waitForTimeout(150);
         await shot("archived");
 

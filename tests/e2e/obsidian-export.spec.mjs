@@ -29,7 +29,8 @@ test("Obsidian 迁出:设置页导出 H21 习惯文件", async ({browser}) => {
     await openCheckin(page, {bundle: "mobile"});
 
     await page.click("#lcCheckinMobileTopBarButton");
-    await page.click("[data-mobile-nav='settings']");
+    await page.click("[data-mobile-nav='more']");
+    await page.click("[data-more-action='data']");
     const exportBtn = page.locator("[data-action='export-obsidian']");
     await expect(exportBtn).toBeVisible();
 

@@ -1,4 +1,4 @@
-export type PageId = "today" | "editor" | "review" | "archived" | "insights" | "occasions" | "settings";
+export type PageId = "today" | "editor" | "review" | "archived" | "insights" | "occasions" | "settings" | "more";
 
 export type CheckinKind = "binary" | "count" | "duration" | "quantity" | "custom";
 
@@ -195,7 +195,7 @@ export interface InsightsRootContext {
 export interface EditorRootContext {
     editingId?: string;
     editingFingerprint?: string;
-    editorReturnPage?: "today" | "review" | "insights";
+    editorReturnPage?: "today" | "review" | "insights" | "more";
     appliedTemplateNote?: string;
     /** T-1621：项目草案属于当前编辑器会话，不能由多个 surface 共享。 */
     pendingProjectDraft?: import("./features/project-draft").ProjectDraft;

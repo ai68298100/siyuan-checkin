@@ -117,6 +117,9 @@ function mobileReminderMountFor(host: ReminderDeliveryHost, root?: HTMLElement):
         if (!surfaceIsVisible(candidate)) return false;
         return Boolean(candidate?.classList?.contains("lc-checkin-host--mobile")
             || candidate?.classList?.contains("lc-checkin-dialog-host--mobile")
+            || candidate?.classList?.contains("lc-checkin-dock-host")
+            || candidate?.classList?.contains("lc-checkin-tab-host")
+            || candidate?.classList?.contains("lc-checkin-dialog-host")
             || isCompactSurface(candidate)
             || candidate?.querySelector?.(".lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile, .lc-checkin__mobile-topbar")
             || candidate?.querySelector?.(".lc-checkin-tab-host, .lc-checkin-dialog-host"));
@@ -146,8 +149,12 @@ export function ensureReminderNoticePlacementFor(host: ReminderDeliveryHost, roo
     const mount = mobileReminderMountFor(host, root);
     if (mount) {
         notice.classList?.add("lc-checkin__daily-reminder-notice--inline");
-        if (notice.parentElement !== mount.host) mount.host.insertBefore(notice, mount.surface);
-        else if (notice.nextElementSibling !== mount.surface) mount.host.insertBefore(notice, mount.surface);
+        const layout = mount.surface.querySelector<HTMLElement>(".lc-checkin__layout");
+        if (layout) {
+            if (notice.parentElement !== mount.surface || notice.nextElementSibling !== layout) mount.surface.insertBefore(notice, layout);
+        } else if (notice.parentElement !== mount.host || notice.nextElementSibling !== mount.surface) {
+            mount.host.insertBefore(notice, mount.surface);
+        }
         return;
     }
     notice.classList?.remove("lc-checkin__daily-reminder-notice--inline");
@@ -340,13 +347,11 @@ export async function maybeSendDailyReminderFor(host: ReminderDeliveryHost, trig
                 closeReminderNotice(host);
                 runtime.restoreFocus = document.activeElement instanceof HTMLElement ? document.activeElement : undefined;
                 runtime.notice = notice;
-                const mount = mobileReminderMountFor(host);
-                if (mount) {
-                    notice.classList?.add("lc-checkin__daily-reminder-notice--inline");
-                    mount.host.insertBefore(notice, mount.surface);
-                } else {
-                    document.body.appendChild(notice);
-                }
+                /* Use the same placement path as redraws.  This keeps the
+                   first mount before the scrollable layout inside the
+                   visible page instead of briefly mounting as a host sibling
+                   and then moving after the next resize/render. */
+                ensureReminderNoticePlacementFor(host);
                 runtime.state = next;
                 runtime.failures = 0;
                 runtime.retryAt = 0;

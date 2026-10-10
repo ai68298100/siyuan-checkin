@@ -53,10 +53,11 @@ assert.match(bindSource, /data-occasion-move-origin-label/, "the move row render
 assert.match(bindSource, /occ\.moveTo/, "the label updates to the from → to preview");
 assert.match(bindSource, /msg\.occasionMoveClash/, "a clashing date confirms before moving");
 assert.match(bindSource, /\[data-occasion-move-undo\]/, "the undo entry is wired");
-assert.match(bindSource, /host\.saveOccasionOverride\(id, origin, undefined, root\)/, "undo clears only this override (undefined newDate) and keeps the surface root");
+assert.match(bindSource, /host\.saveOccasionOverride!\(id, origin, undefined, root\)/, "undo clears only this override (undefined newDate) and keeps the surface root");
 const viewSource = fs.readFileSync(path.join(__dirname, "..", "src", "render", "occasions.ts"), "utf8");
 assert.match(viewSource, /findOverrideOriginFor/, "the view resolves the undo target");
 assert.match(viewSource, /occ\.moveUndo/, "the undo button is rendered");
+assert.match(viewSource, /data-occasion-move-undo-next=\"\$\{escapeHtml\(next\)\}\"/, "undo confirmation receives the current moved date");
 const preFixBind = cp.execSync("git show 2416791:src/render/bind-occasions.ts", {encoding: "utf8"});
 assert.doesNotMatch(preFixBind, /occasionMoveClash/, "the pre-fix move had no clash feedback (red evidence)");
 assert.doesNotMatch(preFixBind, /\[data-occasion-move-undo\]/, "the pre-fix row had no undo entry (red evidence)");

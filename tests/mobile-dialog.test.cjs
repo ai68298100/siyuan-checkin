@@ -51,8 +51,8 @@ assert.match(todayBindingsSource, /root\.dataset\.quickKeyboardBound === "true"/
 assert.doesNotMatch(source, /\["archived", t\("nav\.archived"\), "archive"\]/, "归档 is reached from 回顾, not the bottom bar (T-032 user feedback)");
 const iconsSource = fs.readFileSync(path.join(__dirname, "..", "src", "ui", "icons.ts"), "utf8");
 assert.match(iconsSource, /const UI_ICON_PATHS[\s\S]*home:[\s\S]*insight:/, "navigation icons must use shared vector icons");
-for (const destination of ["review", "occasions", "settings"]) assert.match(source, new RegExp(`\\[\\"${destination}\\",`));
-assert.match(source, /buttons\.slice\(0, 2\)[\s\S]*?\$\{add\}[\s\S]*?buttons\.slice\(2\)/, "mobile navigation must center the add action");
+for (const destination of ["review", "occasions", "record", "more"]) assert.match(source, new RegExp(`\\[\\"${destination}\\",`));
+assert.match(source, /navPage === "record" \? "lc-checkin__mobile-nav-add /, "mobile navigation keeps the central record action styling");
 assert.doesNotMatch(source, /currentPage !== "editor" && !root\.querySelector\("\.lc-checkin__mobile-nav"\)/, "editor must retain bottom navigation");
 assert.match(pluginOpsSource, /else if \(page === "review" \|\| page === "history" \|\| page === "summary"\) host\.showReview\(root\)/, "legacy review routes remain supported on the originating surface (T-1621)");
 assert.match(bindPageNavSource, /data-history-insights-id/,
@@ -77,7 +77,7 @@ assert.match(v5Components, /@supports \(height: 100dvh\)[\s\S]*height: calc\(100
 assert.ok(!v5Components.includes("lc-checkin__dialog-close"),
     "plugin-drawn dialog close is retired (T-1526, zero TS consumers); the host b3 dialog owns the close action");
 assert.match(v5Components, /grid-template-columns: repeat\(5, minmax\(0, 1fr\)\) !important/,
-    "mobile navigation must fit four destinations around the central add action");
+    "mobile navigation must fit five destinations including the central record action");
 assert.match(source, /saveState: "idle" \| "saving" \| "error"/,
     "save state must be explicit for low-network feedback");
 /* R-18.4：msg.saving 已退役——saving 呈现按 T-1422 决策刻意静默（checkin-toast 布局防跳守门），

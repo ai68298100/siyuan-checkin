@@ -15,6 +15,9 @@ export interface BindOccasionsHost {
     disposed?: boolean;
     disposing?: boolean;
     occasionStore: OccasionStore;
+    occasionActionBusyIds?: Set<string>;
+    hasRootContext?(root: HTMLElement): boolean;
+    renderOccasionSurfaces?(): void;
     /** T-1583：reduced-motion 与设置页同源，滚动降级 instant。 */
     reducedMotion?: boolean;
     /** T-1613：仅移动端在展开表单后滚动定位（桌面表单常驻可见无需滚动）。 */
@@ -54,7 +57,7 @@ export interface BindOccasionsHost {
     /** T-1720：关联项目上下文（宿主打卡 store 投影）。 */
     linkedItems?: Array<{id: string; name: string; linkedOccasionId: string; archived: boolean}>;
     /** T-1494：单次实例改期（宿主走 setOccasionOverride 既有持久化通道）。 */
-    saveOccasionOverride?(id: string, originalDate: string, newDate?: string, root?: HTMLElement): void;
+    saveOccasionOverride?(id: string, originalDate: string, newDate?: string, root?: HTMLElement): Promise<void>;
     syncOccasionLunarHint(form: HTMLFormElement | null): void;
     saveOccasionForm(data: FormData, root?: HTMLElement): Promise<unknown>;
 }
@@ -68,6 +71,42 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
     const currentState = () => readOccasionsRootContext(host, root);
     const writeState = (patch: Partial<OccasionsRootContext>) => writeOccasionsRootContext(host, root, patch);
     const renderRoot = () => { if (isCurrentSurface()) host.render(root); };
+    const runOccasionAction = (id: string, button: HTMLElement, operation: () => Promise<unknown> | unknown) => {
+        const sharedBusyIds = host.occasionActionBusyIds ??= new Set<string>();
+        const state = currentState();
+        if (sharedBusyIds.has(id)) return;
+        sharedBusyIds.add(id);
+        const busyIds = new Set(state.occasionActionBusyIds);
+        busyIds.add(id);
+        writeState({occasionActionBusyIds: busyIds});
+        const row = button.closest?.<HTMLElement>(".lc-checkin__occasion-manager-row") ?? null;
+        const controls = row ? [...row.querySelectorAll<HTMLButtonElement>("button")] : [button as HTMLButtonElement];
+        const disabledBefore = controls.map(control => control.disabled);
+        controls.forEach(control => { control.disabled = true; });
+        row?.setAttribute("aria-busy", "true");
+        const refreshOccasionSurfaces = () => host.renderOccasionSurfaces ? host.renderOccasionSurfaces() : host.render(root);
+        refreshOccasionSurfaces();
+        void Promise.resolve().then(operation).catch(() => {
+            if (isCurrentSurface()) showMessage(t("msg.saveFailedShort"));
+        }).finally(() => {
+            sharedBusyIds.delete(id);
+            const rootRegistered = host.hasRootContext ? host.hasRootContext(root) : root.isConnected !== false;
+            if (rootRegistered) {
+                const current = currentState();
+                const remaining = new Set(current.occasionActionBusyIds);
+                remaining.delete(id);
+                const deleting = new Set(current.deletingOccasionIds);
+                deleting.delete(id);
+                writeState({occasionActionBusyIds: remaining, deletingOccasionIds: deleting});
+            }
+            refreshOccasionSurfaces();
+            if (!isCurrentSurface()) return;
+            if (row?.isConnected) {
+                row.removeAttribute("aria-busy");
+                controls.forEach((control, index) => { if (control.isConnected) control.disabled = disabledBefore[index] ?? false; });
+            }
+        });
+    };
     host.bindDialogClose(root);
     host.bindMobileNav(root);
     root.querySelector<HTMLElement>("[data-action='back'], [data-action='occasion-back']")?.addEventListener("click", () => host.showToday(root));
@@ -103,7 +142,6 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
         writeState({occasionSortMode});
         /* Sort is root-local like the other occasion filters; avoid rendering
            every visible surface when one root changes its order. */
-        renderRoot();
     });
     root.querySelector<HTMLElement>("[data-occasion-clear-filters]")?.addEventListener("click", () => {
         writeState({occasionSearchQuery: "", occasionStatusFilter: "all", occasionKindFilter: "all", occasionTimeFilter: "all"}); renderRoot();
@@ -112,17 +150,21 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
         writeState({occasionStatusFilter: (button.dataset.statStatus || "all") as BindOccasionsHost["occasionStatusFilter"], occasionTimeFilter: (button.dataset.statTime || "all") as BindOccasionsHost["occasionTimeFilter"]});
         renderRoot();
     }));
-    root.querySelectorAll<HTMLElement>("[data-occasion-edit]").forEach((button) => button.addEventListener("click", () => { writeState({editingOccasionId: button.dataset.occasionEdit, formDraft: undefined, formOpen: true, formSession: currentState().formSession + 1}); renderRoot(); revealOccasionForm(); }));
+    root.querySelectorAll<HTMLElement>("[data-occasion-edit]").forEach((button) => button.addEventListener("click", () => {
+        if (host.occasionActionBusyIds?.has(button.dataset.occasionEdit || "") || currentState().occasionActionBusyIds?.has(button.dataset.occasionEdit || "")) return;
+        writeState({editingOccasionId: button.dataset.occasionEdit, formDraft: undefined, formOpen: true, formSession: currentState().formSession + 1}); renderRoot(); revealOccasionForm();
+    }));
     root.querySelectorAll<HTMLElement>("[data-occasion-toitem]").forEach((button) => button.addEventListener("click", () => {
-        void host.enqueueMutation(async () => { await host.createOccasionLinkedItem(button.dataset.occasionToitem || "", root); });
+        const id = button.dataset.occasionToitem || "";
+        if (id) runOccasionAction(id, button, () => host.enqueueMutation(async () => { await host.createOccasionLinkedItem(id, root); }));
     }));
     root.querySelectorAll<HTMLElement>("[data-occasion-toggle]").forEach((button) => button.addEventListener("click", () => {
         const id = button.dataset.occasionToggle || "";
         if (!host.occasionStore.occasions.some((candidate) => candidate.id === id)) return;
-        void host.enqueueMutation(async () => {
+        runOccasionAction(id, button, () => host.enqueueMutation(async () => {
             const latest = host.occasionStore.occasions.find((candidate) => candidate.id === id);
             if (latest) await host.updateOccasion({...latest, enabled: !latest.enabled}, root);
-        });
+        }));
     }));
     root.querySelectorAll<HTMLElement>("[data-occasion-delete]").forEach((button) => button.addEventListener("click", () => {
         const id = button.dataset.occasionDelete || "";
@@ -132,7 +174,7 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
         if (current.deletingOccasionIds.has(id)) return;
         current.deletingOccasionIds.add(id);
         writeState({deletingOccasionIds: current.deletingOccasionIds});
-        void host.enqueueMutation(async () => {
+        runOccasionAction(id, button, () => host.enqueueMutation(async () => {
             const previous = host.occasionStore;
             host.occasionStore = deleteOccasion(previous, id);
             try { await host.persistOccasions(root); } catch {
@@ -147,7 +189,7 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
             next.occurrenceMoves = nextMoves;
             if (next.editingOccasionId === id) next.editingOccasionId = undefined;
             renderRoot();
-        });
+        }));
     }));
 
     /* T-1494：错过补标记（沿用既有按日期完成通道）+ 单次改期（内联日期行，确认后走宿主覆盖通道）。 */
@@ -155,7 +197,7 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
         const id = button.dataset.occasionLateId || "";
         const missedDate = button.dataset.occasionLateDate || "";
         if (!id || !missedDate) return;
-        void host.enqueueMutation(async () => { await host.setOccasionCompleted(id, missedDate, true, root); });
+        runOccasionAction(id, button, () => host.enqueueMutation(async () => { await host.setOccasionCompleted(id, missedDate, true, root); }));
     }));
     /* T-1712（D-355）：行内完成/撤销当前可处理发生日——复用 setOccasionCompleted 单一
        通道（与今日横幅/回顾/补标同源），撤销同通道回滚；启停走 data-occasion-toggle
@@ -165,13 +207,14 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
         const occurrenceDate = button.dataset.occasionCompleteDate || "";
         const target = button.dataset.occasionCompleteTarget === "true";
         if (!id || !occurrenceDate) return;
-        void host.enqueueMutation(async () => { await host.setOccasionCompleted(id, occurrenceDate, target, root); });
+        runOccasionAction(id, button, () => host.enqueueMutation(async () => { await host.setOccasionCompleted(id, occurrenceDate, target, root); }));
     }));
     /* T-1720（D-363）：关联项目徽章点击进该项目编辑器（跨页编辑，返回回事项页）；
        归档项目只读不可进（先启用再编辑）。 */
     root.querySelectorAll<HTMLElement>("[data-occasion-linked-edit]").forEach((button) => button.addEventListener("click", () => {
         const id = button.dataset.occasionLinkedEdit || "";
         const linked = (host.linkedItems || []).find((entry) => entry.id === id);
+        if (linked && (host.occasionActionBusyIds?.has(linked.linkedOccasionId) || currentState().occasionActionBusyIds?.has(linked.linkedOccasionId))) return;
         if (linked && !linked.archived && host.showEditorForLinkedItem) host.showEditorForLinkedItem(id, root);
     }));
     root.querySelectorAll<HTMLElement>("[data-occasion-move-toggle]").forEach((button) => button.addEventListener("click", () => {
@@ -196,6 +239,7 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
         const originLabel = row.querySelector<HTMLElement>("[data-occasion-move-origin-label]");
         const originDate = confirmButton.dataset.occasionMoveOrigin || "";
         dateInput.addEventListener("change", () => {
+            if (host.occasionActionBusyIds?.has(id) || currentState().occasionActionBusyIds?.has(id)) return;
             /* 保留 root-local 改期草稿；确认前切换筛选或重绘不能吞掉所选日期。 */
             const current = currentState();
             writeState({occurrenceMoves: {...current.occurrenceMoves, [id]: {open: true, date: dateInput.value}}});
@@ -205,6 +249,7 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
         });
         confirmButton.addEventListener("click", () => {
             if (!dateInput.value || confirmButton.disabled) return;
+            if (host.occasionActionBusyIds?.has(id) || currentState().occasionActionBusyIds?.has(id)) return;
             const target = host.occasionStore.occasions.find((candidate) => candidate.id === id);
             const clash = target && ((target.completedDates || []).includes(dateInput.value)
                 || Object.values(target.overrides || {}).some((override) => override.date === dateInput.value)
@@ -212,7 +257,7 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
             if (clash && !window.confirm(t("msg.occasionMoveClash", {date: dateInput.value}))) return;
             const current = currentState();
             writeState({occurrenceMoves: {...current.occurrenceMoves, [id]: {open: false, date: dateInput.value}}});
-            if (host.saveOccasionOverride) host.saveOccasionOverride(id, confirmButton.dataset.occasionMoveOrigin || "", dateInput.value, root);
+            if (host.saveOccasionOverride) runOccasionAction(id, confirmButton, () => host.saveOccasionOverride!(id, confirmButton.dataset.occasionMoveOrigin || "", dateInput.value, root));
         });
     });
     /* T-1718：撤销改期——只清本次覆盖（setOccasionOverride 传 undefined），恢复周期
@@ -221,8 +266,9 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
         const id = button.dataset.occasionMoveUndo || "";
         const origin = button.dataset.occasionMoveUndoOrigin || "";
         if (!id || !origin) return;
+        if (host.occasionActionBusyIds?.has(id) || currentState().occasionActionBusyIds?.has(id)) return;
         if (!window.confirm(t("msg.occasionMoveUndoConfirm", {origin, next: button.dataset.occasionMoveUndoNext || ""}))) return;
-        if (host.saveOccasionOverride) host.saveOccasionOverride(id, origin, undefined, root);
+        if (host.saveOccasionOverride) runOccasionAction(id, button, () => host.saveOccasionOverride!(id, origin, undefined, root));
     }));
 
     const syncBlocks = () => {

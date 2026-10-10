@@ -8,6 +8,12 @@ import {calendarDateFromKey, captureActionMoment, currentCalendarDate, escapeHtm
 import type {ActionMoment} from "../shared";
 import type {CheckinItem, CheckinItemSortMode, CheckinStore, TodayRootContext} from "../types";
 import {getActiveItemById, getItemById} from "../model";
+import {runExclusiveAction} from "./action-busy";
+import {showMessage} from "siyuan";
+
+/* Alt+数字仍然可在筛选后触发隐藏项目；没有 DOM 卡片可借用时，按项目 ID
+   做跨表面单飞，避免连续快捷键把同一写入排队多次。 */
+const quickKeyboardBusyItems = new Set<string>();
 
 export interface TodayBindingsHost {
     currentPage: string;
@@ -31,26 +37,8 @@ export interface TodayBindingsHost {
     enqueueMutation<T>(operation: () => Promise<T>): Promise<T>;
     recordEvent(item: CheckinItem, value: number, moment: {occurredAt: string; localDate: string}, expectedRevisionFingerprint?: string, note?: string, attachment?: string): Promise<unknown>;
     render(root?: HTMLElement): void;
-    showEditor(item?: CheckinItem, returnTo?: "today" | "review" | "insights", root?: HTMLElement): void;
+    showEditor(item?: CheckinItem, returnTo?: "today" | "review" | "insights" | "more", root?: HTMLElement): void;
     showInsights(item?: CheckinItem, root?: HTMLElement): void;
-}
-
-function runExclusiveAction(button: HTMLElement | null, operation: () => Promise<unknown> | unknown): void {
-    if (!button || button.dataset.actionBusy === "true") return;
-    const toolbar = button.closest<HTMLElement>("[data-bulk-toolbar]");
-    const controls = toolbar ? [...toolbar.querySelectorAll<HTMLButtonElement>("button")] : [button as HTMLButtonElement];
-    const previousDisabled = controls.map((control) => control.disabled);
-    button.dataset.actionBusy = "true";
-    button.setAttribute("aria-busy", "true");
-    toolbar?.setAttribute("aria-busy", "true");
-    controls.forEach((control) => { control.disabled = true; });
-    void Promise.resolve().then(operation).catch(() => undefined).finally(() => {
-        if (!button.isConnected) return;
-        delete button.dataset.actionBusy;
-        button.removeAttribute("aria-busy");
-        toolbar?.removeAttribute("aria-busy");
-        controls.forEach((control, index) => { if (control.isConnected) control.disabled = previousDisabled[index]; });
-    });
 }
 
 /** Keep keyboard navigation and menu return focus on the visible card action.
@@ -95,7 +83,20 @@ export function bindQuickKeyboardFor(host: TodayBindingsHost, root: HTMLElement)
             // turn a focus shortcut into an unearned manual duration record.
             return;
         }
-        void host.enqueueMutation(() => host.recordEvent(item, revision.kind === "binary" ? 1 : getRecordStep(revision.kind, revision.unit, revision.recordStep), captureActionMoment(), host.revisionFingerprint(item, date)));
+        const card = [...root.querySelectorAll<HTMLElement>(".lc-checkin__item[data-item-id]")].find((entry) => entry.dataset.itemId === item.id);
+        const action = card?.querySelector<HTMLElement>("[data-action='record'], [data-action='quick-record'], [data-action='toggle']");
+        const record = () => host.enqueueMutation(() => host.recordEvent(item, revision.kind === "binary" ? 1 : getRecordStep(revision.kind, revision.unit, revision.recordStep), captureActionMoment(), host.revisionFingerprint(item, date)));
+        const recordOnce = async () => {
+            if (quickKeyboardBusyItems.has(item.id)) return;
+            quickKeyboardBusyItems.add(item.id);
+            try {
+                await record();
+            } finally {
+                quickKeyboardBusyItems.delete(item.id);
+            }
+        };
+        if (card && action) runExclusiveAction(action, recordOnce, card, "button[data-action='record'], button[data-action='quick-record'], button[data-action='toggle']");
+        else void recordOnce().catch(() => showMessage(t("msg.saveFailedShort")));
     });
 }
 
@@ -180,45 +181,49 @@ export function bindBulkModeFor(host: TodayBindingsHost, root: HTMLElement): voi
         const button = event.currentTarget as HTMLElement;
         const ids = [...today.bulkSelected];
         if (!ids.length) return;
+        const actionKey = `bulk:${ids.sort().join(",")}`;
         runExclusiveAction(button, async () => {
             if (!await host.completeItems(ids)) return;
             today.bulkMode = false;
             today.bulkSelected.clear();
             host.render(root);
-        });
+        }, undefined, "button", actionKey);
     });
     root.querySelector<HTMLElement>("[data-action='bulk-skip']")?.addEventListener("click", (event) => {
         const button = event.currentTarget as HTMLElement;
         const ids = [...today.bulkSelected];
         if (!ids.length) return;
+        const actionKey = `bulk:${ids.sort().join(",")}`;
         runExclusiveAction(button, async () => {
             if (!await host.skipItems(ids)) return;
             today.bulkMode = false;
             today.bulkSelected.clear();
             host.render(root);
-        });
+        }, undefined, "button", actionKey);
     });
     root.querySelector<HTMLElement>("[data-action='bulk-archive']")?.addEventListener("click", (event) => {
         const button = event.currentTarget as HTMLElement;
         const ids = [...today.bulkSelected];
         if (!ids.length) return;
+        const actionKey = `bulk:${ids.sort().join(",")}`;
         runExclusiveAction(button, async () => {
             if (!await host.archiveItems(ids)) return;
             today.bulkMode = false;
             today.bulkSelected.clear();
             host.render(root);
-        });
+        }, undefined, "button", actionKey);
     });
     root.querySelector<HTMLElement>("[data-action='bulk-delete']")?.addEventListener("click", (event) => {
         const button = event.currentTarget as HTMLElement;
         const ids = [...today.bulkSelected];
         if (!ids.length) return;
+        const actionKey = `bulk:${ids.sort().join(",")}`;
         runExclusiveAction(button, async () => {
             if (!await host.deleteItemsWithRecords(ids)) return;
             today.bulkMode = false;
             today.bulkSelected.clear();
             host.render(root);
-        });
+        }, undefined, "button", actionKey);
     });
 }
 

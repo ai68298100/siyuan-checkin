@@ -13,9 +13,24 @@
 .lc-checkin__topnav-tabs { gap: 4px; }
 .lc-checkin__topnav-tabs button { min-height: 40px; padding-inline: 14px; border-radius: 10px; font-weight: 500; }
 .lc-checkin__topnav-tabs button.is-selected { font-weight: 650; }
-.lc-checkin__topnav-tabs [data-mobile-nav="settings"] { margin-left: 12px; }
 .lc-checkin__topnav-actions { border-left: 0; }
 .lc-checkin__topnav-action { width: 40px; height: 40px; }
+.lc-checkin--more .lc-checkin__more-destinations {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;
+    width: min(100%, 1000px); margin: 8px auto 0;
+}
+.lc-checkin__more-destination {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    min-width: 0; min-height: 76px; padding: 14px 16px; text-align: left;
+    color: var(--lc-checkin-text); background: var(--lc-checkin-surface);
+    border: 1px solid var(--lc-checkin-border); border-radius: 8px;
+}
+.lc-checkin__more-destination:hover { border-color: var(--lc-checkin-border-strong); background: var(--lc-checkin-muted-surface); }
+.lc-checkin__more-destination > span:first-child { display: grid; gap: 4px; min-width: 0; }
+.lc-checkin__more-destination strong, .lc-checkin__more-destination small { overflow-wrap: anywhere; }
+.lc-checkin__more-destination small { color: var(--lc-checkin-muted); line-height: 1.4; }
+.lc-checkin__more-arrow { flex: 0 0 auto; color: var(--lc-checkin-accent-text); font-size: 24px; }
+.lc-checkin__more-destination:focus-visible { outline: 2px solid var(--lc-checkin-accent-text); outline-offset: 2px; }
 :is(.lc-checkin-dock-host, .lc-checkin-tab-host, .lc-checkin-dialog-host) > .lc-checkin__mobile-nav {
     button { grid-template-rows: 28px 14px; gap: 2px; color: var(--lc-checkin-muted); background: transparent; }
     button:not(.is-selected) > small { color: var(--lc-checkin-muted); font-weight: 500; }
@@ -25,6 +40,10 @@
     .lc-checkin__mobile-nav-add > span { width: 36px; height: 28px; border-radius: 10px; box-shadow: none; }
 }
 .lc-checkin :is(button, input, select, textarea, summary):focus-visible { outline: 2px solid var(--lc-checkin-accent-text); outline-offset: 2px; }
+@media (max-width: 600px) {
+    .lc-checkin--more .lc-checkin__more-destinations { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+    .lc-checkin__more-destination { min-height: 64px; }
+}
 
 .lc-checkin.lc-checkin--today {
     .lc-checkin__layout > .lc-checkin__header { margin-bottom: 18px; padding-block: 20px 0; border: 0; }

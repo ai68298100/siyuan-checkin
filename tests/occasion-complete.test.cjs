@@ -69,11 +69,13 @@ const makeFixture = (presets = []) => {
     /* —— 夹具 1：完成本次 → setOccasionCompleted(id, next, true)。 —— */
     const marking = makeFixture([["occ-1", "2026-09-22", "true"]]);
     marking.completeButtons[0].fire();
+    await Promise.resolve();
     assert.deepEqual(marking.completions, [{id: "occ-1", date: "2026-09-22", target: true, root: marking.root}], "marking calls the shared completion channel with the occurrence date and surface root");
 
     /* —— 夹具 2：撤销本次 → 同通道回滚（target=false）。 —— */
     const undoing = makeFixture([["occ-1", "2026-09-22", "false"]]);
     undoing.completeButtons[0].fire();
+    await Promise.resolve();
     assert.deepEqual(undoing.completions, [{id: "occ-1", date: "2026-09-22", target: false, root: undoing.root}], "undoing rolls back through the same channel and surface root");
 
     /* —— 夹具 3：渲染结构钉——完成切换、本次已完成回显、启停图标消歧。 —— */

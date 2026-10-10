@@ -6,6 +6,7 @@ import {dateKey, getActiveItemById, getItemById, getItemRevisionForDate, getEven
 import type {CheckinEvent} from "../types";
 import {currentCalendarDate, captureActionMoment, calendarDateFromKey, getRecordStep} from "../shared";
 import {isOccasionCompleted} from "../occasions";
+import {runExclusiveAction} from "./action-busy";
 import {showMessage} from "siyuan";
 import {DOCK_TOMATO_ADAPTER_ID} from "../integrations";
 import {inspectDockTomatoProvider, type DockTomatoProviderState} from "../dock-tomato";
@@ -62,7 +63,7 @@ export interface BindTodayHost {
     showOccasions(root?: HTMLElement): void;
     showSettings(root?: HTMLElement): void;
     openTabPage(): void;
-    showEditor(item?: CheckinItem, returnTo?: "insights", root?: HTMLElement): void;
+    showEditor(item?: CheckinItem, returnTo?: "today" | "review" | "insights" | "more", root?: HTMLElement): void;
     /** T-1772：其他活跃项目管理行的归档动作。 */
     archiveItems?(itemIds: string[]): Promise<boolean>;
     /** T-1775：七日条日期入口复用回顾按日钻取状态。 */
@@ -132,6 +133,42 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
         if (host.setTodayQueryForRoot) host.setTodayQueryForRoot(root, value);
         else host.todayQuery = value;
     };
+    const revealPriorityTarget = (itemId: string, trigger: HTMLElement): void => {
+        const date = currentCalendarDate();
+        const item = getActiveItemById(host.store, itemId);
+        if (!item || !isItemAvailableOnDate(item, date) || !isScheduledToday(item, date)) {
+            showMessage(t("bind.targetMissing"));
+            return;
+        }
+        const query = host.todayQueryForRoot ? host.todayQueryForRoot(root) : host.todayQuery;
+        const needsReveal = Boolean(query.trim()) || host.pendingOnly || host.completedCollapsed || host.collapsedTodayGroups.size > 0;
+        if (needsReveal) {
+            writeTodayQuery("");
+            if (host.applyPreferenceMutation) {
+                host.applyPreferenceMutation(() => {
+                    host.pendingOnly = false;
+                    host.completedCollapsed = false;
+                    host.collapsedTodayGroups.clear();
+                });
+            } else {
+                host.pendingOnly = false;
+                host.completedCollapsed = false;
+                host.collapsedTodayGroups.clear();
+                void host.persistViewPreferences();
+            }
+            host.render(root);
+        }
+        const card = [...root.querySelectorAll<HTMLElement>(".lc-checkin__item[data-item-id]")]
+            .find((element) => element.dataset.itemId === itemId);
+        if (!card || card.closest("[hidden]")) {
+            showMessage(t("bind.targetMissing"));
+            return;
+        }
+        card.scrollIntoView({behavior: "smooth", block: "center"});
+        const primaryAction = card.querySelector<HTMLElement>("[data-action='record'], [data-action='quick-record'], [data-action='toggle']");
+        (primaryAction || card).focus({preventScroll: true});
+        trigger.blur();
+    };
     root.querySelectorAll<HTMLElement>("[data-overview-focus]").forEach((button) => {
         button.addEventListener("click", () => {
             const card = [...root.querySelectorAll<HTMLElement>(".lc-checkin__item[data-item-id]")]
@@ -156,11 +193,7 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
             host.showOccasions(root);
             return;
         }
-        const item = root.querySelector<HTMLElement>(`[data-item-id="${CSS.escape(action.dataset.priorityId || "")}"]`);
-        if (!item) return;
-        item.scrollIntoView({behavior: "smooth", block: "center"});
-        const primaryAction = item.querySelector<HTMLElement>("[data-action='record'], [data-action='quick-record'], [data-action='toggle']");
-        primaryAction?.focus();
+        revealPriorityTarget(action.dataset.priorityId || "", action);
     }));
     root.querySelector<HTMLDetailsElement>(".lc-checkin__priority-reminder-more")?.addEventListener("toggle", (event) => {
         setPriorityReminderExpanded((event.currentTarget as HTMLDetailsElement).open);
@@ -207,6 +240,7 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
         host.focusTodaySearch(search?.value.length, root);
     }));
     root.querySelector<HTMLElement>("[data-action='quick-entry-record']")?.addEventListener("click", (event) => {
+        const button = event.currentTarget as HTMLElement;
         if (!search || !host.quickEntryNlp || host.disposed || host.disposing || pageForRoot() !== "today") return;
         const date = currentCalendarDate();
         const todayKey = dateKey(date);
@@ -220,9 +254,12 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
         const item = getActiveItemById(host.store, targetId);
         if (!item || isComplete(host.store, item, date) || parsed.value === undefined) return;
         const moment = captureActionMoment();
-        if (host.setPendingFocusItem) host.setPendingFocusItem(root, item.id);
-        host.pulseHaptic();
-        void host.enqueueMutation(() => host.recordEvent(item, parsed.value!, moment, host.revisionFingerprint(item, date)));
+        const card = [...root.querySelectorAll<HTMLElement>(".lc-checkin__item[data-item-id]")].find((entry) => entry.dataset.itemId === item.id);
+        runExclusiveAction(button, () => {
+            if (host.setPendingFocusItem) host.setPendingFocusItem(root, item.id);
+            host.pulseHaptic();
+            return host.enqueueMutation(() => host.recordEvent(item, parsed.value!, moment, host.revisionFingerprint(item, date)));
+        }, card, "button[data-action='record'], button[data-action='quick-record'], button[data-action='toggle']");
     });
     root.querySelectorAll<HTMLElement>("[data-action='clear-search']").forEach((button) => button.addEventListener("click", () => {
         cancelSearch();
@@ -250,9 +287,12 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
         if (!item) return;
         const date = currentCalendarDate();
         const revision = getItemRevisionForDate(item, date);
-        if (host.setPendingFocusItem) host.setPendingFocusItem(root, item.id);
-        host.pulseHaptic();
-        host.enqueueMutation(() => host.recordEvent(item, revision.kind === "binary" ? 1 : getRecordStep(revision.kind, revision.unit, revision.recordStep), captureActionMoment(), host.revisionFingerprint(item, date)));
+        const card = [...root.querySelectorAll<HTMLElement>(".lc-checkin__item[data-item-id]")].find((entry) => entry.dataset.itemId === item.id);
+        runExclusiveAction(button, () => {
+            if (host.setPendingFocusItem) host.setPendingFocusItem(root, item.id);
+            host.pulseHaptic();
+            return host.enqueueMutation(() => host.recordEvent(item, revision.kind === "binary" ? 1 : getRecordStep(revision.kind, revision.unit, revision.recordStep), captureActionMoment(), host.revisionFingerprint(item, date)));
+        }, card, "button[data-action='record'], button[data-action='quick-record'], button[data-action='toggle']");
     }));
     root.querySelector<HTMLElement>("[data-action='toggle-pending-only']")?.addEventListener("click", () => {
         persistPreferenceMutation(() => { host.pendingOnly = !host.pendingOnly; });
@@ -364,7 +404,8 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
             const item = getItemById(host.store, itemId);
             if (item) host.showInsights(item, root);
         });
-        element.querySelector<HTMLElement>("[data-action='toggle']")?.addEventListener("click", () => {
+        element.querySelector<HTMLElement>("[data-action='toggle']")?.addEventListener("click", (event) => {
+            const button = event.currentTarget as HTMLElement;
             const moment = captureActionMoment();
             const desiredComplete = !element.classList.contains("is-complete");
             const item = getItemById(host.store, itemId);
@@ -377,7 +418,7 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
             }
             const expectedRevisionFingerprint = item ? host.revisionFingerprint(item, actionDate) : undefined;
             const eventsToUndo = desiredComplete ? [] : getEventsForDay(host.store, itemId, actionDate).map((event) => ({...event}));
-            host.enqueueMutation(() => host.toggleItem(itemId, moment, desiredComplete, expectedRevisionFingerprint, eventsToUndo));
+            runExclusiveAction(button, () => host.enqueueMutation(() => host.toggleItem(itemId, moment, desiredComplete, expectedRevisionFingerprint, eventsToUndo)), element, "button[data-action='record'], button[data-action='quick-record'], button[data-action='toggle']");
         });
         element.querySelector<HTMLElement>("[data-action='focus']")?.addEventListener("click", () => {
             const focusItem = getActiveItemById(host.store, itemId);
@@ -400,20 +441,23 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
             host.openFocusTimer(itemId);
         });
         element.querySelector<HTMLElement>("[data-action='quick-record']")?.addEventListener("click", (event) => {
+            const button = event.currentTarget as HTMLElement;
             const item = getItemById(host.store, itemId);
             if (!item) return;
             const moment = captureActionMoment();
             const date = calendarDateFromKey(moment.localDate);
             const revision = getItemRevisionForDate(item, date);
             const expectedRevisionFingerprint = host.revisionFingerprint(item, date);
-            if (host.setPendingFocusItem) host.setPendingFocusItem(root, item.id);
-            host.pulseHaptic();
             /* T-1462：chips 各自携带 data-amount；主步长按钮的 data-amount 与重算值等价，缺失/非法时回落重算。 */
             const amountValue = Number((event.currentTarget as HTMLElement).dataset.amount);
             const amount = Number.isFinite(amountValue) && amountValue > 0
                 ? amountValue
                 : getRecordStep(revision.kind, revision.unit, revision.recordStep);
-            host.enqueueMutation(() => host.recordEvent(item, amount, moment, expectedRevisionFingerprint));
+            runExclusiveAction(button, () => {
+                if (host.setPendingFocusItem) host.setPendingFocusItem(root, item.id);
+                host.pulseHaptic();
+                return host.enqueueMutation(() => host.recordEvent(item, amount, moment, expectedRevisionFingerprint));
+            }, element, "button[data-action='record'], button[data-action='quick-record'], button[data-action='toggle']");
         });
         element.querySelectorAll<HTMLElement>("[data-action='journal']").forEach((button) => button.addEventListener("click", () => {
             /* T-1465：问卷绑定项目（主按钮 + 次级重填入口）——宿主负责弹窗、事实层与旁路写入。 */
@@ -466,7 +510,8 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
             };
             reader.readAsDataURL(file);
         });
-        element.querySelectorAll<HTMLElement>("[data-action='record']").forEach((button) => button.addEventListener("click", () => {
+        element.querySelectorAll<HTMLElement>("[data-action='record']").forEach((button) => button.addEventListener("click", (event) => {
+            const actionButton = event.currentTarget as HTMLElement;
             const item = getItemById(host.store, itemId);
             const input = element.querySelector<HTMLInputElement>(".lc-checkin__amount");
             const amount = input ? input.valueAsNumber : 1;
@@ -474,7 +519,7 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
                 const moment = captureActionMoment();
                 const revision = getItemRevisionForDate(item, calendarDateFromKey(moment.localDate));
                 const expectedRevisionFingerprint = host.revisionFingerprint(item, calendarDateFromKey(moment.localDate));
-                const recordWithDetails = (value: number): void => {
+                const recordWithDetails = async (value: number): Promise<void> => {
                     const note = element.querySelector<HTMLInputElement>(".lc-checkin__record-note")?.value;
                     const attachment = pendingAttachments.get(itemId);
                     if (host.setPendingFocusItem) host.setPendingFocusItem(root, item.id);
@@ -486,7 +531,7 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
                         if (!expandedExactEntries().includes(itemId)) setExpandedExactEntries([...expandedExactEntries(), itemId]);
                         host.render(root);
                     };
-                    void host.enqueueMutation(async () => {
+                    await host.enqueueMutation(async () => {
                         try {
                             const recorded = await host.recordEvent(item, value, moment, expectedRevisionFingerprint, note, attachment);
                             if (!recorded) {
@@ -523,41 +568,43 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
                         }
                     });
                 };
-                if (revision.kind === "binary") {
-                    /* T-1239（D-219）：at-most 反转——无破戒时点击记录破戒；已破戒时点击撤销。 */
-                    if (item.direction === "atMost") {
-                        const lapseEvents = getEventsForDay(host.store, item.id, calendarDateFromKey(moment.localDate))
-                            .filter((event) => !isSkipEvent(event))
-                            .map((event) => ({...event}));
-                        if (button.closest("[data-exact-entry]") || lapseEvents.length === 0) {
-                            recordWithDetails(1);
+                runExclusiveAction(actionButton, async () => {
+                    if (revision.kind === "binary") {
+                        /* T-1239（D-219）：at-most 反转——无破戒时点击记录破戒；已破戒时点击撤销。 */
+                        if (item.direction === "atMost") {
+                            const lapseEvents = getEventsForDay(host.store, item.id, calendarDateFromKey(moment.localDate))
+                                .filter((event) => !isSkipEvent(event))
+                                .map((event) => ({...event}));
+                            if (button.closest("[data-exact-entry]") || lapseEvents.length === 0) {
+                                await recordWithDetails(1);
+                                return;
+                            }
+                            if (host.setPendingFocusItem) host.setPendingFocusItem(root, item.id);
+                            host.pulseHaptic();
+                            await host.enqueueMutation(() => host.toggleItem(item.id, moment, false, expectedRevisionFingerprint, lapseEvents));
                             return;
                         }
+                        /* The expanded submit action always records; it must not
+                           become Undo after a queued completion updates this card.
+                           recordEvent keeps the existing binary duplicate guard. */
+                        const desiredComplete = Boolean(button.closest("[data-exact-entry]")) || !element.classList.contains("is-complete");
+                        if (desiredComplete && revision.schedule.type !== "quota") {
+                            await recordWithDetails(1);
+                            return;
+                        }
+                        const eventsToUndo = desiredComplete ? [] : getEventsForDay(host.store, item.id, calendarDateFromKey(moment.localDate)).map((event) => ({...event}));
                         if (host.setPendingFocusItem) host.setPendingFocusItem(root, item.id);
                         host.pulseHaptic();
-                        host.enqueueMutation(() => host.toggleItem(item.id, moment, false, expectedRevisionFingerprint, lapseEvents));
+                        await host.enqueueMutation(() => host.toggleItem(item.id, moment, desiredComplete, expectedRevisionFingerprint, eventsToUndo));
                         return;
                     }
-                    /* The expanded submit action always records; it must not
-                       become Undo after a queued completion updates this card.
-                       recordEvent keeps the existing binary duplicate guard. */
-                    const desiredComplete = Boolean(button.closest("[data-exact-entry]")) || !element.classList.contains("is-complete");
-                    if (desiredComplete && revision.schedule.type !== "quota") {
-                        recordWithDetails(1);
+                    if (!Number.isFinite(amount) || amount <= 0) {
+                        showMessage(t("msg.valuePositive"));
+                        input?.focus();
                         return;
                     }
-                    const eventsToUndo = desiredComplete ? [] : getEventsForDay(host.store, item.id, calendarDateFromKey(moment.localDate)).map((event) => ({...event}));
-                    if (host.setPendingFocusItem) host.setPendingFocusItem(root, item.id);
-                    host.pulseHaptic();
-                    host.enqueueMutation(() => host.toggleItem(item.id, moment, desiredComplete, expectedRevisionFingerprint, eventsToUndo));
-                    return;
-                }
-                if (!Number.isFinite(amount) || amount <= 0) {
-                    showMessage(t("msg.valuePositive"));
-                    input?.focus();
-                    return;
-                }
-                recordWithDetails(amount);
+                    await recordWithDetails(amount);
+                }, element, "button[data-action='record'], button[data-action='quick-record'], button[data-action='toggle']");
             }
         }));
     });
@@ -566,6 +613,6 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
         const id = row?.dataset.occasionId || "";
         const occurrenceDate = row?.dataset.occasionDate || "";
         const item = host.occasionStore.occasions.find((candidate) => candidate.id === id);
-        if (item) void host.enqueueMutation(() => host.setOccasionCompleted(id, occurrenceDate, !isOccasionCompleted(item, occurrenceDate), root));
+        if (item) runExclusiveAction(button, () => host.enqueueMutation(() => host.setOccasionCompleted(id, occurrenceDate, !isOccasionCompleted(item, occurrenceDate), root)), row, "button[data-action='toggle-occasion']");
     }));
 }

@@ -70,11 +70,12 @@ const makeFixture = (recordOutcome) => {
         ["[data-action='toggle-exact']", {setAttribute() {}, addEventListener() {}}],
         ["[data-attach-file]", {addEventListener() {}}],
     ]);
-    const recordButton = {handlers: new Map(), addEventListener(name, fn) { this.handlers.set(name, fn); }, fire() { this.handlers.get("click")?.(); }};
+    const recordButton = {handlers: new Map(), disabled: false, dataset: {}, isConnected: true, setAttribute() {}, removeAttribute() {}, closest() { return null; }, addEventListener(name, fn) { this.handlers.set(name, fn); }, fire() { this.handlers.get("click")?.({currentTarget: this}); }};
     const card = {
         dataset: {itemId: "p1"},
         querySelector: (selector) => elementStubs.get(selector) || null,
         querySelectorAll: (selector) => selector === "[data-action='record']" ? [recordButton] : [],
+        setAttribute() {}, removeAttribute() {},
         addEventListener() {},
     };
     const root = {
@@ -126,6 +127,7 @@ const makeFixture = (recordOutcome) => {
     const failed = makeFixture(false);
     failed.recordButton.fire();
     await Promise.all(failed.mutations);
+    await new Promise(resolve => setImmediate(resolve));
     assert.equal(failed.host.recordCalls.length, 1, "the mutation ran once");
     assert.equal(failed.host.pendingAttachments.get("p1"), "data:image/png;base64,AAA", "the attachment survives a failed write");
     assert.deepEqual(failed.host.expandedExactEntries, ["p1"], "the exact-entry panel stays expanded for retry");
@@ -135,6 +137,7 @@ const makeFixture = (recordOutcome) => {
     const success = makeFixture(true);
     success.recordButton.fire();
     await Promise.all(success.mutations);
+    await new Promise(resolve => setImmediate(resolve));
     assert.equal(success.host.pendingAttachments.has("p1"), false, "success consumes the attachment");
     assert.deepEqual(success.host.expandedExactEntries, [], "success collapses the panel");
     assert.equal(success.host.recordCalls[0].note, "读了两章", "the note reaches the recorder");
@@ -160,7 +163,8 @@ const makeFixture = (recordOutcome) => {
         const card = {
             dataset: {itemId: "p1"},
             querySelector: (selector) => elementStubs.get(selector) || null,
-            querySelectorAll: (selector) => selector === "[data-action='record']" ? [recordButton] : [],
+            isConnected: true, setAttribute() {}, removeAttribute() {},
+            querySelectorAll: (selector) => selector === "[data-action='record']" ? [recordButton] : selector.startsWith("button[data-action=") ? [recordButton] : [],
             addEventListener() {},
         };
         const host = {

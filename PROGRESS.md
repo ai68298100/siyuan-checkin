@@ -1,5 +1,17 @@
 # 2026-10-09 R-RELEASE-18.17.1 发布验收
 
+# 2026-10-10 提醒文流与短屏复核收口（D-462）
+
+在最终源码构建后复核提醒通知首次挂载与重绘定位：可见 Dock/Tab/Dialog 统一放在 `.lc-checkin` 的滚动布局之前，短屏限制收敛为 64px，避免遮挡编辑器预览、事项摘要和 Today 内容；无可见 surface 时继续使用 body fallback。同步更新宽度走查与移动质量契约，事项长文本走查先滚动到折叠项再验证展开可读性。
+
+最终证据：`pnpm run check`、`pnpm test`、`pnpm run build`、`pnpm run test:ui`、`pnpm run test:mobile`、`pnpm run test:ecosystem`、明暗主题 `visual-qa.cjs`、Dock 明暗主题 `width-walkthrough.cjs`、提醒/事项/README/移动质量定向测试和 `git diff --check` 均通过；构建仅保留既有 Webpack 体积 warning。真实思源宿主生命周期、Android/TalkBack、第三方来源、缩放和保存面板仍需现场验收。
+
+# 2026-10-10 README 与入口复核收口（D-461）
+
+本轮继续处理此前未收口的入口、点击反馈和文档一致性问题：快速弹窗的移动底栏“记录”现在按发起 root 直接打开新建编辑器，不会重复打开弹窗后回到“今天”；设置首页健康卡“提醒与专注”改为跳到实际的“外观与交互”分组；More、设置、归档、导入导出和首成功流程的浏览器入口全部按当前信息架构更新。README 在首屏加入四款内测插件说明，18.17.1 更新按“整体/新增/优化/修复”组织，18.17.0 及更早内容折叠，并补齐八款小驴系列插件的简介、仓库链接和 QQ 群。
+
+验证：`pnpm run check`、`pnpm test`、`pnpm run build`、`pnpm run test:ui`、`pnpm run test:ecosystem`、`node tests/width-walkthrough.cjs`、i18n/入口/设置/桌面对话框/稳定性定向测试和 `git diff --check` 均通过。构建继续只有既有 Webpack 体积 warning（CSS 约 641 KiB、JS 约 1.49 MiB、package.zip 约 857 KiB）。真实思源宿主、Android/TalkBack、第三方来源、缩放和保存面板仍属于现场边界。
+
 用户在多轮全插件复核后授权推送并通过 `gh` 发版。本次采用补丁版 v18.17.1，版本源、README 当前入口、变更记录和新发布说明同步更新，v18.17.0 历史资产摘要未回写。发布复核修正周复盘导出双语提示为“提交到保存通道”，避免把宿主异步保存请求派发当作最终完成；对应定向测试通过。第十四轮重复决策编号由 D-451 顺延为 D-458。
 
 最终 `pnpm run test:quality` EXIT 0（证据 `.artifacts/release-18.17.1-quality.log`），覆盖环境、类型、生产构建、主测试、UI、旧样式、移动、生态、扩展、周期对比、性能、摘要同步、非 CI 发布资产检查和四步回滚演练；测试覆盖清单为 266 文件，无退役，公开双语 2707 key 对齐；无障碍缺名、正向 tabindex、键盘不可达和 1227 对比度组合违规均为 0。显式使用本机 Playwright Chromium 运行明暗主题 visual-qa，均 EXIT 0、pageErrors=[]，检查了窄屏回顾、设置、320px 深色今日和展开编辑器截图。宽度矩阵 49 个表面场景、32 个交互状态和长内容维护场景通过。CSS 655350 bytes 保留 soft warning，未调整阈值。已推送 `main` 提交 `ef4c1c312ef07354f6f354ec83395e39c7f10bb6`、tag `v18.17.1` 并创建正式 Release（https://github.com/ai68298100/siyuan-checkin/releases/tag/v18.17.1）；上传包 SHA-256 为 `5d3a3d3ceeb9272f2797b9719672b505473ccafea092c9116cbd9f2068d1a213`。随后为 CI 历史红证补充完整 clone 与 pnpm 锁元数据，`a7eea378` 触发的 CI run `37900511533` 中 `verify` 和 `browser-audit` 均通过。真实思源、Android/TalkBack、第三方账号、缩放和保存面板现场仍开放，不推送集市。
@@ -2754,5 +2766,13 @@ Today 条目附件的 `FileReader.onload/onerror` 现在复核绑定时页面、
 本轮继续检查公开 API、Dock Tomato 收件箱、Review 周复盘工具、导出反馈和异步生命周期。发现并修复三组问题：`completeOccasion` 在初始化/卸载或队列哨兵下可能返回 `undefined`，现在统一做生命周期守卫并严格返回布尔值；撤销跳过并计入已写入主记录但收件箱清理失败时会误报成功，现恢复条目并保留可重试状态；周复盘保存、导出、复制 AI、清除原来没有统一防重复和忙碌反馈，现统一锁定按钮，导出结果会显示成功或失败。
 
 验证：`pnpm run check`、`pnpm test`、`pnpm run test:ui`、`pnpm run test:mobile`、`pnpm run test:extended`、`pnpm run test:ecosystem`、`pnpm run test:perf`、`pnpm run build`、无障碍、下载通道、API、跨窗口、跨页和偏好回滚定向测试通过。构建保留既有体积 warning；原生导出成功提示只表示资源已写入并已派发保存请求，不扩张为宿主最终保存成功。`CHECKIN_BROWSER` 未设置，真实思源、Android/TalkBack、第三方来源、缩放和保存面板现场仍开放。
+
+# 2026-10-09 原型对照与交互状态复核第十五轮（D-460）
+
+对照 v3 原型与生产页面，确认并修复 Review 保存视图无效删除入口、批量跳过/补记的重复点击和 reject 后 busy 卡死、周复盘 pending 时输入可变导致清除覆盖新输入、未来日期/空文档目标 disabled 原因不清、宽屏提醒固定浮层遮挡 Today 内容。宽屏提醒现在在可见 Tab/Dock/Dialog surface 中以内联布局显示，保留没有可见 surface 时的 body fallback。事项行级动作以及 Editor/Today 的 pending 锁由并行修复分支补齐，待合并后统一验收。
+
+原型差异：移动底栏和桌面导航仍未映射 v3 的“更多/搜索/主题/帮助”路径；Settings 首屏仍缺四张健康总览卡。这是既有信息架构专项，登记 T-1831/T-1819/T-1822，不把本轮行为修复记成视觉达标。自动化浏览器变量 `CHECKIN_BROWSER` 当前未设置；真实思源/Android/TalkBack、缩放和保存面板现场未关闭。
+
+定向验证（本轮当前变更）：`pnpm run check`、`node tests/view-scope.test.cjs`、`node tests/batch-backfill.test.cjs`、`node tests/weekly-review.test.cjs` 已通过。宽屏提醒结构新回归与全部并行修复合并后待复跑完整 UI/浏览器链。
 
 2026-09-30 T-1621 步骤一交付：多 root 独立页面（RootContext Map + currentPage 代理层 + 导航可选 root）（local-auto，架构级专职轮；口径 D-324/D-325）：①新纯模块 features/root-page-store.ts——RootContext Map（HTMLElement→{page}）+孤儿页（承接早于 root 注册的启动写入，新 root 继承）+最后活跃标记；②index.ts currentPage 字段改读写代理：读=最后活跃 root 页、写=全局同步全部 root+孤儿页（既有宿主级写入零语义变化）；applyNavigation/pageOfRoot/releaseRootContext 宿主方法 + primaryRoot（dock 优先页签回落）；renderInto 按 root ensure 注册取页——页面选择/绑定分派/滚动恢复/renderedPages/导航 chrome（topnav/rail/底栏/移动顶栏/getPageTitle）全部按 root 页；回顾快照按任一回顾 root 判定、renderInto 直调（弹窗全屏切换）快照回落兜底；③navigation.ts 全 showXFor+showEditorReturnFor 可选 root 参数经 applyNavigation 单一落点，洞察返回页按发起表面判定；④分发接线：bindMobileNavFor（rail/底栏/顶栏统一分发）、bind-today/bind-page-navigation/bind-editor 动作、设置卡跳转五点、saveForm→saveEditorForm options.root、渲染块跳转 primaryRoot、BPN 草案编辑器；⑤快速弹窗页记忆归弹窗 root：关闭按 pageOfRoot 记取+释放上下文，退役「关闭写回宿主 currentPage」（旧实现 dock/页签跟随弹窗跳页=跨表面串页，D-325 纠正）；⑥dock/页签 destroy 释放上下文+最后活跃释放回落 dock→页签。守门：tests/root-page-store.test.cjs 入主链（223 文件，行为级 7 组：per-root 独立/代理读回落/全局写同步/孤儿页继承/释放回落）；cross-page-consistency 新增 T-1621 步骤一块 18 断言（含导航函数仅 openTabPageFor 保留宿主级写、反代理页断言）；mobile-dialog/desktop-dialog/responsive-layout/stability-9_8/checkin-block/template-gallery/priority-reminder/insight-a11y/stat-denominators/recording-history-structure/project-draft 十文件旧形态断言随签名现代化。**剩余**：编辑器归档/删除后 showToday（异步无 root）仍全局；步骤二折叠态/步骤三滚动复合键另批；真机多 root 同屏走查归 T-1608。验证：check、pnpm test 主链（223 文件）、build、test:ui、test:quality（CSS 635929B 不变）、双主题 visual-qa、宽度走查全 EXIT=0；未 push。

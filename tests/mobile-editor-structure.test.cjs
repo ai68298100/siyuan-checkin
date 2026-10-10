@@ -42,8 +42,10 @@ assert.match(components, /@media \(hover:\s*none\), \(pointer:\s*coarse\)[\s\S]*
 // preview/advanced rail aligned. These source-level guards prevent a later
 // density pass from moving the rules to a desktop-only query or restoring
 // uneven panel margins.
-assert.match(components, /Mobile editor final spacing pass[\s\S]*\.lc-checkin--editor \.lc-checkin__layout\s*\{[^}]*padding-bottom:\s*calc\(64px \+ env\(safe-area-inset-bottom\)\)/,
-    "mobile editor layout must reserve exactly one action-rail height");
+assert.match(components, /Mobile editor final spacing pass[\s\S]*\.lc-checkin--editor \.lc-checkin__layout\s*\{[^}]*padding-bottom:\s*calc\(var\(--lc-checkin-nav-height\) \+ 78px \+ env\(safe-area-inset-bottom\)\)/,
+    "mobile editor layout must reserve physical scroll space above navigation and save rails");
+assert.match(components, /Mobile editor final spacing pass[\s\S]*\.lc-checkin--editor\s*\{[^}]*scroll-padding-bottom:\s*calc\(var\(--lc-checkin-nav-height\) \+ 78px \+ env\(safe-area-inset-bottom\)\)/,
+    "mobile editor root scroller must keep template summaries above navigation and save rails");
 assert.match(components, /Mobile editor final spacing pass[\s\S]*\.lc-checkin--editor \.lc-checkin__form-scroll\s*\{[\s\S]*scroll-padding-bottom:\s*calc\(70px \+ env\(safe-area-inset-bottom\)\)/,
     "mobile editor scroller must retain safe-area clearance for the fixed action rail");
 assert.match(components, /Mobile editor final spacing pass[\s\S]*\.lc-checkin--editor \.lc-checkin__editor-side\s*\{[\s\S]*align-content:\s*start;[\s\S]*min-width:\s*0;/,

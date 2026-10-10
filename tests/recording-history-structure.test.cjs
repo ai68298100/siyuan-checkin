@@ -10,6 +10,7 @@ const source = [
     "render/review.ts",
     "render/bind-page-navigation.ts",
     "render/bind-editor.ts",
+    "render/action-busy.ts",
     "render/save-form.ts",
 ].map((name) => fs.readFileSync(path.join(root, name), "utf8")).join("\n");
 assert.match(source, /data-action="add"/);
@@ -24,6 +25,18 @@ assert.match(source, /future \? "disabled"/);
 assert.match(source, /host\.showEditor\(undefined, undefined, root\)/);
 assert.match(source, /host\.saveForm\(data, editingId/);
 assert.match(source, /expectedFingerprint/);
+assert.match(source, /runExclusiveAction\(actionButton, async \(\) => \{[\s\S]*?host\.enqueueMutation\(async \(\) => \{/,
+    "Today record buttons keep their card locked through the queued mutation");
+assert.match(source, /runExclusiveAction\(button, \(\) => \{[\s\S]*?host\.recordEvent\(item, amount/,
+    "quick-record buttons use the same card-level busy lifecycle");
+assert.match(source, /runExclusiveAction\(button, \(\) => host\.enqueueMutation\(\(\) => host\.setOccasionCompleted/,
+    "occasion banner completion exposes an exclusive pending state");
+assert.match(source, /runExclusiveAction\(button, \(\) => \{[\s\S]*?host\.recordEvent\(item, parsed\.value!/,
+    "quick-entry recording shares the target item's card lock");
+assert.match(source, /runExclusiveAction\(button, \(\) => host\.archiveEditingItem\(root\), editorActions, "button", editor\?\.editingId \? `item:/);
+assert.match(source, /runExclusiveAction\(button, \(\) => host\.deleteEditingItem\(root\), editorActions, "button", editor\?\.editingId \? `item:/);
+assert.match(source, /boundary\.dataset\.actionBusy = "true"[\s\S]*?control\.disabled = true[\s\S]*?lock\.controls\) if \(control\.isConnected\) control\.disabled = disabled/,
+    "busy boundaries disable competing controls and restore their prior state");
 console.log("Recording and history editing structure checks passed.");
 
 /* Execute the actual binding and host recording methods. The small DOM fixture
@@ -51,7 +64,7 @@ function loadTs(filename) {
         if (name === "siyuan") return {showMessage: value => messages.push(value)};
         if (name === "../shared") return shared;
         if (name === "../i18n") return {t: key => key};
-        if (name === "../occasions") return {};
+        if (name === "../occasions") return {isOccasionCompleted: () => false};
         if (name === "../integrations") return {DOCK_TOMATO_ADAPTER_ID: "docktomato"};
         if (name === "../dock-tomato") return {};
         return loadTs(path.resolve(path.dirname(filename), `${name}.ts`));
@@ -61,6 +74,7 @@ function loadTs(filename) {
 }
 const model = loadTs(path.join(root, "model.ts"));
 const {bindTodayHandlers} = loadTs(path.join(root, "render", "bind-today.ts"));
+const {runExclusiveAction} = loadTs(path.join(root, "render", "action-busy.ts"));
 const pluginSource = ts.createSourceFile("index.ts", fs.readFileSync(path.join(root, "index.ts"), "utf8"), ts.ScriptTarget.Latest, true);
 const pluginClass = pluginSource.statements.find(node => ts.isClassDeclaration(node));
 const methods = pluginClass.members.filter(node => ["recordEvent", "toggleItem", "recordHistoryBatch", "recordHistoryBatchEntries", "batchBackfillSnapshots"].includes(node.name?.getText(pluginSource))).map(node => node.getText(pluginSource)).join("\n");
@@ -76,22 +90,30 @@ function fixture(kind = "binary", direction) {
     const classes = new Set();
     const makeButton = exact => {
         const listeners = [];
-        return {addEventListener: (event, listener) => { if (event === "click") listeners.push(listener); }, closest: () => exact ? {} : null, click() { for (const listener of listeners) listener(); }};
+        const attributes = new Set();
+        return {dataset: {}, disabled: false, isConnected: true, addEventListener: (event, listener) => { if (event === "click") listeners.push(listener); }, closest: selector => selector === "[data-exact-entry]" && exact ? {} : null, querySelectorAll: () => [], setAttribute: name => attributes.add(name), removeAttribute: name => attributes.delete(name), hasAttribute: name => attributes.has(name), click() { for (const listener of listeners) listener({currentTarget: this}); }};
     };
-    const outer = makeButton(false), inner = makeButton(true), icon = makeButton(false);
+    const outer = makeButton(false), inner = makeButton(true), icon = makeButton(false), quick = makeButton(false), occasionButton = makeButton(false);
+    occasionButton.dataset.occasionId = "anniversary";
+    occasionButton.dataset.occasionDate = "2026-09-20";
     const note = {value: "  真实备注  "};
     const amount = {valueAsNumber: 2, addEventListener() {}, focus() {}};
     const photo = {dataset: {photo: "1"}, classList: {remove() {}}};
+    const cardAttributes = new Set();
     const card = {
-        dataset: {itemId: "habit"}, classList: {contains: value => classes.has(value)},
-        querySelectorAll: selector => selector === "[data-action='record']" ? [outer, inner] : [],
-        querySelector: selector => selector === ".lc-checkin__record-note" ? note : selector === ".lc-checkin__amount" && kind !== "binary" ? amount : selector === "[data-attach-button]" ? photo : selector === "[data-action='toggle']" ? icon : selector === ".lc-checkin__item-action > [data-action='record']" ? outer : null,
+        dataset: {itemId: "habit"}, classList: {contains: value => classes.has(value)}, attributes: cardAttributes,
+        setAttribute: name => cardAttributes.add(name), removeAttribute: name => cardAttributes.delete(name),
+        hasAttribute: name => cardAttributes.has(name),
+        isConnected: true,
+        querySelectorAll: selector => selector === "[data-action='record']" ? [outer, inner] : selector.startsWith("button[data-action=") ? [outer, inner, icon, quick] : [],
+        querySelector: selector => selector === ".lc-checkin__record-note" ? note : selector === ".lc-checkin__amount" && kind !== "binary" ? amount : selector === "[data-attach-button]" ? photo : selector === "[data-action='toggle']" ? icon : selector === "[data-action='quick-record']" ? quick : selector === ".lc-checkin__item-action > [data-action='record']" ? outer : null,
     };
-    const rootNode = {querySelectorAll: selector => selector === "[data-item-id]" ? [card] : [], querySelector: () => null};
+    const rootNode = {querySelectorAll: selector => selector === "[data-item-id]" ? [card] : selector === "[data-action='toggle-occasion']" ? [occasionButton] : [], querySelector: () => null};
     const host = new RecordingHost();
     host.store = model.normalizeStore({version: 3, items: [{id: "habit", name: "日常", kind, direction, target: kind === "binary" ? 1 : 8, unit: "次", schedule: {type: "daily"}, createdAt: "2026-01-01T00:00:00Z", createdDate: "2026-01-01"}], events: []});
     host.pendingAttachments = new Map([["habit", "data:image/png;base64,proof"]]);
-    host.occasionStore = {occasions: []};
+    host.occasionStore = {occasions: [{id: "anniversary"}]};
+    host.setOccasionCompleted = async () => { host.occasionWrites = (host.occasionWrites || 0) + 1; return true; };
     host.revisionFingerprint = () => "revision";
     host.setPendingFocusItem = (surface, itemId) => {
         assert.equal(surface, rootNode, "recording focus must belong to the originating surface");
@@ -99,7 +121,7 @@ function fixture(kind = "binary", direction) {
     };
     host.expandedExactEntries = [];
     const queue = [];
-    host.enqueueMutation = operation => { queue.push(operation); return Promise.resolve(); };
+    host.enqueueMutation = operation => new Promise((resolve, reject) => { queue.push(async () => { try { resolve(await operation()); } catch (error) { reject(error); } }); });
     let persists = 0, ids = 0;
     host.persist = async () => { persists++; };
     host.makeEvent = (item, value, source, unit, noteValue, externalRef, stamp, attachment) => ({id: `record-${++ids}`, itemId: item.id, value, source, unit, note: noteValue, ...stamp, ...(attachment ? {attachment} : {})});
@@ -114,18 +136,64 @@ function fixture(kind = "binary", direction) {
     for (const name of ["bindDialogClose", "bindItemDrag", "bindQuickKeyboard", "bindBulkMode", "bindFocusTimerPanel", "bindMobileNav", "pulseHaptic", "invalidateSummary", "broadcast", "writebackNoteAnchor", "writeSummaryResidentForDate", "setRecentRecord", "maybeAutoArchiveAfterRecord"]) host[name] = () => {};
     host.renderBackgroundUpdate();
     bindTodayHandlers(rootNode, host);
-    return {host, inner, outer, icon, note, amount, classes, get persists() { return persists; }, flush: async () => { while (queue.length) await queue.shift()(); }};
+    return {host, inner, outer, icon, quick, occasionButton, note, amount, card, classes, get persists() { return persists; }, flush: async () => { await Promise.resolve(); while (queue.length) await queue.shift()(); await new Promise(resolve => setImmediate(resolve)); }};
 }
 
 (async () => {
+    let releaseRedrawn;
+    const pendingRedrawn = new Promise(resolve => { releaseRedrawn = resolve; });
+    let redrawnWrites = 0;
+    const oldButton = {dataset: {}, disabled: false, isConnected: true, setAttribute() {}, removeAttribute() {}};
+    const oldCard = {dataset: {itemId: "redrawn-item"}, querySelectorAll: () => [oldButton], setAttribute() {}, removeAttribute() {}};
+    runExclusiveAction(oldButton, () => { redrawnWrites += 1; return pendingRedrawn; }, oldCard, "button");
+    const newButton = {dataset: {}, disabled: false, isConnected: true, setAttribute() {}, removeAttribute() {}};
+    const newCard = {dataset: {itemId: "redrawn-item"}, querySelectorAll: () => [newButton], setAttribute() {}, removeAttribute() {}};
+    runExclusiveAction(newButton, () => { redrawnWrites += 1; }, newCard, "button");
+    assert.equal(redrawnWrites, 1, "a freshly rendered card cannot repeat an in-flight item mutation");
+    assert.equal(newButton.disabled, true, "a freshly rendered action joins the active busy state");
+    assert.equal(newCard.dataset.actionBusy, "true", "a freshly rendered card announces the active mutation");
+    releaseRedrawn();
+    await pendingRedrawn;
+    await new Promise(resolve => setImmediate(resolve));
+    runExclusiveAction(newButton, () => { redrawnWrites += 1; }, newCard, "button");
+    assert.equal(redrawnWrites, 2, "the item key is released after the original mutation settles");
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(newButton.disabled, false, "the refreshed action unlocks when the active mutation settles");
+
     const binary = fixture();
-    binary.inner.click(); binary.inner.click();
+    binary.inner.click();
+    assert.equal(binary.inner.disabled, true, "submitting a record disables competing card actions immediately");
+    assert.equal(binary.card.hasAttribute("aria-busy"), true, "the whole item card announces its pending state");
+    binary.inner.click();
     await binary.flush();
+    assert.equal(binary.inner.disabled, false, "record controls unlock when the mutation finishes");
+    assert.equal(binary.card.hasAttribute("aria-busy"), false, "the item card clears its pending state after completion");
     assert.equal(binary.host.store.events.length, 1, "queued expanded submits must not record twice or undo completion");
     assert.equal(binary.persists, 1);
     assert.equal(binary.host.store.events[0].note, "真实备注");
     assert.equal(binary.host.store.events[0].attachment, "data:image/png;base64,proof");
     assert.equal(binary.host.pendingAttachments.size, 0);
+    assert.equal(binary.outer.disabled, false, "the main record action unlocks with the exact submit action");
+    assert.equal(binary.icon.disabled, false, "the toggle action unlocks with the record actions");
+    const quick = fixture("count");
+    quick.quick.dataset.amount = "3";
+    quick.quick.click(); quick.quick.click();
+    assert.equal(quick.quick.disabled, true, "quick-record locks the other write actions on its card");
+    await quick.flush();
+    assert.equal(quick.host.store.events.length, 1, "double-clicking quick-record produces one mutation");
+    assert.equal(quick.host.store.events[0].value, 3);
+    quick.occasionButton.click(); quick.occasionButton.click();
+    assert.equal(quick.occasionButton.disabled, true, "the occasion banner action disables while pending");
+    await quick.flush();
+    assert.equal(quick.host.occasionWrites, 1, "double-clicking an occasion banner produces one mutation");
+    assert.equal(quick.occasionButton.disabled, false, "occasion controls unlock after the mutation");
+    const rejected = fixture("count");
+    rejected.host.recordEvent = async () => { throw new Error("write rejected"); };
+    rejected.inner.click();
+    await rejected.flush();
+    assert.ok(messages.includes("msg.saveFailedShort"), "unexpected write rejection gets visible fallback feedback");
+    assert.deepEqual(rejected.host.expandedExactEntries, ["habit"], "a rejected write preserves the retry panel");
+    assert.equal(rejected.inner.disabled, false, "a rejected write releases the busy lock");
     binary.inner.click(); await binary.flush();
     assert.equal(binary.host.store.events.length, 1, "stale expanded submit remains record-only after completion");
     binary.outer.click(); await binary.flush();
