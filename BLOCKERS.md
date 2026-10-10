@@ -2,7 +2,8 @@
 
 ## 2026-10-10 本轮验证边界
 
-- 本地类型、主测试、UI、移动、生态、构建、明暗主题 visual-qa 和 Dock 明暗主题宽度矩阵均已通过；Webpack 仅保留既有 bundle 体积 warning。
+- v18.17.2 已发布并推送：`main`/提交 `76eb614fc0faf1d3efd6b4091e150bea49ee8014`、tag `v18.17.2` 和 Release https://github.com/ai68298100/siyuan-checkin/releases/tag/v18.17.2；`package.zip` SHA-256 为 `5b8a7dcac0718a0e9c2c4a7730e2c46ba065f4a0d9f16b4b089b8b0e2bfec1d0`。
+- 本地类型、主测试、UI、移动、生态、扩展、性能、发布资产和回滚链均通过；本机 Edge 明暗主题 visual-qa 均通过且无页面错误。宽度走查本次已覆盖静态/短屏页面及前段交互状态，但高负载进程在后续交互矩阵中被系统终止，不宣称该次全矩阵通过；Webpack 仅保留既有 bundle 体积 warning。
 - 真实思源宿主生命周期、Android/TalkBack、第三方来源账号、缩放和保存面板仍需现场验收；本地夹具和 Chromium 矩阵不替代这些证据。
 
 ## 2026-10-08 v18.17.0 历史发布基线

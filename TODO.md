@@ -9,7 +9,9 @@
 ## 2026-10-10 发布 v18.17.2（R-RELEASE-18.17.2）
 
 - [x] 版本源、README 当前入口、变更记录和发布说明已统一为 v18.17.2；v18.17.1 历史摘要保留。
-- [ ] 发布提交、tag、GitHub Release 和 CI 结果待发布流程完成后补录。
+- [x] 发布提交 `76eb614fc0faf1d3efd6b4091e150bea49ee8014`、tag `v18.17.2`、GitHub Release 和 `main` push 已完成；Release 地址为 https://github.com/ai68298100/siyuan-checkin/releases/tag/v18.17.2，`package.zip` SHA-256 为 `5b8a7dcac0718a0e9c2c4a7730e2c46ba065f4a0d9f16b4b089b8b0e2bfec1d0`。
+- [x] 发布链 `pnpm run check`、`pnpm test`、`pnpm run test:ui`、`pnpm run test:legacy-style`、`pnpm run test:mobile`、`pnpm run test:ecosystem`、`pnpm run test:extended`、`pnpm run test:review-comparison`、`pnpm run test:perf`、`pnpm run check:release` 全部通过；生产 CSS 657,246 bytes，D-463 的 660 KiB 硬线与 620 KB 软提醒已同步。
+- [x] 本机 Edge 明暗主题 `visual-qa.cjs` 均通过且 `pageErrors=[]`；宽度走查的静态/短屏页面和交互场景已运行，过程中高负载进程被系统终止，未把该次未完成运行写成全矩阵通过。
 
 ## 2026-10-10 README 与入口复核收口（D-461）
 
