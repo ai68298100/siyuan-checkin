@@ -226,6 +226,18 @@ async function bootHost({browser, projectRoot, dark, frontend = "desktop", width
             /* The dock intentionally hides its top navigation at every width;
                use a DOM click instead of Playwright's visibility-gated click
                so the same audit can exercise dock, tab and mobile hosts. */
+            /* Settings is a secondary destination in the current information
+               architecture.  It is reached through More so the audit follows
+               the same path as a user and does not rely on the retired direct
+               settings nav/action hooks. */
+            if (target === "settings") {
+                await clickNav("more");
+                await page.waitForTimeout(120);
+                const appearance = page.locator('[data-more-action="appearance"]').first();
+                if (!await appearance.count()) throw new Error("More appearance destination missing");
+                await appearance.evaluate((button) => button.click());
+                return;
+            }
             const navigation = page.locator(`[data-mobile-nav="${target}"]`).first();
             if (await navigation.count()) { await navigation.evaluate((button) => button.click()); return; }
             const fallback = page.locator(`[data-action='${target}']`).first();
@@ -291,6 +303,17 @@ async function bootHost({browser, projectRoot, dark, frontend = "desktop", width
     {
         const page = await bootHost({browser, projectRoot, dark: false, frontend: "mobile", width: 320, height: 640});
         const clickNavMobile = async (target) => {
+            /* Settings lives under More on mobile as well.  Keep this helper
+               aligned with the desktop audit path and the production entry
+               contract. */
+            if (target === "settings") {
+                await clickNavMobile("more");
+                await page.waitForTimeout(120);
+                const appearance = page.locator('[data-more-action="appearance"]').first();
+                if (!await appearance.count()) throw new Error("mobile More appearance destination missing");
+                await appearance.evaluate((button) => button.click());
+                return;
+            }
             const navigation = page.locator(`[data-mobile-nav="${target}"]`).first();
             if (await navigation.count()) { await navigation.evaluate((button) => button.click()); return; }
             const fallback = page.locator(`[data-action='${target}']`).first();
