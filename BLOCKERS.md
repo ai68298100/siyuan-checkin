@@ -1,5 +1,12 @@
 # 当前阻塞与边界
 
+## 2026-10-11 v18.17.3 发布后边界
+
+- v18.17.3 已从 `main` 提交 `a4109b36560eb1248729f88190ceb3b95b3940cf` 发布并推送：tag `v18.17.3`、正式 Release https://github.com/ai68298100/siyuan-checkin/releases/tag/v18.17.3；`package.zip` SHA-256 为 `4a6f05aa81eba08455feb0886786b0a58486e3ada77cfa17d95af8666f6f5157`。
+- 独立思源内核 v3.8.7-alpha.6 E2E 已通过：可写 23/23、只读 1/1。只读实例因本机 6808 已被既有内核占用，使用独立端口 6818；这属于运行环境选择，不是插件失败。
+- 本地类型、主/UI/移动/生态/扩展/性能、可访问性、生产构建、发布资产和回滚链均通过；CSS 658,997 bytes，低于 660 KiB 硬上限，仅保留 Webpack 体积建议 warning。
+- 真实思源桌面多表面、Android/TalkBack、第三方来源账号、缩放和保存面板仍需现场验收；本地 bundle、独立内核 E2E 和 Chromium 矩阵不替代这些证据，也不阻塞本次 GitHub Release。
+
 ## 2026-10-10 本轮验证边界
 
 - v18.17.2 已发布并推送：`main`/提交 `76eb614fc0faf1d3efd6b4091e150bea49ee8014`、tag `v18.17.2` 和 Release https://github.com/ai68298100/siyuan-checkin/releases/tag/v18.17.2；`package.zip` SHA-256 为 `5b8a7dcac0718a0e9c2c4a7730e2c46ba065f4a0d9f16b4b089b8b0e2bfec1d0`。
