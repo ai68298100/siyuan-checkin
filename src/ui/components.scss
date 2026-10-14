@@ -495,27 +495,27 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
  .lc-checkin-dock-host .lc-checkin { padding-inline: 10px; }
  .lc-checkin-dock-host .lc-checkin__header { gap: 5px; }
  .lc-checkin-dock-host .lc-checkin__title { font-size: 21px; }
- .lc-checkin-dock-host .lc-checkin__count { font-size: 11px; }
+ .lc-checkin-dock-host .lc-checkin__count { font-size: 12px; }
  .lc-checkin-dock-host .lc-checkin--today .lc-checkin__group-items { gap: 7px; }
  .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item { grid-template-columns: 32px minmax(0,1fr); gap: 6px; padding: 7px; }
  .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-icon { width: 32px; height: 32px; flex-basis: 32px; font-size: 16px; }
  .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-name { font-size: 13px; }
- .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-meta { font-size: 10px; }
+ .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-meta { font-size: 12px; }
  .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-progress { margin-top: 4px; }
  .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-action { gap: 3px; }
- .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-action .lc-checkin__record-button { min-height: 30px; font-size: 11px; }
- .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-action .lc-checkin__quick-button { min-height: 30px; font-size: 11px; }
+ .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-action .lc-checkin__record-button { min-height: 30px; font-size: 12px; }
+ .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-action .lc-checkin__quick-button { min-height: 30px; font-size: 12px; }
  .lc-checkin-dock-host .lc-checkin__mobile-nav { min-height: 50px; }
  .lc-checkin-dock-host .lc-checkin__mobile-nav button { min-height: 38px; }
  .lc-checkin-dock-host .lc-checkin__mobile-nav button span { font-size: 14px; }
- .lc-checkin-dock-host .lc-checkin__mobile-nav button small { font-size: 7px; }
+ .lc-checkin-dock-host .lc-checkin__mobile-nav button small { font-size: 12px; }
  .lc-checkin-dock-host .lc-checkin__organize { gap: 5px; }
  .lc-checkin-dock-host .lc-checkin__today-search { min-width: 0; }
  .lc-checkin-dock-host .lc-checkin__today-search input { width: 64px; }
  .lc-checkin-dock-host .lc-checkin__group-header { min-height: 24px; }
  .lc-checkin-dock-host .lc-checkin__empty { padding: 12px 8px; }
  .lc-checkin-dock-host .lc-checkin__empty-title { font-size: 15px; }
- .lc-checkin-dock-host .lc-checkin__empty-description { font-size: 10px; }
+ .lc-checkin-dock-host .lc-checkin__empty-description { font-size: 12px; }
 }
 @media (max-width: 600px) and (orientation: landscape) {
  .lc-checkin-dialog-host--mobile .lc-checkin__header { min-height: 38px; padding-block: 2px; }
@@ -1329,7 +1329,7 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     width: 100%;
     margin-top: 5px;
     color: var(--lc-checkin-muted);
-    font-size: 10px;
+    font-size: 12px;
     label { display: inline-flex; align-items: center; gap: 5px; }
     label span { white-space: nowrap; }
     .lc-checkin__amount { width: 62px; }
@@ -1342,7 +1342,7 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
         border-radius: 5px;
         color: var(--lc-checkin-text);
         background: var(--lc-checkin-bg);
-        font-size: 11px;
+        font-size: 12px;
     }
 }
 

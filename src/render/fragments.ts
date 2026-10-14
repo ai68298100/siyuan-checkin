@@ -450,12 +450,14 @@ export function renderTodayGroupsView(items: CheckinItem[], date: Date, ctx: Tod
 
 /** T-1420 今日行动台摘要条：只读 console——呈现完成进度、跳过数、下一步与专注降级提示；
     记录仍走原卡片路径（撤销/失败回滚不变），条目呈现不复制优先提醒卡（只计数）。 */
-function renderTodayDashboardStrip(dashboard: TodayDashboard, nextItemName: string | undefined): string {
+function renderTodayDashboardStrip(dashboard: TodayDashboard, nextItemOrName: CheckinItem | string | undefined, focusCandidate?: CheckinItem): string {
     if (!dashboard.totals.scheduled) return "";
     /* T-1577：行动台收束为「下一步」行动条——进度展示唯一归 overview 大环
        （原环+总数重复已并入 overview 计数）；跳过计数与专注警告为行动台独有信息保留；
        记录仍走原卡片路径（撤销/失败回滚不变）。 */
     const parts: string[] = [];
+    const nextItem = typeof nextItemOrName === "object" ? nextItemOrName : undefined;
+    const nextItemName = typeof nextItemOrName === "string" ? nextItemOrName : nextItem?.name;
     if (dashboard.nextAction?.type === "record" && nextItemName) {
         parts.push(`<span class="lc-checkin__console-next">${t("today.consoleNext", {name: escapeHtml(nextItemName)})}</span>`);
     } else if (dashboard.nextAction?.type === "review") {
@@ -464,6 +466,49 @@ function renderTodayDashboardStrip(dashboard: TodayDashboard, nextItemName: stri
     if (dashboard.totals.skipped) parts.push(`<span class="lc-checkin__console-skipped">${t("today.consoleSkipped", {count: dashboard.totals.skipped})}</span>`);
     if (!dashboard.focus.available) parts.push(`<span class="lc-checkin__console-focus-warning">${t("today.consoleFocusMissing")}</span>`);
     if (!parts.length) return "";
+
+    const auxiliary = (dashboard.totals.skipped || !dashboard.focus.available) ? `
+        <div class="lc-checkin__console-aux">
+            ${dashboard.totals.skipped ? `<span class="lc-checkin__console-skipped">${t("today.consoleSkipped", {count: dashboard.totals.skipped})}</span>` : ""}
+            ${!dashboard.focus.available ? `<span class="lc-checkin__console-focus-warning">${t("today.consoleFocusMissing")}</span>` : ""}
+        </div>` : "";
+
+    if (dashboard.nextAction?.type === "record" && nextItem) {
+        const isFocusable = focusCandidate?.id === nextItem.id;
+        return `<section class="lc-checkin__console lc-checkin__next-hero" data-today-dashboard aria-label="${t("today.consoleNextAria")}">
+            <div class="lc-checkin__next-hero-main">
+                <span class="lc-checkin__next-hero-icon" aria-hidden="true">${escapeHtml(nextItem.icon || "🎯")}</span>
+                <div class="lc-checkin__next-hero-info">
+                    <span class="lc-checkin__next-hero-eyebrow">${t("today.consoleNextAria")}</span>
+                    <strong class="lc-checkin__next-hero-title">${escapeHtml(nextItem.name)}</strong>
+                    <span class="lc-checkin__console-next">${t("today.consoleNext", {name: escapeHtml(nextItem.name)})}</span>
+                </div>
+            </div>
+            <div class="lc-checkin__next-hero-actions">
+                <button type="button" class="lc-checkin__hero-btn-primary" data-hero-record="${escapeHtml(nextItem.id)}" aria-label="${escapeHtml(t("item.checkin"))}">
+                    ${uiIcon("check")}<span>${t("item.checkin")}</span>
+                </button>
+                ${isFocusable ? `<button type="button" class="lc-checkin__hero-btn-secondary" data-overview-focus="${escapeHtml(nextItem.id)}" aria-label="${escapeHtml(t("item.focus"))}">
+                    ${uiIcon("timer")}<span>${t("item.focus")}</span>
+                </button>` : ""}
+            </div>
+            ${auxiliary}
+        </section>`;
+    }
+
+    if (dashboard.nextAction?.type === "review") {
+        return `<section class="lc-checkin__console lc-checkin__next-hero is-all-done" data-today-dashboard aria-label="${t("today.consoleNextAria")}">
+            <div class="lc-checkin__next-hero-main">
+                <span class="lc-checkin__next-hero-icon" aria-hidden="true">🎉</span>
+                <div class="lc-checkin__next-hero-info">
+                    <strong class="lc-checkin__next-hero-title">${t("today.allDone")}</strong>
+                    <span class="lc-checkin__console-next">${t("today.consoleAllDone")}</span>
+                </div>
+            </div>
+            ${auxiliary}
+        </section>`;
+    }
+
     return `<section class="lc-checkin__console" data-today-dashboard aria-label="${t("today.consoleNextAria")}">${parts.join("")}</section>`;
 }
 
@@ -499,9 +544,15 @@ export function renderTodayView(ctx: TodayViewContext): string {
         })),
         focus: {available: ctx.focusAvailable === true},
     });
+    const nextActionItem = dashboard.nextAction?.itemId ? scheduledItems.find((item) => item.id === dashboard.nextAction?.itemId) : undefined;
+    const focusCandidate = pendingItems.find((item) => {
+        const kind = getItemRevisionForDate(item, now).kind;
+        return item.direction !== "atMost" && (kind === "duration" || item.completionSource === "tomato" && kind !== "binary");
+    });
     const dashboardStrip = renderTodayDashboardStrip(
         dashboard,
-        dashboard.nextAction?.itemId ? scheduledItems.find((item) => item.id === dashboard.nextAction?.itemId)?.name : undefined,
+        nextActionItem || (dashboard.nextAction?.itemId ? scheduledItems.find((item) => item.id === dashboard.nextAction?.itemId)?.name : undefined),
+        focusCandidate,
     );
     const weekStrip = Array.from({length: 7}, (_, index) => {
         const day = new Date(now);
@@ -531,13 +582,13 @@ export function renderTodayView(ctx: TodayViewContext): string {
     const onboardingSkipped = ctx.firstSuccessSkipped === true;
     const list = !activeItems.length && ctx.store.items.length ? `
             <div class="lc-checkin__empty">
-                <div class="lc-checkin__empty-mark">▱</div>
+                <div class="lc-checkin__empty-mark">${uiIcon("archive")}</div>
                 <div class="lc-checkin__empty-title">${t("today.emptyActiveTitle")}</div>
                 <div class="lc-checkin__empty-description">${t("today.emptyActiveDesc")}</div>
                 <div class="lc-checkin__empty-actions"><button class="lc-checkin__text-button" type="button" data-action="archived">${t("today.viewArchived")}</button><button class="lc-checkin__text-button" type="button" data-action="add">${t("nav.add")}</button></div>
             </div>` : !activeItems.length ? `
             <div class="lc-checkin__empty${onboardingSkipped ? "" : " lc-checkin__empty--onboard"}">
-                <div class="lc-checkin__empty-mark">✦</div>
+                <div class="lc-checkin__empty-mark">${uiIcon("insight")}</div>
                 <div class="lc-checkin__empty-title">${t("today.emptyOnboardTitle")}</div>
                 <div class="lc-checkin__empty-description">${t(onboardingSkipped ? "today.emptyNewDesc" : "today.emptyOnboardDesc")}</div>
                 ${onboardingSkipped ? "" : `<ol class="lc-checkin__onboard-steps">
@@ -558,20 +609,20 @@ export function renderTodayView(ctx: TodayViewContext): string {
                 ${onboardingSkipped ? "" : `<button class="lc-checkin__text-button lc-checkin__onboard-skip" type="button" data-action="skip-onboard">${t("today.onboardSkip")}</button>`}
             </div>` : !scheduledItems.length ? `
             <div class="lc-checkin__empty">
-                <div class="lc-checkin__empty-mark">◷</div>
+                <div class="lc-checkin__empty-mark">${uiIcon("timer")}</div>
                 <div class="lc-checkin__empty-title">${t("today.emptyScheduledTitle")}</div>
                 <div class="lc-checkin__empty-description">${t("today.emptyScheduledDesc")}</div>
                 <div class="lc-checkin__empty-actions"><button class="lc-checkin__text-button" type="button" data-action="history">${t("today.viewHistory")}</button><button class="lc-checkin__text-button" type="button" data-action="add">${t("nav.add")}</button></div>
             </div>` : !visibleItems.length ? `
             <div class="lc-checkin__today-search-empty">
-                <span>⌕</span><strong>${t("today.searchEmpty")}</strong><small>${t("today.searchEmptyHint")}</small>
+                <span>${uiIcon("search")}</span><strong>${t("today.searchEmpty")}</strong><small>${t("today.searchEmptyHint")}</small>
                 <button class="lc-checkin__text-button" type="button" data-action="clear-search">${t("today.clearFilter")}</button>
             </div>` : `${pendingItems.length
             ? renderTodayGroupsView(pendingItems, now, ctx)
-            : `<div class="lc-checkin__all-done"><span>✓</span><strong>${emptyProgressTitle}</strong></div>`}
+            : `<div class="lc-checkin__all-done"><span>${uiIcon("check")}</span><strong>${emptyProgressTitle}</strong></div>`}
             ${completedItems.length ? `<section class="lc-checkin__completed-section" aria-expanded="${!ctx.completedCollapsed}">
                 <button class="lc-checkin__section-toggle" type="button" data-action="toggle-completed" aria-expanded="${!ctx.completedCollapsed}">
-                    <span class="lc-checkin__section-title"><i>✓</i> ${t("today.completed")}</span>
+                    <span class="lc-checkin__section-title"><i>${uiIcon("check")}</i> ${t("today.completed")}</span>
                     <span class="lc-checkin__section-count">${completedItems.length}</span>
                     <span class="lc-checkin__chevron">${ctx.completedCollapsed ? "⌄" : "⌃"}</span>
                 </button>
@@ -582,10 +633,6 @@ export function renderTodayView(ctx: TodayViewContext): string {
     const occasionBanner = renderOccasionBannerView(ctx.occasionStore, now);
     const priorityReminder = renderPriorityReminderView(ctx.store, ctx.occasionStore, now, ctx.reminderUserActions || [], ctx.priorityReminderExpanded === true, ctx.reminderQuiet === true);
     const occasionIsToday = getVisibleOccasions(ctx.occasionStore, now).some((item) => item.status === "today");
-    const focusCandidate = pendingItems.find((item) => {
-        const kind = getItemRevisionForDate(item, now).kind;
-        return item.direction !== "atMost" && (kind === "duration" || item.completionSource === "tomato" && kind !== "binary");
-    });
     return `<div class="lc-checkin lc-checkin--today" data-density="${scheduledItems.length > 12 ? "compact" : "comfortable"}" data-bulk="${ctx.bulkMode}" data-appearance="${ctx.appearance}" data-reduced-motion="${ctx.reducedMotion}">
             <header class="lc-checkin__header">
                 <div class="lc-checkin__header-titles">
@@ -608,7 +655,7 @@ export function renderTodayView(ctx: TodayViewContext): string {
             ${priorityReminder}
             ${occasionIsToday ? occasionBanner : ""}
             ${scheduledItems.length ? `<div class="lc-checkin__organize">
-                <label class="lc-checkin__today-search"><span aria-hidden="true">⌕</span><input data-today-search type="search" value="${escapeHtml(ctx.todayQuery)}" placeholder="${t("today.filterPlaceholder")}" aria-label="${t("today.filterPlaceholder")}" />${ctx.todayQuery ? `<button type="button" data-action="clear-search" aria-label="${t("today.clearFilter")}" title="${t("today.clearFilter")}">×</button>` : ""}</label>
+                <label class="lc-checkin__today-search"><span aria-hidden="true">${uiIcon("search")}</span><input data-today-search type="search" value="${escapeHtml(ctx.todayQuery)}" placeholder="${t("today.filterPlaceholder")}" aria-label="${t("today.filterPlaceholder")}" />${ctx.todayQuery ? `<button type="button" data-action="clear-search" aria-label="${t("today.clearFilter")}" title="${t("today.clearFilter")}">${uiIcon("close")}</button>` : ""}</label>
                 ${renderQuickEntryPreview(quickEntry, quickEntryTarget)}
                 <details class="lc-checkin__today-filters" data-today-filters ${ctx.pendingOnly ? "open" : ""}><summary>${ctx.pendingOnly ? t("today.filterActive") : t("today.filter")}</summary><div class="lc-checkin__today-filter-fields"><label><span>${t("today.group")}</span><select data-group-mode aria-label="${t("today.groupMode")}">
                     <option value="none" ${ctx.todayGroupMode === "none" ? "selected" : ""}>${t("set.groupNone")}</option>

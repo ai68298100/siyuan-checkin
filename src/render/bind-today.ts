@@ -185,6 +185,17 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
         const item = getActiveItemById(host.store, button.dataset.streakInsights);
         if (item) host.showInsights(item, root);
     }));
+    root.querySelectorAll<HTMLElement>("[data-hero-record]").forEach((button) => button.addEventListener("click", () => {
+        const itemId = button.dataset.heroRecord;
+        if (!itemId) return;
+        const targetButton = root.querySelector<HTMLElement>(`.lc-checkin__item[data-item-id="${CSS.escape(itemId)}"] [data-action="quick-record"], .lc-checkin__item[data-item-id="${CSS.escape(itemId)}"] [data-action="record"], .lc-checkin__item[data-item-id="${CSS.escape(itemId)}"] [data-action="toggle"]`);
+        if (targetButton) {
+            targetButton.click();
+        } else {
+            const item = getItemById(host.store, itemId);
+            if (item) host.showEditor(item, undefined, root);
+        }
+    }));
     root.querySelectorAll<HTMLElement>("[data-priority-reminder-action]").forEach((button) => button.addEventListener("click", (event) => {
         const reminder = (event.currentTarget as HTMLElement).closest<HTMLElement>("[data-priority-reminder]");
         if (!reminder) return;

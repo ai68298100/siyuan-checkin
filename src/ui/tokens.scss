@@ -56,6 +56,21 @@
     --lc-checkin-shadow-lg: 0 8px 20px rgba(50, 54, 130, 0.10), 0 24px 56px rgba(50, 54, 130, 0.14);
     --lc-checkin-focus: 0 0 0 3px rgba(123, 133, 244, 0.30);
 
+    /* ---- modern micro-surface & elevation (v3) ---- */
+    --lc-checkin-card-bg: #FFFFFF;
+    --lc-checkin-card-bg-gradient: linear-gradient(180deg, #FFFFFF 0%, #FAFAFD 100%);
+    --lc-checkin-card-border: rgba(91, 101, 232, 0.08);
+    --lc-checkin-card-border-hover: rgba(91, 101, 232, 0.22);
+    --lc-checkin-card-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    --lc-checkin-card-shadow: 0 1px 2px rgba(35, 38, 89, 0.03), 0 6px 18px -4px rgba(35, 38, 89, 0.05);
+    --lc-checkin-card-shadow-hover: 0 2px 4px rgba(35, 38, 89, 0.04), 0 12px 28px -6px rgba(35, 38, 89, 0.09);
+    --lc-checkin-primary-gradient: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%);
+    --lc-checkin-primary-glow: 0 4px 14px rgba(99, 102, 241, 0.28);
+    --lc-checkin-primary-glow-hover: 0 6px 20px rgba(99, 102, 241, 0.40);
+    --lc-checkin-ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+    --lc-checkin-motion-subtle: 150ms var(--lc-checkin-ease-spring);
+    --lc-checkin-motion-card: 220ms var(--lc-checkin-ease-spring);
+
     /* ---- shape & rhythm ---- */
     --lc-checkin-radius-sm: 10px;
     --lc-checkin-radius: 14px;
@@ -98,6 +113,7 @@
     color: var(--lc-checkin-text);
     background: var(--lc-checkin-bg);
     color-scheme: light;
+    font-variant-numeric: tabular-nums;
 
     /* container queries drive every layout decision */
     container: lc5 / inline-size;
@@ -162,6 +178,18 @@
     --lc-checkin-shadow-md: 0 4px 10px rgba(0, 0, 0, 0.40), 0 16px 40px rgba(0, 0, 0, 0.40);
     --lc-checkin-shadow-lg: 0 8px 20px rgba(0, 0, 0, 0.45), 0 24px 56px rgba(0, 0, 0, 0.45);
     --lc-checkin-focus: 0 0 0 3px rgba(139, 147, 248, 0.38);
+
+    /* ---- modern micro-surface & elevation (v3 dark) ---- */
+    --lc-checkin-card-bg: #1A1B22;
+    --lc-checkin-card-bg-gradient: linear-gradient(180deg, #1E1F27 0%, #17181F 100%);
+    --lc-checkin-card-border: rgba(255, 255, 255, 0.06);
+    --lc-checkin-card-border-hover: rgba(139, 147, 248, 0.25);
+    --lc-checkin-card-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    --lc-checkin-card-shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 8px 24px -4px rgba(0, 0, 0, 0.45);
+    --lc-checkin-card-shadow-hover: 0 2px 6px rgba(0, 0, 0, 0.40), 0 14px 32px -4px rgba(0, 0, 0, 0.60);
+    --lc-checkin-primary-gradient: linear-gradient(135deg, #7C83FD 0%, #6366F1 100%);
+    --lc-checkin-primary-glow: 0 4px 16px rgba(124, 131, 253, 0.25);
+    --lc-checkin-primary-glow-hover: 0 6px 22px rgba(124, 131, 253, 0.38);
 
     --b3-theme-background: var(--lc-checkin-bg);
     --b3-theme-surface: var(--lc-checkin-surface);
