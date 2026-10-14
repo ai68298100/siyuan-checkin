@@ -260,7 +260,7 @@ export function renderReviewView(ctx: ReviewViewContext): string {
         const note = event.note ? `<small class="lc-checkin__history-event-note">${renderRecordNote(event.note)}</small>` : "";
         const noteEditor = ctx.editingHistoryNoteId === event.id ? `<textarea class="lc-checkin__history-note-editor" data-history-note-input="${escapeHtml(event.id)}" rows="2">${escapeHtml(event.note || "")}</textarea><button class="lc-checkin__text-button" type="button" data-save-history-note-id="${escapeHtml(event.id)}">${t("review.saveNote")}</button>` : "";
         const attachmentUrl = safeAttachmentUrl(event.attachment);
-        const photoThumb = attachmentUrl ? `<img class="lc-checkin__history-thumb" src="${attachmentUrl}" alt="${t("review.logPhotoAlt")}" loading="lazy" />` : "";
+        const photoThumb = attachmentUrl ? `<img class="lc-checkin__history-thumb" src="${attachmentUrl}" alt="${t("review.logPhotoAlt")}" width="46" height="46" loading="lazy" decoding="async" />` : "";
         const sourceLabel = t(`source.${event.source}`) || event.source;
         /* T-1490 信任层：自动完成显示来源徽标+命中原因（只读投影，派生不了不显示）；
            撤销沿用行内既有 data-history-event-id 通道（removeEvents 自动写墓碑）。 */

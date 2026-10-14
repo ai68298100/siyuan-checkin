@@ -3058,11 +3058,21 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     background: var(--lc-checkin-surface);
     box-shadow: var(--lc-checkin-shadow-sm);
     transition: border-color var(--lc-checkin-motion-fast), box-shadow var(--lc-checkin-motion-fast), transform var(--lc-checkin-motion-fast);
+    content-visibility: auto;
+    contain-intrinsic-size: auto 84px;
 }
 .lc-checkin--today .lc-checkin__item::before { display: none; }
 .lc-checkin--today .lc-checkin__item:hover {
     border-color: color-mix(in srgb, var(--card-accent) 42%, var(--lc-checkin-border));
     box-shadow: var(--lc-checkin-shadow);
+}
+
+/* 短横屏中保持卡片完整绘制，确保靠近滚动边缘的主操作仍可命中。 */
+@media (max-height: 400px) and (orientation: landscape) {
+    .lc-checkin--today .lc-checkin__item {
+        content-visibility: visible;
+        contain-intrinsic-size: none;
+    }
 }
 .lc-checkin--today .lc-checkin__item.is-complete { --card-accent: var(--lc-checkin-success); }
 .lc-checkin--today .lc-checkin__item.is-complete .lc-checkin__item-name { color: var(--lc-checkin-muted); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--lc-checkin-success) 55%, transparent); }

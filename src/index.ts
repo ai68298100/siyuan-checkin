@@ -6781,7 +6781,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
             ? `<div class="lc-checkin__topnav-actions">${fullscreen}<button class="lc-checkin__topnav-action" type="button" data-action="close-dialog" aria-label="${t("common.closeQuickWindow")}" title="${t("common.closeQuickWindow")}">${uiIcon("close")}</button></div>`
             : "";
         const avatarPresetGlyph: Record<string, string> = {star: "★", horse: "🐴", leaf: "🌿", sun: "☀", target: "🎯"};
-        const avatar = this.avatarImage ? `<img src="${escapeHtml(this.avatarImage)}" alt="" />` : this.avatar === "check" ? uiIcon("check") : escapeHtml(avatarPresetGlyph[this.avatar] || this.avatar);
+        const avatar = this.avatarImage ? `<img src="${escapeHtml(this.avatarImage)}" alt="" width="34" height="34" decoding="async" />` : this.avatar === "check" ? uiIcon("check") : escapeHtml(avatarPresetGlyph[this.avatar] || this.avatar);
         return `<nav class="lc-checkin__topnav" aria-label="${t("app.navAria")}"><span class="lc-checkin__topnav-brand"><span class="lc-checkin__topnav-avatar" aria-hidden="true">${avatar}</span>${t("dock.title")}</span><div class="lc-checkin__topnav-tabs">${entries.map(([navPage, label, icon]) => `<button type="button" data-mobile-nav="${navPage}" class="${isSelected(navPage) ? "is-selected" : ""}" aria-current="${isSelected(navPage) ? "page" : "false"}" aria-label="${label}" title="${label}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}</div>${dialogActions}</nav>`;
     }
 

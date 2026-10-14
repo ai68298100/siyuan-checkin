@@ -314,6 +314,7 @@
 }
 
 .lc-checkin.lc-checkin--today:is([data-density="compact"], [data-bulk="true"]) .lc-checkin__item { grid-template-columns: 44px minmax(0, 1fr) auto; }
+.lc-checkin.lc-checkin--today:is([data-density="compact"], [data-bulk="true"]) .lc-checkin__item { contain-intrinsic-size: auto 53px; }
 .lc-checkin.lc-checkin--today .lc-checkin__item[data-kind="custom"] .lc-checkin__item-meta { display: block; }
 .lc-checkin.lc-checkin--today .lc-checkin__focus-icon > img { display: block; max-width: 100%; max-height: 100%; width: 28px; height: 28px; object-fit: contain; }
 @container lc5 (max-width: 719px) {

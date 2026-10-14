@@ -8,33 +8,31 @@
 
 把一次行动记录下来，再用同一份可追溯数据完成统计、提醒、复盘和笔记联动。
 
-**当前版本：18.17.3**
+**当前版本：18.17.4**
 
-18.17.3 汇总全插件体验复核、真实思源内核 E2E 和生态联动稳定性修复；这里介绍本次更新与已实现功能，后续开发进展见 [PROGRESS](PROGRESS.md)。
+18.17.4 聚焦全插件 UI 与性能细节复核，优化长列表滚动和图片布局稳定性；这里介绍本次更新与已实现功能，后续开发进展见 [PROGRESS](PROGRESS.md)。
 
 > **内测说明**：小驴考试、小驴管家、小驴闪卡和小驴常用目前仍处于内测阶段，部分功能和思源宿主兼容性正在验证中。欢迎通过交流 QQ 群 **871707735** 反馈问题、提交需求；对稳定性有较高要求时，请等待对应插件发布正式版。
 
 [![最新 Release](https://img.shields.io/github/v/release/ai68298100/siyuan-checkin?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-checkin/releases/latest) [![CI](https://github.com/ai68298100/siyuan-checkin/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-checkin/actions/workflows/ci.yml) [![License](https://img.shields.io/github/license/ai68298100/siyuan-checkin)](LICENSE)
 
-[最新 Release](https://github.com/ai68298100/siyuan-checkin/releases/latest) · [18.17.3 发布说明](docs/releases/release-notes-18.17.3.md) · [问题反馈](https://github.com/ai68298100/siyuan-checkin/issues) · [开发文档](docs/)
+[最新 Release](https://github.com/ai68298100/siyuan-checkin/releases/latest) · [18.17.4 发布说明](docs/releases/release-notes-18.17.4.md) · [问题反馈](https://github.com/ai68298100/siyuan-checkin/issues) · [开发文档](docs/)
 
 </div>
 
-### 本次更新（18.17.3）
+### 本次更新（18.17.4）
 
-本版围绕全插件体验复核与真实内核验收，收口入口、反馈、跨窗口状态和生态联动，并让独立 E2E 靶场能覆盖可写与只读内核。
+本版聚焦全插件 UI 与性能细节复核，改善长列表滚动和图片加载时的布局稳定性。
 
-新增：真实内核验收与交互入口
-- 新增独立思源内核 E2E：覆盖 API v5、持久化、只读拒写、双窗口同步、移动 bundle、日记、外部来源、渲染块、导出和插件生命周期。
-- 事项统计数字变为可操作筛选入口，归档返回按发起页面恢复上下文，新用户 Today 空态提供三步操作引导。
+新增：长列表延迟绘制
+- Today 项目卡片按可视区域延迟绘制，项目较多时滚动更轻快。
 
-优化：跨页面状态与响应式体验
-- Today、Review、Insights、More、Editor 和事项页的动作保留 owning root，异步反馈不会落到错误窗口。
-- “未来七天负荷”位于 Today 主任务区域下方；提醒以内联文流显示，短屏和移动端保留滚动、焦点和保存入口。
+优化：媒体加载体验
+- 头像、日志附件、历史缩略图补充固定尺寸与异步解码，减少首屏阻塞和布局抖动。
+- 自定义图标与附件继续经过安全 URL 校验并使用懒加载。
 
-修复：重复操作、反馈和测试靶场
-- 修复事项统计伪入口、归档 stale 返回、锚点文档重复创建、事项动作迟到反馈和失败后 busy 状态残留。
-- 修复独立 E2E 靶场 API token 配置、思源自动目录白名单、默认笔记本识别和只读内核启动等待兼容性。
+修复：短屏交互命中
+- 修复短横屏下延迟绘制可能影响滚动边缘主按钮点击的问题。
 
 
 <div align="center">
@@ -83,11 +81,11 @@
 | **归档** | 搜索、恢复或删除不再参与今日计划的项目；归档不会删除历史事件。 |
 | **设置** | 管理主题、语言、减少动效、默认打开方式、日记/笔记联动、第三方来源、备份恢复、诊断、审计和显示偏好。 |
 
-### 18.17.3 重点
+### 18.17.4 重点
 
-- **全链路验收**：真实可写内核 23/23、只读内核 1/1 通过；只读实例使用独立端口并验证写入拒绝。
-- **入口可操作**：事项统计、归档返回和首次使用引导提供清晰的前置条件、选中态与反馈。
-- **生态联动**：Task Horizon、Dock Tomato、思阅、思播、叶归和健康收件箱经过真实落盘与幂等复核。
+- **滚动更顺畅**：Today 长列表启用延迟绘制，短横屏保持按钮可命中。
+- **布局更稳定**：头像、日志附件和历史缩略图声明尺寸，加载时减少跳动。
+- **安全不变**：图片仍经过安全 URL 校验，现有数据和交互协议保持兼容。
 
 ### 18.17.2 重点
 
@@ -251,3 +249,4 @@ corepack pnpm run test:e2e:readonly
 ## License
 
 [MIT](LICENSE)
+
