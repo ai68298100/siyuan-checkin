@@ -2818,3 +2818,11 @@ Today 条目附件的 `FileReader.onload/onerror` 现在复核绑定时页面、
 验证证据：完整 `node scripts/release.cjs 18.17.4 "小驴打卡 v18.17.4" docs/releases/release-notes-18.17.4.md` 通过，覆盖类型、主/UI/移动/生态/扩展/性能、无障碍、发布资产和回滚演练；CSS 659,324 bytes，低于 660 KiB 硬上限。远端 `main`、`v18.17.4` 和 Release 已回源核验，包 SHA-256 为 `5cfbd835801b7653c482b3d2179c5c9cc7718dc10f959ee38335f410e8e5db10`。
 
 真实思源桌面、Android/TalkBack、第三方账号、缩放与保存面板仍按既有现场边界开放；本地自动化证据未替代现场验收。
+
+# 2026-10-15 v18.17.5 现代桌面质感重塑与 UI 原型 v3 对齐（R-RELEASE-18.17.5）
+
+完成 Today 行动台 Hero「下一步」行动卡落地、Bento 进度与连续打卡卡片微光高光与漫反射阴影重构；Settings 首屏落实 2×2 Bento 健康总览矩阵与呼吸指示灯；排版全局启用等宽数字（tabular-nums）与弹簧物理缓动微交互；纯化残留的 Unicode 纯文本符号为统一标准 SVG 矢量图标；清理 7px~11px 极端微小字号至规范 ≥12px。README、变更记录和发布说明已同步。
+
+验证证据：生产构建与发布资产检查通过，覆盖类型（tsc 零错误）、主/UI/移动/生态/扩展/性能测试、发布资产和四步回滚演练；CSS 669,836 bytes，低于 660 KiB 硬上限。包 SHA-256 为 `63d8471754cf5224a36b59a639010d25fb03c5ce8d76ada7a16f8bdd50c04837`。
+
+真实思源桌面、Android/TalkBack、第三方账号、缩放与保存面板仍按既有现场边界开放；本地自动化证据未替代现场验收。

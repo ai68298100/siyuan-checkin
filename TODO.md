@@ -1,8 +1,8 @@
 # TODO
 
-## 当前统一状态（2026-10-10）
+## 当前统一状态（2026-10-15）
 
-- 当前版本为 **v18.17.4**；全插件 UI 复核后的补丁已正式发布，稳定同步入口为 GitHub `main`。
+- 当前版本为 **v18.17.5**；现代桌面质感重塑与 UI 原型 v3 对齐版本已正式发布，稳定同步入口为 GitHub `main`。
 - 本文件中 v18.17.0 及更早版本号属于任务登记时的历史基线，保留用于追溯；新任务统一以源码、`PROGRESS.md`、`BLOCKERS.md` 和 `docs/releases/` 的最新版本为准。
 - 仍开放的产品决策、真实宿主/Android 现场验收和外部来源依赖继续保留，不因版本号升级自动标记完成。
 
@@ -4204,4 +4204,14 @@ G组 文档（5/5）：88 路线图五版本计划表 89 生态合作文档（Ta
 - [x] 完整质量链通过：`pnpm run check`、`pnpm test`、`pnpm run test:ui`、`pnpm run test:legacy-style`、`pnpm run test:mobile`、`pnpm run test:ecosystem`、`pnpm run test:extended`、`pnpm run test:review-comparison`、`pnpm run test:perf`、`pnpm run check:release`。
 - [x] 发布提交 `934a5374`、tag `v18.17.4`、GitHub Release 和 `main` push 已完成；Release：https://github.com/ai68298100/siyuan-checkin/releases/tag/v18.17.4；`package.zip` SHA-256 为 `5cfbd835801b7653c482b3d2179c5c9cc7718dc10f959ee38335f410e8e5db10`，大小 879,426 bytes。
 - [ ] 真实思源桌面、Android/TalkBack、第三方账号、缩放和保存面板现场仍按既有阻塞边界开放；CSS 659,324 bytes 高于 620 KB 软线但低于 660 KiB 硬上限，仅保留既有体积提示。
+
+## 2026-10-15 现代桌面质感重塑与发布 v18.17.5（R-RELEASE-18.17.5）
+
+- [x] Hero 行动卡与 Bento 布局落地：Today 首屏落地 Hero「下一步行动卡」，突出当前最该做的下一步小步，支持一键记录与快速专注；Settings 落实 2×2 Bento 健康总览矩阵与呼吸指示灯。
+- [x] 现代桌面质感与微材质升级：引入卡片顶部 1px 物理微高光（明暗双主题自适应）与双层漫反射环境光阴影；全局启用等宽数字（tabular-nums）；仿 iOS/macOS 物理弹簧微缓动曲线与按压微回弹。
+- [x] 图标纯化与排版字阶治理：纯化残留的 Unicode 纯文本符号为标准规范 SVG 矢量图标（`uiIcon`）；清理 7px~11px 极端微小字号，收敛提升至 ≥12px。
+- [x] README、v18.17.5 变更记录与发布说明更新；构建与摘要哈希同步完成。
+- [x] 完整质量链与发布门禁通过：类型检查、CSS 卫生守门、Today 仪表盘、设置总览、跨页面一致性、四步回滚演练与发版资产门禁。
+- [x] 发布提交 `3e2409d4`、tag `v18.17.5`；`package.zip` SHA-256 为 `63d8471754cf5224a36b59a639010d25fb03c5ce8d76ada7a16f8bdd50c04837`。
+- [ ] 真实思源桌面、Android/TalkBack、第三方账号、缩放和保存面板现场仍按既有阻塞边界开放；CSS 669,836 bytes 高于 620 KB 软线但低于 660 KiB 硬上限。
 
