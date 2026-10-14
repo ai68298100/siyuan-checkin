@@ -8,31 +8,34 @@
 
 把一次行动记录下来，再用同一份可追溯数据完成统计、提醒、复盘和笔记联动。
 
-**当前版本：18.17.4**
+**当前版本：18.17.5**
 
-18.17.4 聚焦全插件 UI 与性能细节复核，优化长列表滚动和图片布局稳定性；这里介绍本次更新与已实现功能，后续开发进展见 [PROGRESS](PROGRESS.md)。
+18.17.5 聚焦现代桌面质感重塑与 UI 原型 v3 对齐，引入 Hero「下一步」行动卡、Bento 统计网格与健康总览矩阵；这里介绍本次更新与已实现功能，后续开发进展见 [PROGRESS](PROGRESS.md)。
 
 > **内测说明**：小驴考试、小驴管家、小驴闪卡和小驴常用目前仍处于内测阶段，部分功能和思源宿主兼容性正在验证中。欢迎通过交流 QQ 群 **871707735** 反馈问题、提交需求；对稳定性有较高要求时，请等待对应插件发布正式版。
 
 [![最新 Release](https://img.shields.io/github/v/release/ai68298100/siyuan-checkin?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-checkin/releases/latest) [![CI](https://github.com/ai68298100/siyuan-checkin/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-checkin/actions/workflows/ci.yml) [![License](https://img.shields.io/github/license/ai68298100/siyuan-checkin)](LICENSE)
 
-[最新 Release](https://github.com/ai68298100/siyuan-checkin/releases/latest) · [18.17.4 发布说明](docs/releases/release-notes-18.17.4.md) · [问题反馈](https://github.com/ai68298100/siyuan-checkin/issues) · [开发文档](docs/)
+[最新 Release](https://github.com/ai68298100/siyuan-checkin/releases/latest) · [18.17.5 发布说明](docs/releases/release-notes-18.17.5.md) · [问题反馈](https://github.com/ai68298100/siyuan-checkin/issues) · [开发文档](docs/)
 
 </div>
 
-### 本次更新（18.17.4）
+### 本次更新（18.17.5）
 
-本版聚焦全插件 UI 与性能细节复核，改善长列表滚动和图片加载时的布局稳定性。
+本版聚焦现代桌面质感重塑与 UI 原型 v3 对齐，打造低压力现代个人行动台。
 
-新增：长列表延迟绘制
-- Today 项目卡片按可视区域延迟绘制，项目较多时滚动更轻快。
+新增：Hero 行动卡与 Bento 布局
+- Today 首屏落地 Hero「下一步行动卡」，突出当前最该做的下一步小步，支持一键记录与快速专注。
+- Settings 设置页首屏落实 2×2 Bento 健康总览卡片网格，状态胶囊带有彩色呼吸指示灯并支持一键去配置。
 
-优化：媒体加载体验
-- 头像、日志附件、历史缩略图补充固定尺寸与异步解码，减少首屏阻塞和布局抖动。
-- 自定义图标与附件继续经过安全 URL 校验并使用懒加载。
+优化：现代桌面质感与微材质
+- 引入物理微材质：卡片顶部 1px 物理微高光（明暗主题自适应）与双层漫反射环境光阴影。
+- 排版与数字防抖动：全局启用等宽数字（tabular-nums），消除计数、计时器与百分比抖动。
+- 交互手感提升：引入仿 iOS/macOS 物理弹簧微缓动曲线，按钮悬停浮雕与按压物理回弹。
 
-修复：短屏交互命中
-- 修复短横屏下延迟绘制可能影响滚动边缘主按钮点击的问题。
+优化：图标矢量化与排版字阶
+- 纯化残留的 Unicode 纯文本符号为标准规范 SVG 矢量图标，杜绝跨系统字体差异变形。
+- 全面清理 7px~11px 极端微小字号，收敛提升至 ≥12px，确保在窄屏与 Dock 侧边栏下清晰可读。
 
 
 <div align="center">
