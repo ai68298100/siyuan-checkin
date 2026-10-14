@@ -2,7 +2,7 @@
 
 ## 当前统一状态（2026-10-10）
 
-- 当前版本为 **v18.17.2**；全插件 UI 复核后的补丁已正式发布，稳定同步入口为 GitHub `main`。
+- 当前版本为 **v18.17.4**；全插件 UI 复核后的补丁已正式发布，稳定同步入口为 GitHub `main`。
 - 本文件中 v18.17.0 及更早版本号属于任务登记时的历史基线，保留用于追溯；新任务统一以源码、`PROGRESS.md`、`BLOCKERS.md` 和 `docs/releases/` 的最新版本为准。
 - 仍开放的产品决策、真实宿主/Android 现场验收和外部来源依赖继续保留，不因版本号升级自动标记完成。
 
@@ -4195,3 +4195,13 @@ G组 文档（5/5）：88 路线图五版本计划表 89 生态合作文档（Ta
 - [ ] T-1840 v18.17.3 发版收口
   - 验收：README、发布说明、变更记录和版本四元组一致；完整质量链、发布资产门禁、GitHub main/tag/Release 与 SHA-256 一致；保留真实设备证据边界。
   - 状态：E2E 已完成（可写 23/23、只读 1/1）；等待质量链和 gh 发布。
+
+## 2026-10-14 全插件 UI/性能复核与发布 v18.17.4（R-RELEASE-18.17.4）
+
+- [x] 低风险性能细节已落地：Today 长列表卡片启用延迟绘制；短横屏关闭该优化以保持边缘按钮命中；compact/bulk 卡片补齐固有高度估值。
+- [x] 媒体布局稳定性已收口：头像、日志附件、历史缩略图声明宽高；日志/历史图片使用懒加载与异步解码；附件 URL 继续经过 `safeAttachmentUrl` 安全门。
+- [x] README、v18.17.4 变更记录与发布说明更新；README 顶部保留四款内测插件说明、系列插件入口和交流 QQ 群。
+- [x] 完整质量链通过：`pnpm run check`、`pnpm test`、`pnpm run test:ui`、`pnpm run test:legacy-style`、`pnpm run test:mobile`、`pnpm run test:ecosystem`、`pnpm run test:extended`、`pnpm run test:review-comparison`、`pnpm run test:perf`、`pnpm run check:release`。
+- [x] 发布提交 `934a5374`、tag `v18.17.4`、GitHub Release 和 `main` push 已完成；Release：https://github.com/ai68298100/siyuan-checkin/releases/tag/v18.17.4；`package.zip` SHA-256 为 `5cfbd835801b7653c482b3d2179c5c9cc7718dc10f959ee38335f410e8e5db10`，大小 879,426 bytes。
+- [ ] 真实思源桌面、Android/TalkBack、第三方账号、缩放和保存面板现场仍按既有阻塞边界开放；CSS 659,324 bytes 高于 620 KB 软线但低于 660 KiB 硬上限，仅保留既有体积提示。
+
