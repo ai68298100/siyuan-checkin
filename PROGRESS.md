@@ -1,5 +1,9 @@
 # 2026-10-16 Task Horizon 原始来件复核与补丁收口（T-1871，D-485）
 
+**v18.17.6 已正式发布**：源码提交 `97d8ae94065f1bc16a343a4f6d4ce865dcc96548`，tag `v18.17.6`，Release：https://github.com/ai68298100/siyuan-checkin/releases/tag/v18.17.6 。远端 main 与 tag 的源码已核对；882112-byte 安装包回下载后与本地逐字节一致，ZIP 完整、清单版本正确，SHA-256 为 `2423592e00db72773a35a47a7c1c27db531842c465cf7ca49c452da294df8d5a`。发布源码 CI run `38827502945` 的 verify 与 browser-audit 均成功。后续文档证据提交不改变发布 tag 或资产。
+
+可转发合作包 `.artifacts/taskhorizon-cooperation-18.17.6-2026-10-16.zip` 已生成并逐条核对 27 个文件、ZIP 完整性与 SHA256SUMS，原件摘要再次一致。文件包为 97371 bytes，SHA-256 `dfc29e90547da62fbce1c4ab197a1a28b8ae0ab2b2970ed5f4a6a1645972c4e3`；不含用户数据、凭据、对方整份源码或安装包，安装包通过 Release 单独取得。
+
 找回并核对 2026-10-12 的 `checkin-provider-fix-guidance.zh-CN.md` 原件，原文件仍保留；仓库逐字节归档在 `docs/contracts/incoming/`，SHA-256 为 `656c79e3f6a7d85ae85bcd2d28739c9d382e00a9953a1517149261fbf0965599`。过去对话曾声称部分修复完成且未提交，但当前代码证据与部分声明不一致，不能推断缺失原因，也不把旧报告当交付凭证。本次按当前代码重建十项处理台账及独立回复稿。
 
 本轮修复 W-01（batch 复用严格身份解析）、W-02（落账日有效方向修订）、W-04（队列未执行/刷新失败/异常长度拒绝而不返回 undefined）、W-05（入队前数组及标量对象快照）。API 行为夹具覆盖历史双向切换、历史单位、通用非排期 logged、输入改写、1:1 回执与共享 eventId、写失败回滚、落盘后确认或反馈失败及同身份重试。v4 参考 bridge 补本地日守门，跨午夜/未来/无效时钟均保留原身份延后，不再调用单条接口误写今天。C-04 补恰好及超出 366 天/200 项的截断验收。

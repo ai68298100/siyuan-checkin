@@ -2,6 +2,8 @@
 
 日期：2026-10-16。版本：小驴打卡 18.17.6，公开 API v5。对应发布入口：[v18.17.6](https://github.com/ai68298100/siyuan-checkin/releases/tag/v18.17.6)。源码与 Release 的最终核验记录见仓库 PROGRESS。
 
+正式 Release 已发布，tag 指向 `97d8ae94065f1bc16a343a4f6d4ce865dcc96548`。资产已回下载，确认与本地发布包逐字节一致、ZIP 完整且清单版本为 18.17.6。发布源码的 [CI run 38827502945](https://github.com/ai68298100/siyuan-checkin/actions/runs/38827502945) 中 verify、browser-audit 均成功。
+
 ## 当前通过的验证
 
 | 验证 | 结果与证据 |
