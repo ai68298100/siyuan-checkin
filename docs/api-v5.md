@@ -2,7 +2,7 @@
 
 > 状态：**稳定**。本文是 `window.siyuanCheckin` 公开 API 的正式参考；`api-v5-design.md` 保留为设计过程记录，冲突处以本文为准。
 > 机器可读契约清单：[contracts/checkin-api-v5.json](contracts/checkin-api-v5.json)，由 `tests/api-v5-docs.test.cjs` 与 `src/api-contract.ts` 交叉核对——三者不一致时以源码为准并视为文档缺陷。
-> 本次文档核对版本：v18.17.6（拟发布，尚未发布）。既有 API v5 稳定面与 Task Horizon 合作专项就绪状态分开记录；当前没有 `integrationContracts` 合作就绪声明。
+> 本次文档核对版本：v18.17.6。既有 API v5 稳定面与 Task Horizon 合作专项就绪状态分开记录；当前没有 `integrationContracts` 合作就绪声明。
 
 ## 1. 版本与语义
 
