@@ -171,8 +171,13 @@
                 border-radius: 999px;
                 font-size: 13px;
                 font-weight: 650;
-                color: #FFFFFF;
-                background: var(--lc-checkin-primary-gradient);
+                /* Keep a solid semantic fallback for contrast tooling and
+                   browsers that do not paint the gradient. The token also
+                   flips the foreground in dark mode instead of assuming
+                   white text is readable on the lighter accent fill. */
+                color: var(--lc-checkin-accent-contrast);
+                background-color: var(--lc-checkin-accent-fill);
+                background-image: var(--lc-checkin-primary-gradient);
                 box-shadow: var(--lc-checkin-primary-glow);
                 border: 0;
                 cursor: pointer;

@@ -55,7 +55,7 @@ import {bindPageNavigationHandlers, type BindPageNavigationHost} from "./render/
 import {bindMoreNavigationFor, renderMoreView, type MoreNavigationHost} from "./render/more";
 import {saveEditorForm, type SaveFormHost} from "./render/save-form";
 import {cloneItemForDateValue, cloneItemValue, cloneStoreValue, computeStreaksValue, getSummaryEventsValue, itemFingerprintValue, makeEventValue, revisionFingerprintValue} from "./model-helpers";
-import {persistNormalizedStoreWithVerification, persistStoreWithReconciliation, reconcileNormalizedStoreSnapshots} from "./storage-transaction";
+import {persistNormalizedStoreWithVerification, persistStoreWithReconciliation, projectLocalStoreChanges, reconcileNormalizedStoreSnapshots} from "./storage-transaction";
 import {createTeardownDeadline, createTeardownWriteGate, TEARDOWN_DRAIN_BUDGET_MS, TEARDOWN_FLUSH_BUDGET_MS, waitWithinDeadline} from "./teardown";
 import {bindDialogCloseFor, bindMobileNavFor, changeHistoryMonthFor, downloadDiagnosticsFor, downloadDockTomatoDiagnosticsFor, downloadExportFor, downloadLoopExportFor, downloadReportMarkdownFor, downloadSnapshotHistoryFor, downloadStoreAuditFor, downloadSuggestionAuditFor, focusTodaySearchFor, getQuickTodayItems, importCsvRowsInto, downloadObsidianExportFor, importLoopPlanInto, importObsidianHabitsInto, invalidateSummaryFor, renderBackgroundUpdateFor, restoreItemFor, settleReadyFor, showSyncNoticeFor, type ImportConflictDisposition, type PluginOpsHost} from "./plugin-ops";
 import {buildLoopImportPlan, type LoopImportPlan} from "./features/loop-csv";
@@ -3103,13 +3103,15 @@ this.scheduleMidnightRefresh();
             throw new Error("checkin: storage is not ready for batch recording");
         }
         if (!Array.isArray(inputs)) throw new TypeError("inputs 必须是数组");
+        /* 公开入口在入队前捕获标量字段，调用方后续改写对象或数组不能改变已提交批次。 */
+        const snapshot = Array.from(inputs, (input) => input && typeof input === "object" && !Array.isArray(input) ? {...input} : input);
         /* 空批次是合法的能力探测/无变化操作：不入队、不触碰存储，
            与 contracts/siyuan-checkin-contract 的公共契约保持一致。 */
-        if (!inputs.length) return Promise.resolve([]);
-        if (inputs.length > CHECKIN_BATCH_RECORD_LIMITS.maxItems) throw new TypeError("单批不得超过 " + CHECKIN_BATCH_RECORD_LIMITS.maxItems + " 条");
-        return this.enqueueMutation(async (): Promise<BatchEntryResult[]> => {
-            if (this.disposed || this.disposing || this.initializationState !== "ready" || !this.storageReady) throw new Error("checkin: storage is not ready");
-            const {results, planned, recordedIndices, duplicateResultLinks} = planBatchRecord(this.store, inputs, new Date().toISOString());
+        if (!snapshot.length) return [];
+        if (snapshot.length > CHECKIN_BATCH_RECORD_LIMITS.maxItems) throw new TypeError("单批不得超过 " + CHECKIN_BATCH_RECORD_LIMITS.maxItems + " 条");
+        const results = await this.enqueueMutation(async (): Promise<BatchEntryResult[]> => {
+            if (this.disposed || this.disposing || !this.acceptingOperations || this.initializationState !== "ready" || !this.storageReady) throw new Error("checkin: storage is not ready");
+            const {results, planned, recordedIndices, duplicateResultLinks} = planBatchRecord(this.store, snapshot, new Date().toISOString());
             if (!planned.length) return results;
             const previous = this.store;
             const events = planned.map((entry) => {
@@ -3158,6 +3160,9 @@ this.scheduleMidnightRefresh();
             for (const item of affected.values()) void this.writebackNoteAnchor(item, {state: "done"});
             return results;
         });
+        /* 通用队列为旧调用方保留 undefined 哨兵；批量契约将未执行/刷新失败映射为主机级拒绝。 */
+        if (!Array.isArray(results) || results.length !== snapshot.length) throw new Error("checkin: batch was not executed");
+        return results;
     }
 
         /* ===== 收件箱手动管理（T-1270）：设置页的重试/丢弃/撤销跳过并计入。 ===== */
@@ -9269,6 +9274,12 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
                     }
                     refreshed = reconciliation.localChanged;
                     this.store = latest;
+                    /* The locked read is now the authoritative prior state for
+                       this mutation. A peer may have completed an exact restore
+                       since our last write; using the stale in-memory baseline
+                       would make the next restore point describe the wrong
+                       pre-write Store and would repeatedly report old conflicts. */
+                    this.lastPersistedStore = this.cloneStore(remote);
                     if (refreshed || conflict.conflicted) this.showSyncNotice();
                     if (reconciliation.remoteNeedsWrite) {
                         await this.persist();
@@ -9318,11 +9329,11 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
      */
     private async teardownFinalFlush(): Promise<void> {
         if (!this.storageReady) return;
-        const snapshot = normalizeStore(this.store);
         const locks = typeof navigator === "undefined" ? undefined : (navigator as Navigator & {locks?: LockManagerLike}).locks;
         const write = async () => {
             /* 收尾也必须先重读：此时内存快照可能早于另一窗口最后一次写入。
                预合并在独占锁内完成，回读校验继续兜底处理不守规矩的旁路写入。 */
+            const snapshot = projectLocalStoreChanges(this.lastPersistedStore, normalizeStore(this.store));
             const verified = await persistStoreWithReconciliation(
                 snapshot,
                 () => this.loadData(STORAGE_NAME),

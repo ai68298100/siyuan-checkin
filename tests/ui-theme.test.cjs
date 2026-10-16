@@ -132,6 +132,10 @@ assert.match(liveStyles, /\.lc-checkin__coaching-list \{ display: grid; gap: 7px
     "coaching foundations belong to their final live component section");
 assert.match(liveStyles, /\.lc-checkin__insight-picker \{ display:flex;[\s\S]*\.lc-checkin__insight-legend \.is-off \{ opacity:\.45; \}/,
     "insight controls and legend foundations belong to the component layer");
+assert.match(liveStyles, /\.lc-checkin__occasion-chip\.is-complete \{\s*opacity:\s*1;\s*color:\s*var\(--lc-checkin-muted\);\s*background:\s*var\(--lc-checkin-muted-surface\);/,
+    "completed occasion chips keep subdued semantics without reducing text contrast");
+assert.match(liveStyles, /\.lc-checkin__reminder-row\.is-completed,[\s\S]*\.lc-checkin__reminder-row\.is-skipped \{ opacity: 1; \}/,
+    "completed, snoozed and skipped reminders keep their explicit text colors at full opacity");
 assert.ok(!styles.includes(".lc-checkin__occasion-manager-row {"),
     "occasion manager foundations must not return to legacy index.scss");
 assert.ok(!styles.includes(".lc-checkin__occasion-form-panel {"),

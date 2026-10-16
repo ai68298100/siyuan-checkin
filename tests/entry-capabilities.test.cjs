@@ -28,8 +28,9 @@ assert.match(apiSource, /CHECKIN_API_VERSION/);
 assert.match(apiSource, /summarizeCustom: \(range, providerId\) => summarizeWithProvider\("day", range, providerId\)/);
 assert.match(apiSource, /getAnalyticsSnapshot: \(asOf = currentCalendarDate\(\)\)/);
 assert.match(apiSource, /getAnalyticsSummary: \(asOf = currentCalendarDate\(\)\)/);
-assert.match(source, /if \(!Array\.isArray\(inputs\)\) throw new TypeError\("inputs 必须是数组"\);[\s\S]{0,180}if \(!inputs\.length\) return Promise\.resolve\(\[\]\)/,
-    "batch capability probes and no-op callers must receive an empty result instead of an exception");
+// Empty-batch no-op and malformed-input rejection are exercised against the
+// production recordEventsBatch method in tests/api-v5.test.cjs. Keep that
+// behavior independent of snapshot variable names and async return syntax.
 assert.match(modelHelpersSource, /store\.templates\.map\(cloneUserTemplateValue\)/,
     "public store/export clones must preserve user templates");
 assert.match(modelHelpersSource, /quota: schedule\.quota \? \{\.\.\.schedule\.quota\}/,

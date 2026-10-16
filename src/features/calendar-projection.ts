@@ -40,7 +40,7 @@ export interface CalendarProjectionItem {
     unit: string;
     scheduleType: string;
     points: CalendarProjectionPoint[];
-    /** quota 项目专用：投影区间末日所在周期的完成比（0..1）。 */
+    /** quota 项目专用兼容字段：实际投影末日所在周期的累计量（贡献天数/数值），不是 0..1 比例。 */
     quotaRate?: number;
 }
 

@@ -544,7 +544,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
  .lc-checkin--occasions .lc-checkin__occasion-manager-row { grid-template-columns: 24px minmax(0,1fr); padding: 7px; }
  .lc-checkin--settings .lc-checkin__settings-row { grid-template-columns: 1fr; }
  .lc-checkin--settings .lc-checkin__settings-row select,.lc-checkin--settings .lc-checkin__settings-row input { max-width: 100%; }
- .lc-checkin__mobile-nav button small { font-size: 7px; }
 }
 /* 10.0 foundation pass 3: unified state language, feedback and accessible density. */
 .lc-checkin__history-note-editor { width:100%; min-height:56px; box-sizing:border-box; margin-top:6px; padding:8px 10px; resize:vertical; border:1px solid var(--lc-checkin-border-strong); border-radius:8px; color:var(--lc-checkin-text); background:var(--lc-checkin-bg); font:inherit; line-height:1.5; }
@@ -941,7 +940,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
  .lc-checkin__mobile-nav { min-height: 54px; }
  .lc-checkin__mobile-nav button { min-height: 42px; }
  .lc-checkin__mobile-nav button span { font-size: 16px; }
- .lc-checkin__mobile-nav button small { font-size: 8px; }
 }
 
 @supports (height: 100dvh) {
@@ -1794,8 +1792,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     .lc-checkin--today .lc-checkin__item-name { padding-top: 1px; }
     .lc-checkin--history .lc-checkin__calendar-weekdays { margin-bottom: 2px; }
     .lc-checkin--history .lc-checkin__history-result + .lc-checkin__history-selected { margin-top: 6px; }
-    .lc-checkin__insight-legend span { display: inline-flex; align-items: center; gap: 4px; }
-    .lc-checkin__insight-legend i { width: 8px; height: 8px; border-radius: 2px; }
     .lc-checkin__insight-legend i.is-complete { background: var(--lc-checkin-success); }
     .lc-checkin__insight-legend i.is-partial { background: var(--lc-checkin-warning); }
     .lc-checkin__insight-legend i.is-missed { background: var(--lc-checkin-danger); }
@@ -2904,7 +2900,7 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__reminder-action { white-space: nowrap; }
 .lc-checkin__reminder-row.is-completed,
 .lc-checkin__reminder-row.is-snoozed,
-.lc-checkin__reminder-row.is-skipped { opacity: .68; }
+.lc-checkin__reminder-row.is-skipped { opacity: 1; }
 .lc-checkin__reminder-action {
     display: inline-flex;
     align-items: center;
@@ -3370,7 +3366,11 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__this-day { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; padding: 8px 10px; border: 1px solid var(--lc-checkin-border); border-radius: var(--lc-checkin-radius-sm); font-size: 12px; background: var(--lc-checkin-surface); }
 .lc-checkin__this-day strong { font-size: 12px; color: var(--lc-checkin-muted); }
 .lc-checkin__this-day-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; color: var(--lc-checkin-text); overflow-wrap: anywhere; }
-.lc-checkin__occasion-chip.is-complete { opacity: .6; }
+.lc-checkin__occasion-chip.is-complete {
+    opacity: 1;
+    color: var(--lc-checkin-muted);
+    background: var(--lc-checkin-muted-surface);
+}
 .lc-checkin__occasion-chip.is-complete small { color: var(--lc-checkin-success-text); }
 .lc-checkin__occasion-chip[data-action="toggle-occasion"] small { min-width: 32px; padding-left: 6px; border-left: 1px solid color-mix(in srgb, var(--lc-checkin-border) 70%, transparent); text-align: center; }
 
@@ -6696,19 +6696,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     .lc-checkin__topnav button[data-mobile-nav].is-selected { color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); }
     .lc-checkin__topnav button[data-mobile-nav].is-selected span { color: var(--lc-checkin-accent-contrast); background: var(--lc-checkin-accent-fill); }
 
-    .lc-checkin__topnav-actions { display: flex; align-items: center; gap: 4px; margin-left: auto; }
-    .lc-checkin__topnav-action {
-        display: grid;
-        place-items: center;
-        width: 32px;
-        height: 32px;
-        border: 0;
-        border-radius: 8px;
-        color: var(--lc-checkin-muted);
-        background: transparent;
-        cursor: pointer;
-    }
-    .lc-checkin__topnav-action:hover { color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); }
 }
 
 /* ============================================================
@@ -10286,6 +10273,7 @@ details:not([open]) > :not(summary) { display: none !important; }
     border-radius: var(--lc-checkin-radius-sm);
     background: var(--lc-checkin-muted-surface);
 }
+.lc-checkin__record-details[hidden] { display: none !important; }
 .lc-checkin__record-details-row {
     display: flex;
     gap: 10px;

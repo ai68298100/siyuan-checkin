@@ -2,6 +2,7 @@
 
 > 状态：**稳定**。本文是 `window.siyuanCheckin` 公开 API 的正式参考；`api-v5-design.md` 保留为设计过程记录，冲突处以本文为准。
 > 机器可读契约清单：[contracts/checkin-api-v5.json](contracts/checkin-api-v5.json)，由 `tests/api-v5-docs.test.cjs` 与 `src/api-contract.ts` 交叉核对——三者不一致时以源码为准并视为文档缺陷。
+> 本次文档核对版本：v18.17.6（拟发布，尚未发布）。既有 API v5 稳定面与 Task Horizon 合作专项就绪状态分开记录；当前没有 `integrationContracts` 合作就绪声明。
 
 ## 1. 版本与语义
 
@@ -98,7 +99,7 @@ recordEventsBatch(inputs: Array<{
     source: "api";
     externalRef?: string;
     note?: string;
-    occurredAt?: string;         // RFC3339/ISO instant，必须带 Z 或 ±HH:MM；缺省回退调用时刻
+    occurredAt?: string;         // RFC3339/ISO instant，必须带 Z 或 ±HH:MM；缺省回退批次执行时刻
 }>): Promise<Array<{
     kind: "recorded" | "duplicate" | "discarded" | "blocked" | "rejected";
     eventId?: string;
@@ -108,9 +109,11 @@ recordEventsBatch(inputs: Array<{
 ```
 
 - **一次入队、一次持久化**；结果与输入一一对应（同序同长）。同一批内重复 `externalRef` 的后续输入返回 `duplicate`，并携带与首条 `recorded` 输入相同的 `eventId`，便于调用方逐项对账。
-- 判定顺序固定：幂等身份（`duplicate`）→ 墓碑（`discarded`）→ 项目可用性/映射/跳过日/at-most（`blocked`，`reason` 说明）→ 写入（`recorded`）；`rejected` 仅表示输入未过结构校验，不进入持久化。
-- `occurredAt` 必须是带显式时区的 ISO/RFC3339 时刻（如 `2026-09-20T08:00:00+08:00` 或 `...Z`）；日期-only 与无时区时间会以 `invalid-occurred-at` 拒绝，避免不同宿主地区把同一输入归到不同业务日。缺省回退调用时刻是唯一允许的缺省，且结果以 `usedFallbackTime: true` 标注供审计。`localDate` 按插件宿主本地日历推导。
-- 单批上限 200；单条 `recordEvent()` 行为完全不变（兼容承诺），其返回语义：新事件返回事件副本、重复返回已有事件副本、非法/拒绝返回 `undefined`——`undefined` 一律表示「未写入」，需以原始 `externalRef` 重试。
+- 判定顺序固定：幂等身份（`duplicate`）→ 墓碑（`discarded`）→ 项目可用期/单位映射/落账日 at-most（`blocked`，`reason` 说明）→ 写入（`recorded`）；`rejected` 仅表示输入未过结构校验，不进入持久化。Task Horizon 专用 SKIP 等限制仍待 W-03。
+- 调用入口在入队前捕获数组与标量对象快照；后续改写调用方输入不会改变批次。队列未执行、远端刷新或持久化失败会 reject；正常结果数组与捕获输入同序同长。reject 可能发生在事实已经落盘之后，消费端须保持原身份核验或重试。
+- `occurredAt` 必须是带显式时区的 ISO/RFC3339 时刻（如 `2026-09-20T08:00:00+08:00` 或 `...Z`）；日期-only 与无时区时间会以 `invalid-occurred-at` 拒绝，避免不同宿主地区把同一输入归到不同业务日。缺省回退批次执行时的宿主时刻，结果以 `usedFallbackTime: true` 标注供审计。`localDate` 按插件宿主本地日历推导；要保留排队前的源业务日，必须显式传时间。
+- 单批上限 200；单条 `recordEvent()` 保持兼容签名与行为：新事件返回事件副本、重复返回已有事件副本；`undefined` 仅表示没有成功回执，不能据此证明事实不存在。存储失败可能进入小驴待处理箱，并在启动恢复时自动补写。保留原始身份供核验，详见 §5.2。
+- 新的 Task Horizon 普通任务合作优先使用本批量接口，即使一次只有一条，也保存带时区的源 `occurredAt`、显式单位和同一 `itemId + source + externalRef`。合作拟限定新事实为 `count + daily + atLeast`、`value: 1`、身份日与落账本地日相同且非未来，并拒绝创建前/归档区间/SKIP 等条件；W-03 专用校验当前尚未完整就绪，不是通用批量接口已承诺的完整合作限制。
 
 ### metrics.read → `getStreaks(itemIds?)`
 
@@ -148,8 +151,10 @@ T-1391：有界「项目 × 日期」只读日历投影，面向日历类消费�
 - **服务端过滤**：仅返回 `taskHorizonCalendarVisible !== false` 且未归档的项目；消费方不得读全量后自行过滤。项目级隐藏在编辑器高级区设置，只影响本投影，不删除本地数据、不复用归档、不影响 `recordEvent` 任务回写。
 - **状态单一路径**：排期、配额、SKIP、atMost、修订生效日与日期归属（只用 `localDate` 与本地排期，不从 UTC 反推）全部由小驴侧计算；消费方只呈现，不自算完成率。
 - **localDate 契约**（T-1419/R-A7）：日期键为 `YYYY-MM-DD`，按用户本地日解释；日期运算走插件内单一纯函数实现 `src/date-keys.ts`（UTC 日序号，不受夏令时影响），跨午夜来源在来源侧按 localDate 预切段。每个投影/报告的统计截止时间就是请求的当前 localDate 与区间端点，消费方应原样回显所用范围，不得自行换算时区。
-- **状态语义**：`skipped` 为中性跳过（不渲染为失败）；`at-most-safe/at-most-breach` 为负向习惯专用（不套至少型百分比）；quota 项目只有真实贡献日生成点，周期完成比在 `quotaRate`；`logged` 为非排期日的真实记录（无排期日不伪造计划项）。
-- **有界**：区间 ≤ 366 天、项目 ≤ 200；超限截断并置 `truncated`，`totalItems` 为截断前可见项目总数。
+- **状态语义**：`skipped` 为中性跳过（不渲染为失败）；`at-most-safe/at-most-breach` 为负向习惯专用（不套至少型百分比）；quota 项目只有真实贡献日生成点，日 `complete` 表示有正值记录，应展示“已记录”，不代表周期达标。`quotaRate` 是兼容字段名，保存实际投影末日所在周期的累计量（贡献天数或数值），不是 0～1 比例；例如目标 10、累计 1 时该字段为 1，不能渲染为 100%。`logged` 为非排期日的真实记录（无排期日不伪造计划项）。
+- **有界**：区间 ≤ 366 天、项目 ≤ 200；合法范围超限时只计算前 366 天/返回前 200 个可见项目，并置 `truncated`，不会仅因超过上限直接拒绝。范围字段仍回显请求端点；超过 366 天时，实际投影末日是起始日起第 366 天，`quotaRate` 的周期与顶层 `scheduleType` 的修订均据该日确定，不能用请求的 `endDateExclusive` 推断。`totalItems` 为截断前可见项目总数；非法日期、空范围或逆序范围会拒绝。
+- **同步调用**：该方法同步、有界，不接受 `AbortSignal`；timeout、`Promise.race` 或 Abort 不能中断已开始的计算。消费端可合并刷新并丢弃过时 UI 更新。
+- **合作缺口**：C-03 拟新增 `point.scheduleType`（按该日有效修订）和顶层 `asOfDate`（读取时的宿主本地日），当前两字段尚未提供；现有顶层 `scheduleType` 取实际投影末日，不能解释所有历史 point，也不能将未来 `at-most-safe` 宣传为已达成。C-01 远端 Store 合并后的数据变化通知、C-02 window `checkin:api-state-changed` 生命周期通知尚未完整就绪。消费方必须核对当前全局 API 与就绪状态，不能把仍可读取的旧引用当作有效会话；详见 [合作设计](checkin-taskhorizon-cooperation.md)。
 - **不含隐私字段**：投影不含备注、附件、externalRef 或内部身份；只读、无副作用、不注册事件。
 
 ## 5. 输入上限速查
@@ -165,11 +170,11 @@ T-1391：有界「项目 × 日期」只读日历投影，面向日历类消费�
 | `getEventRangeSummary`（v4） | 366 天 / 366 点 / 5000 事件 |
 | 分析快照 JSON | ≤ 512 KiB，趋势窗口 周 52/月 24/日 366/年 10 |
 
-超限行为：截断（附 `truncated`）或拒绝（返回空/undefined，不抛异常）；调用方不得依赖异常控制流。
+超限行为按接口区分：合法日历范围超限会截断并附 `truncated`；批量写入超过 200 条会拒绝 Promise。非法日期或逆序范围可抛 `TypeError`，消费方应先校验输入并捕获异常，不能把无结果当作完整空日历。
 
 ### 5.1 错误与诊断码（T-1365 标准化，稳定枚举）
 
-**错误模型三原则**：读接口有界返回（截断标注/空结果，不抛异常）；写接口逐条显式结果（`kind` + `reason`）；结构化校验失败抛 `TypeError`/`RangeError` 且消息文案稳定可匹配。
+**错误模型三原则**：读接口对合法请求有界返回（截断标注/空结果）；批量写接口在正常返回时提供逐条显式结果（`kind` + `reason`），主机级失败拒绝 Promise；结构校验异常与无结果分别处理，消费方应捕获 `TypeError`/`RangeError` 等错误并展示可诊断状态。
 
 **批量写入结果**（`recordEventsBatch`，逐条）：
 
@@ -195,7 +200,9 @@ T-1391：有界「项目 × 日期」只读日历投影，面向日历类消费�
 
 ### 5.2 单条 recordEvent 兼容语义（v4 起不变）
 
-新事件 → 事件副本；幂等命中 → 已有事件副本；非法/拒绝 → `undefined`。`undefined` 一律表示「未写入」，以原始 `externalRef` 重试。
+新事件 → 事件副本；幂等命中 → 已有事件副本。`undefined` 仅表示本次没有成功回执，可能来自校验拒绝、版本/存储失败或队列未执行，不能保证远端没有事实。具有 `externalRef` 的存储失败还可能进入小驴待处理箱，启动后自动恢复；消费方丢弃自己的待处理队列不会撤销小驴待处理箱或已存事实。核验和重试必须保留原 `itemId + source + externalRef`，不可换身份或换项目重投。
+
+legacy 单条接口按调用时刻捕获 `occurredAt/localDate`，externalRef 的日期只用于身份，不指定落账日；跨午夜直接重试可能改变落账日。参考 bridge 因而只允许当前本地日写入，跨日保留 `date-not-current` 待处理项。新的 Task Horizon 合作优先采用 v5 batch 与显式源 `occurredAt`，并以逐条回执对账；宿主级 Promise 拒绝同样只表示没有成功回执，仍应复用原身份。
 
 ## 6. externalRef 幂等身份
 
@@ -217,8 +224,8 @@ T-1391：有界「项目 × 日期」只读日历投影，面向日历类消费�
 
 ## 8. 降级与诊断纪律
 
-- 宿主异常、超时、能力缺失一律降级为可诊断状态，不抛裸异常进入消费方控制流。
-- 写入失败的补救在**消费方**：保留原 `externalRef`、稍后重试；插件侧不替外部来源补写。
+- 消费方应捕获宿主异常并将异步超时、能力缺失转为可诊断状态；各接口的异常/回执边界见 §5。同步日历读取不能靠 timeout/Abort 中断。
+- 写入失败后，消费方保留原身份并核验结果；legacy 单条路径可能由小驴待处理箱在启动恢复时自动补写，不能宣称全部重试只由消费方负责。新的 Task Horizon 合作优先使用 v5 batch 明确回执，并在无成功回执时以同身份对账/重试。
 - `summary.providers` 的 `localOnly: false` 表示提供方内容会展示给用户并可能进入模型上下文；提供方必须对内容长度与格式自律。
 
 ## 9. 宿主兼容矩阵与接入清单

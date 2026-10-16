@@ -1,6 +1,7 @@
-/* API v5 纯边界守门（T-1275/T-1278,D-240）：
+/* API v5 边界守门（T-1275/T-1278,D-240）：
    v5-1 事件范围读/项目投影的限量与截断;v5-2 幂等批量写的规划纪律
-   （rejected/duplicate/discarded/blocked/recorded,批内去重,时钟注入标注）。 */
+   （rejected/duplicate/discarded/blocked/recorded,批内去重,时钟注入标注），
+   以及生产入口/队列的快照与宿主失败回执（W-02/W-04/W-05）。 */
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const os = require("node:os");
@@ -9,7 +10,7 @@ const ts = require("typescript");
 
 const root = path.join(__dirname, "..");
 const outputRoot = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-api-v5-"));
-for (const filename of ["types.ts", "i18n.ts", "shared.ts", "record-step.ts", "quota.ts", "rules.ts", "date-keys.ts", "model.ts", "analytics.ts", "model-helpers.ts", "features/record-notes.ts", "ui/labels.ts", "api-contract.ts", "features/api-v5.ts"]) {
+for (const filename of ["types.ts", "i18n.ts", "shared.ts", "record-step.ts", "quota.ts", "rules.ts", "date-keys.ts", "model.ts", "analytics.ts", "model-helpers.ts", "features/record-notes.ts", "ui/labels.ts", "api-contract.ts", "ecosystem.ts", "features/diagnostics.ts", "features/api-v5.ts", "storage-transaction.ts"]) {
     const target = path.join(outputRoot, filename.replace(/\.ts$/, ".js"));
     fs.mkdirSync(path.dirname(target), {recursive: true});
     fs.writeFileSync(target, ts.transpileModule(fs.readFileSync(path.join(root, "src", filename), "utf8"), {
@@ -29,6 +30,56 @@ const makeItem = (overrides = {}) => ({
     createdAt: "2026-08-01T00:00:00.000Z", updatedAt: "2026-08-01T00:00:00.000Z", createdDate: "2026-08-01",
     revisions: [], archivePeriods: [], ...overrides,
 });
+
+/* 执行生产批量入口和实际 mutation 队列；持久化与宿主反馈为可控内存边界。 */
+const indexAst = ts.createSourceFile("index.ts", fs.readFileSync(path.join(root, "src", "index.ts"), "utf8"), ts.ScriptTarget.Latest, true);
+const pluginClass = indexAst.statements.find((node) => ts.isClassDeclaration(node));
+const compiledHost = ts.transpileModule(`class BatchHost {${["recordEventsBatch", "enqueueMutation", "withStorageLock"].map((name) => {
+    const method = pluginClass.members.find((node) => node.name?.getText(indexAst) === name);
+    assert.ok(method, `${name} must exist`);
+    return method.getText(indexAst);
+}).join("\n")}}`, {compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS}}).outputText;
+const hostEnvironment = {
+    ...model, ...apiV5, ...contract, ...require(path.join(outputRoot, "storage-transaction.js")),
+    navigator: {}, STORAGE_LOCK_NAME: "batch-test-lock", STORAGE_NAME: "checkin-store", OCCASIONS_STORAGE_NAME: "checkin-occasions",
+    normalizeOccasionStore: (value) => value,
+    mergeOccasionCompletions: (local) => local,
+    appendStoreAudit: (entries, entry) => [...entries, entry],
+    safeUserErrorDetail: (error) => String(error?.message || error), t: (key) => key, showMessage() {},
+};
+const BatchHost = new Function(...Object.keys(hostEnvironment), `let fallbackStorageQueue = Promise.resolve();\n${compiledHost}\nreturn BatchHost;`)(...Object.values(hostEnvironment));
+const makeBatchHost = () => {
+    const host = new BatchHost();
+    const initial = model.normalizeStore({version: 3, items: [makeItem()], events: []});
+    let sequence = 0;
+    Object.assign(host, {
+        store: structuredClone(initial), lastPersistedStore: structuredClone(initial), durableStore: structuredClone(initial),
+        acceptingOperations: true, initializationState: "ready", storageReady: true, disposed: false, disposing: false,
+        mutationQueue: Promise.resolve(), occasionStore: {version: 1, occasions: []}, auditEntries: [], persistCalls: 0,
+        cloneStore: (value) => structuredClone(value),
+        loadData: async (name) => {
+            if (host.failRefresh) throw new Error("storage refresh failed");
+            return structuredClone(name === "checkin-store" ? host.durableStore : host.occasionStore);
+        },
+        makeEvent: (item, value, source, unit, note, externalRef, moment) => ({id: `batch-${++sequence}`, itemId: item.id, value, source, unit, note, externalRef, ...moment}),
+        persist: async () => {
+            host.persistCalls += 1;
+            if (host.failPersist) throw new Error("storage persist failed");
+            host.durableStore = structuredClone(host.store);
+            if (host.failPersistConfirmation) throw new Error("storage confirmation failed");
+            host.lastPersistedStore = structuredClone(host.store);
+        },
+        invalidateSummary() {}, broadcast() {}, showSyncNotice() {}, scheduleAuditPersist() {}, recordDiagnostic() {},
+        renderBackgroundUpdate() { if (host.failFeedback) throw new Error("feedback failed"); },
+        maybeAutoArchiveItemsAfterRecord() {}, writebackNoteAnchor: async () => undefined,
+    });
+    return host;
+};
+const deferred = () => {
+    let resolve;
+    const promise = new Promise((settle) => { resolve = settle; });
+    return {promise, resolve};
+};
 
 /* Public item snapshots must detach all mutable nested fields, including
    quota objects and optional arrays/records. A shallow quota clone would let
@@ -160,6 +211,122 @@ const makeItem = (overrides = {}) => ({
         "batch duplicate keeps a link to its first planned result for eventId receipt backfill");
     assert.equal(repeatedFreshRef.results[1].kind, "duplicate");
 
+    /* Task Horizon 历史补录同样经过公开批量入口，不能绕过单条写入的身份格式校验。
+       仅保留前缀使用严格格式；其它外部来源继续兼容通用 opaque externalRef。 */
+    const invalidTaskHorizonRefs = [
+        "taskhorizon:task:2026-02-30",
+        "taskhorizon:task:not-a-date",
+        "taskhorizon:task:part:2026-09-20",
+        "taskhorizon:task\u0001:2026-09-20",
+        "taskhorizon:task name:2026-09-20",
+        `taskhorizon:${"x".repeat(129)}:2026-09-20`,
+    ];
+    const taskHorizonPlan = planBatchRecord(store, [
+        ...invalidTaskHorizonRefs.map((externalRef) => ({itemId: "read", externalRef})),
+        {itemId: "read", externalRef: "taskhorizon:valid-task:2026-09-20", occurredAt: nowIso},
+        {itemId: "read", externalRef: "taskhorizon:valid-task:2026-09-20", occurredAt: nowIso},
+        {itemId: "read", externalRef: "unregistered:task:part:2026-02-30", occurredAt: nowIso},
+    ], nowIso);
+    assert.equal(taskHorizonPlan.results.length, invalidTaskHorizonRefs.length + 3, "identity validation preserves per-input receipts");
+    assert.deepEqual(taskHorizonPlan.results.slice(0, invalidTaskHorizonRefs.length),
+        invalidTaskHorizonRefs.map(() => ({kind: "rejected", reason: "invalid-external-ref"})),
+        "malformed Task Horizon identities cannot reach the batch write plan");
+    assert.equal(taskHorizonPlan.results[invalidTaskHorizonRefs.length].kind, "recorded", "canonical Task Horizon identity remains writable");
+    assert.equal(taskHorizonPlan.results[invalidTaskHorizonRefs.length + 1].kind, "duplicate", "canonical identity retains batch idempotency");
+    assert.equal(taskHorizonPlan.results[invalidTaskHorizonRefs.length + 2].kind, "recorded", "other prefixes retain their existing opaque identity semantics");
+    assert.deepEqual(taskHorizonPlan.planned.map(({externalRef}) => externalRef), [
+        "taskhorizon:valid-task:2026-09-20", "unregistered:task:part:2026-02-30",
+    ]);
+
+    /* 方向与单位均按完成日生效修订；当前方向不能追溯阻塞/放行另一方向纪元。 */
+    const revision = (effectiveDate, direction, unit = "次") => ({effectiveDate, direction, kind: "count", target: 1, unit, schedule: {type: "daily"}});
+    const revisionStore = model.normalizeStore({version: 3, items: [
+        makeItem({id: "now-at-most", direction: "atMost", revisions: [revision("2026-08-01", "atLeast", "页"), revision("2026-09-15", "atMost")]}),
+        makeItem({id: "was-at-most", revisions: [revision("2026-08-01", "atMost"), revision("2026-09-15", "atLeast")]}),
+        makeItem({id: "monday-only", schedule: {type: "weekly", weekdays: [1]}}),
+    ], events: []});
+    const revisionPlan = planBatchRecord(revisionStore, [
+        {itemId: "now-at-most", unit: "页", occurredAt: "2026-09-10T08:00:00Z"},
+        {itemId: "now-at-most", occurredAt: nowIso},
+        {itemId: "was-at-most", occurredAt: "2026-09-10T08:00:00Z"},
+        {itemId: "was-at-most", occurredAt: nowIso},
+        {itemId: "monday-only", externalRef: "other:off-schedule", occurredAt: new Date(2026, 8, 20, 12).toISOString()},
+    ], nowIso);
+    assert.deepEqual(revisionPlan.results.map(({kind}) => kind), ["recorded", "blocked", "blocked", "recorded", "recorded"]);
+    assert.equal(revisionPlan.results[1].reason, "at-most-item");
+    assert.equal(revisionPlan.results[2].reason, "at-most-item");
+    assert.equal(revisionPlan.planned[0].unit, "页", "historical direction and unit resolve from the completion-date revision");
+    assert.equal(model.isScheduledToday(model.getItemById(revisionStore, "monday-only"), new Date(2026, 8, 20, 12)), false);
+    assert.equal(revisionPlan.results[4].kind, "recorded", "generic external sources retain off-schedule logged facts");
+
+    /* 调用后改写全部标量字段和数组长度，不能影响已进入真实队列的批次。 */
+    const snapshotHost = makeBatchHost();
+    const snapshotGate = deferred();
+    snapshotHost.mutationQueue = snapshotGate.promise;
+    const originalInput = {itemId: "read", value: 1, unit: "次", source: "api", note: "original", externalRef: "external:original", occurredAt: nowIso};
+    const mutableInputs = [originalInput, null, []];
+    const snapshotResult = snapshotHost.recordEventsBatch(mutableInputs);
+    Object.assign(originalInput, {itemId: "missing", value: 7, unit: "小时", source: "manual", note: "changed", externalRef: "external:changed", occurredAt: "not-a-date"});
+    mutableInputs.splice(0, mutableInputs.length, ...Array.from({length: 201}, () => ({itemId: "missing"})));
+    snapshotGate.resolve();
+    const snapshotReceipts = await snapshotResult;
+    assert.equal(snapshotReceipts.length, 3, "receipt count uses the captured batch length");
+    assert.deepEqual(snapshotReceipts.map(({kind}) => kind), ["recorded", "rejected", "rejected"]);
+    assert.deepEqual({...snapshotHost.durableStore.events[0], id: undefined}, {
+        id: undefined, itemId: "read", value: 1, unit: "次", source: "api", note: "original", externalRef: "external:original", occurredAt: nowIso, localDate: "2026-09-20",
+    }, "the queued write retains all original scalar fields");
+
+    const batchInput = {itemId: "read", externalRef: "external:batch", occurredAt: nowIso};
+    const receiptHost = makeBatchHost();
+    const mixedReceipts = await receiptHost.recordEventsBatch([batchInput, {...batchInput}, null]);
+    assert.deepEqual(mixedReceipts.map(({kind}) => kind), ["recorded", "duplicate", "rejected"]);
+    assert.ok(mixedReceipts[0].eventId, "recorded receipts include the durable event identity");
+    assert.equal(mixedReceipts[1].eventId, mixedReceipts[0].eventId, "within-batch duplicate receipts point to the same durable fact");
+    assert.equal(receiptHost.durableStore.events.length, 1);
+    assert.equal(receiptHost.persistCalls, 1);
+    const emptyHost = makeBatchHost();
+    emptyHost.failRefresh = true;
+    assert.deepEqual(await emptyHost.recordEventsBatch([]), []);
+    assert.equal(emptyHost.persistCalls, 0);
+    await assert.rejects(emptyHost.recordEventsBatch(null), /inputs/);
+    await assert.rejects(emptyHost.recordEventsBatch(Array.from({length: 201}, () => batchInput)), /200/);
+    for (const queueResult of [undefined, []]) {
+        const skippedHost = makeBatchHost();
+        skippedHost.enqueueMutation = async () => queueResult;
+        await assert.rejects(skippedHost.recordEventsBatch([batchInput]), /batch was not executed/, "skipped/incomplete queue execution is a host failure");
+    }
+    const refreshFailure = makeBatchHost();
+    refreshFailure.failRefresh = true;
+    await assert.rejects(refreshFailure.recordEventsBatch([batchInput]), /batch was not executed/, "the actual queue's swallowed refresh failure must reject at the public batch boundary");
+    assert.equal(refreshFailure.persistCalls, 0);
+
+    const unloadHost = makeBatchHost();
+    const unloadGate = deferred();
+    unloadHost.mutationQueue = unloadGate.promise;
+    const unloadResult = unloadHost.recordEventsBatch([batchInput]);
+    unloadHost.acceptingOperations = false;
+    unloadHost.disposing = true;
+    unloadGate.resolve();
+    await assert.rejects(unloadResult, /storage is not ready/, "unload while queued cannot report batch success");
+    assert.equal(unloadHost.durableStore.events.length, 0);
+
+    const persistFailure = makeBatchHost();
+    persistFailure.failPersist = true;
+    await assert.rejects(persistFailure.recordEventsBatch([batchInput]), /batch persist failed/);
+    assert.equal(persistFailure.store.events.length, 0, "persist failure rolls back the in-memory batch");
+    assert.equal(persistFailure.durableStore.events.length, 0);
+
+    for (const failureFlag of ["failPersistConfirmation", "failFeedback"]) {
+        const ambiguousHost = makeBatchHost();
+        ambiguousHost[failureFlag] = true;
+        await assert.rejects(ambiguousHost.recordEventsBatch([batchInput]), failureFlag === "failFeedback" ? /feedback failed/ : /batch persist failed/);
+        assert.equal(ambiguousHost.durableStore.events.length, 1, "a rejected acknowledgement can follow a durable write");
+        ambiguousHost[failureFlag] = false;
+        const retryReceipts = await ambiguousHost.recordEventsBatch([batchInput]);
+        assert.deepEqual(retryReceipts, [{kind: "duplicate", eventId: ambiguousHost.durableStore.events[0].id}], "retry preserves the original fact identity after an ambiguous host failure");
+        assert.equal(ambiguousHost.durableStore.events.length, 1);
+    }
+
     /* ISO 入口必须携带显式时区；Date.parse 可接受的日期-only 与无偏移
        字符串会随宿主地区漂移业务日，必须拒绝而不是静默归一化。 */
     assert.equal(planBatchRecord(store, [{itemId: "read", occurredAt: "2026-09-20"}], nowIso).results[0].reason, "invalid-occurred-at");
@@ -233,5 +400,5 @@ const makeItem = (overrides = {}) => ({
     assert.ok(typeof perfLongestMap.get("read") === "number", "longest projection must be numeric");
     assert.ok(longestMs < 2000, `computeLongestStreaks over a 26-year window must stay under 2000ms (took ${Math.round(longestMs)}ms)`);
 
-console.log("API v5 read-only and batch-plan checks passed.");
+console.log("API v5 read-only, batch-plan and host-boundary checks passed.");
 })().catch((error) => { console.error(error); process.exit(1); });

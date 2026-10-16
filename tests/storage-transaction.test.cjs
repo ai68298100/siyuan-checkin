@@ -56,7 +56,7 @@ const productionWorkflow = loadProduction("features/suggestion-workflow.ts");
 const productionSuggestions = loadProduction("agent-suggestions.ts");
 const sourceAst = ts.createSourceFile("index.ts", indexSource, ts.ScriptTarget.Latest, true);
 const pluginClass = sourceAst.statements.find(node => ts.isClassDeclaration(node));
-const hostMethods = ["enqueueMutation", "withStorageLock", "persist", "persistSuggestionWorkflow", "persistSuggestionWorkflowUnlocked", "persistViewPreferences", "rememberInitialSurfacePreferences", "handleSuggestionDecision", "undoSuggestionWorkflow", "recordBlockToday", "recordEvent", "openJournalEntry", "saveForm"];
+const hostMethods = ["enqueueMutation", "withStorageLock", "persist", "restoreLatestBackup", "teardownFinalFlush", "persistSuggestionWorkflow", "persistSuggestionWorkflowUnlocked", "persistViewPreferences", "rememberInitialSurfacePreferences", "handleSuggestionDecision", "undoSuggestionWorkflow", "recordBlockToday", "recordEvent", "openJournalEntry", "saveForm"];
 const compiledHost = ts.transpileModule(`class TransactionHost {${hostMethods.map(name => {
     const member = pluginClass.members.find(node => node.name?.getText(sourceAst) === name);
     assert.ok(member, `${name} must exist`);
@@ -68,10 +68,11 @@ let journalDialog;
 let journalWrites = 0;
 const messages = [];
 const hostEnvironment = {
-    ...productionModel, ...loadProduction("storage-transaction.ts"), ...productionWorkflow, ...productionSuggestions,
+    ...productionModel, ...loadProduction("storage-transaction.ts"), ...loadProduction("export.ts"), ...productionWorkflow, ...productionSuggestions,
     ...loadProduction("shared.ts"), ...loadProduction("occasions.ts"),
     navigator: {}, STORAGE_LOCK_NAME: "test-lock", STORAGE_NAME: "checkin-store", BACKUP_STORAGE_NAME: "checkin-store-backup",
     SUGGESTION_WORKFLOW_STORAGE_NAME: "checkin-suggestion-workflow", VIEW_PREFERENCES_NAME: "checkin-view-preferences",
+    window: {confirm: () => true},
     currentCalendarDate: () => new Date(calendarDate),
     safeUserErrorDetail: error => String(error instanceof Error ? error.message : typeof error === "string" ? error : "").replace(/[A-Za-z]:[\\/][^\r\n"'<>]*/g, "<path>").slice(0, 200) || "common.unknownError",
     captureActionMoment: () => ({occurredAt: calendarDate.toISOString(), localDate: productionModel.dateKey(calendarDate)}),
@@ -96,9 +97,11 @@ async function withinDeadline(operation) {
         clearTimeout(timer);
     }
 }
-function makeHost(initialStore = makeStore()) {
+function makeHost(initialStore = makeStore(), sharedStorage) {
     const host = new TransactionHost();
-    const storage = new Map([["checkin-store", productionModel.normalizeStore(initialStore)], ["checkin-occasions", {version: 1, occasions: []}]]);
+    const storage = sharedStorage || new Map([["checkin-store", productionModel.normalizeStore(initialStore)], ["checkin-occasions", {version: 1, occasions: []}]]);
+    if (!storage.has("checkin-store")) storage.set("checkin-store", productionModel.normalizeStore(initialStore));
+    if (!storage.has("checkin-occasions")) storage.set("checkin-occasions", {version: 1, occasions: []});
     Object.assign(host, {
         store: structuredClone(storage.get("checkin-store")), lastPersistedStore: structuredClone(storage.get("checkin-store")),
         acceptingOperations: true, initializationState: "ready", storageReady: true, disposed: false, disposing: false,
@@ -111,6 +114,7 @@ function makeHost(initialStore = makeStore()) {
         makeEvent: (item, value, source, unit, note, externalRef, moment, attachment) => ({...moment, id: `test-${eventSequence++}`, itemId: item.id, value, source, unit, ...(note ? {note} : {}), ...(externalRef ? {externalRef} : {}), ...(attachment ? {attachment} : {})}),
         render: () => {}, renderBackgroundUpdate: () => {}, invalidateSummary: () => {}, broadcast: () => {},
         recordDiagnostic: () => {}, scheduleAuditPersist: () => {}, showSyncNotice: () => {},
+        persistAuditBestEffort: async () => {},
         writebackNoteAnchor: () => Promise.resolve(), writeSummaryResidentForDate: () => Promise.resolve(),
         setRecentRecord: () => {}, maybeAutoArchiveAfterRecord: () => {}, collectViewPreferences: () => ({appearance: "dark", reviewFold: ["records"], reviewFoldTouched: true, lastInsightsItemId: "item"}),
         resolveJournalTemplateById: () => ({id: "daily", name: "Daily"}), listNotebooksForJournal: async () => [],
@@ -128,6 +132,58 @@ function makeHost(initialStore = makeStore()) {
     return {host, storage};
 }
 async function verifyHostTransactions() {
+    /* A selected restore is an explicit replace. Once another compliant window
+       notices the storage change, reconciliation must not resurrect entities
+       that the restore intentionally removed from its selected snapshot. */
+    const obsoleteItem = {...baseItem, id: "obsolete", name: "旧项目", updatedAt: "2026-09-10T00:00:00.000Z"};
+    const changedBeforeRestore = {...baseItem, name: "恢复前的新名称", updatedAt: "2026-09-10T00:00:00.000Z"};
+    const preRestore = productionModel.normalizeStore({...makeStore([makeEvent(301)]), items: [changedBeforeRestore, obsoleteItem],
+        eventTombstones: [{eventId: "event-302", deletedAt: "2026-09-17T01:00:00.000Z"}]});
+    const restoreTarget = productionModel.normalizeStore(makeStore([makeEvent(302)]));
+    const {host: restoreHost, storage: restoreStorage} = makeHost(preRestore);
+    restoreStorage.set("checkin-store-backup", productionModel.appendStoreSnapshotHistory(undefined,
+        productionModel.createStoreSnapshotEnvelope(restoreTarget, "2026-09-01T00:00:00.000Z")));
+    await restoreHost.restoreLatestBackup(0);
+    assert.deepEqual(restoreStorage.get("checkin-store"), restoreTarget, "restore transaction must write the selected snapshot exactly");
+    const {host: staleWindow} = makeHost(preRestore, restoreStorage);
+    staleWindow.store = structuredClone(preRestore);
+    staleWindow.lastPersistedStore = structuredClone(preRestore);
+    await staleWindow.enqueueMutation(async () => undefined);
+    assert.deepEqual(restoreStorage.get("checkin-store"), restoreTarget,
+        "a second window receiving the restore must not merge pre-restore items/events or newer item revisions back into the selected snapshot");
+
+    const {host: staleUnload} = makeHost(preRestore, restoreStorage);
+    staleUnload.store = structuredClone(preRestore);
+    staleUnload.lastPersistedStore = structuredClone(preRestore);
+    await staleUnload.teardownFinalFlush();
+    assert.deepEqual(restoreStorage.get("checkin-store"), restoreTarget,
+        "a stale window's bounded unload flush must not restore pre-restore state");
+
+    const {host: writeAfterRestore} = makeHost(preRestore, restoreStorage);
+    writeAfterRestore.store = structuredClone(preRestore);
+    writeAfterRestore.lastPersistedStore = structuredClone(preRestore);
+    writeAfterRestore.store = productionModel.appendEvent(writeAfterRestore.store, makeEvent(303));
+    await writeAfterRestore.enqueueMutation(async () => undefined);
+    assert.deepEqual(productionModel.normalizeStore(restoreStorage.get("checkin-store")), productionModel.normalizeStore(makeStore([makeEvent(302), makeEvent(303)])),
+        "a genuinely new local event after restore must survive while unchanged pre-restore state stays excluded");
+
+    const restoreWithObsolete = productionModel.normalizeStore({...makeStore(), items: [baseItem, obsoleteItem]});
+    const {host: deleteWindow, storage: deleteStorage} = makeHost(preRestore);
+    deleteStorage.set("checkin-store", restoreWithObsolete);
+    deleteWindow.store = productionModel.deleteItemCascade(preRestore, "obsolete", "2026-09-17T02:00:00.000Z");
+    deleteWindow.lastPersistedStore = structuredClone(preRestore);
+    await deleteWindow.enqueueMutation(async () => undefined);
+    assert.equal(deleteStorage.get("checkin-store").items.some((item) => item.id === "obsolete"), false,
+        "a concurrent item deletion must remain effective against the selected restore");
+
+    const {host: failedRestoreHost, storage: failedRestoreStorage} = makeHost(preRestore);
+    failedRestoreStorage.set("checkin-store-backup", productionModel.appendStoreSnapshotHistory(undefined,
+        productionModel.createStoreSnapshotEnvelope(restoreTarget, "2026-09-01T00:00:00.000Z")));
+    failedRestoreHost.failStoreSave = true;
+    await failedRestoreHost.restoreLatestBackup(0);
+    assert.deepEqual(failedRestoreHost.store, preRestore, "failed restore persistence must roll back the in-memory store");
+    assert.deepEqual(failedRestoreStorage.get("checkin-store"), preRestore, "failed restore persistence must leave the primary stored store unchanged");
+
     /* Back-to-back main-store writes must capture restore baselines in queue
        order. The second call is issued before the first promise settles; its
        restore point should still contain the first committed store, rather

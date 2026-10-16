@@ -822,7 +822,10 @@ const qaFrontend = process.env.CHECKIN_QA_FRONTEND || "desktop";
         const crossInstanceWritesPreserved = ["window-one", "window-two"].every((ref) => window.__store.events.some((event) => event.externalRef === ref));
         const crossInstanceRefs = window.__store.events.filter((event) => event.externalRef?.startsWith("window-")).map((event) => event.externalRef);
         const localReconcileEvent = await api.recordEvent({itemId: "reading", value: 1, unit: "分钟", source: "api", externalRef: "reconcile-local"});
-        window.__store.events = window.__store.events.filter((event) => event.externalRef !== "reconcile-local");
+        /* T-1796: an onDataChanged peer write represents a complete remote
+           snapshot. Keep the local event in that snapshot; restore/replace
+           semantics that intentionally remove unchanged events are covered by
+           storage-transaction fixtures instead of this ordinary merge probe. */
         window.__store.events.push({...localReconcileEvent, id: "qa-reconcile-remote", externalRef: "reconcile-remote"});
         await window.__plugin.onDataChanged();
         const dataChangedConverged = ["reconcile-local", "reconcile-remote"].every((ref) => window.__store.events.some((event) => event.externalRef === ref));

@@ -96,17 +96,40 @@ assert.equal(logged.items[0].points.length, 1);
 assert.equal(logged.items[0].points[0].status, "logged", "unplanned-day record projects as logged");
 assert.equal(logged.items[0].points[0].date, "2026-09-10", "date attribution uses event localDate, not UTC");
 
-/* 有界：非法输入 TypeError；跨 366 天拒绝；200 项目截断显式标注。 */
+/* C-04 有界：非法/空/反向区间拒绝；超过 366 天或 200 个可见项目截断，合法边界不截断。 */
 assert.throws(() => buildCalendarProjection(store(), {startDate: "2026-09-10", endDateExclusive: "2026-09-10"}), TypeError, "empty range must throw");
 assert.throws(() => buildCalendarProjection(store(), {startDate: "2026-09-10", endDateExclusive: "2026-09-01"}), TypeError, "inverted range must throw");
 assert.throws(() => buildCalendarProjection(store(), {startDate: "bad", endDateExclusive: "2026-09-13"}), TypeError, "invalid dates must throw");
+assert.throws(() => buildCalendarProjection(store(), {startDate: "2026-09-10", endDateExclusive: "bad"}), TypeError, "invalid exclusive bounds must throw");
+assert.throws(() => buildCalendarProjection(store(), {startDate: "", endDateExclusive: "2026-09-13"}), TypeError, "empty date keys must throw");
 assert.throws(() => buildCalendarProjection(store(), {startDate: "2026-02-30", endDateExclusive: "2026-03-03"}), TypeError, "impossible calendar dates must throw instead of normalizing into March");
 assert.throws(() => buildCalendarProjection(store(), {startDate: "2026-02-28", endDateExclusive: "2026-02-31"}), TypeError, "impossible exclusive bounds must throw");
-const manyItems = Array.from({length: CALENDAR_PROJECTION_LIMITS.maxItems + 5}, (_, index) => makeItem({id: `item-${index}`, name: `P${index}`}));
-const truncatedProjection = buildCalendarProjection(model.normalizeStore({version: 3, items: manyItems, events: []}), {startDate: "2026-09-10", endDateExclusive: "2026-09-12"});
-assert.equal(truncatedProjection.items.length, CALENDAR_PROJECTION_LIMITS.maxItems, "items are bounded");
-assert.equal(truncatedProjection.totalItems, manyItems.length, "totalItems reports pre-truncation count");
-assert.equal(truncatedProjection.truncated, true, "truncation is explicit");
+
+const dayBoundary = buildCalendarProjection(store(), {startDate: "2026-09-10", endDateExclusive: "2027-09-11"});
+assert.equal(dayBoundary.items[0].points.length, 366, "exactly 366 days remain readable");
+assert.equal(dayBoundary.items[0].points[0].date, "2026-09-10", "projection includes the requested start date");
+assert.equal(dayBoundary.items[0].points[365].date, "2027-09-10", "projection excludes the upper bound");
+assert.equal(dayBoundary.truncated, false, "exactly 366 days are not truncated");
+for (const endDateExclusive of ["2027-09-12", "2028-09-12"]) {
+    const dayOverflow = buildCalendarProjection(store(), {startDate: "2026-09-10", endDateExclusive});
+    assert.equal(dayOverflow.startDate, "2026-09-10", "truncation preserves the requested start date");
+    assert.equal(dayOverflow.endDateExclusive, endDateExclusive, "truncation preserves the requested exclusive bound");
+    assert.deepEqual(dayOverflow.items[0].points, dayBoundary.items[0].points, "367+ days return only the first 366 days");
+    assert.equal(dayOverflow.truncated, true, "date overflow is explicitly truncated instead of rejected");
+}
+
+const manyItems = Array.from({length: CALENDAR_PROJECTION_LIMITS.maxItems + 5}, (_, index) => makeItem({id: `item-${String(index).padStart(3, "0")}`, name: `P${index}`}));
+const itemBoundary = buildCalendarProjection(model.normalizeStore({version: 3, items: manyItems.slice(0, 200), events: []}), {startDate: "2026-09-10", endDateExclusive: "2026-09-12"});
+assert.equal(itemBoundary.items.length, 200, "exactly 200 visible items remain readable");
+assert.equal(itemBoundary.totalItems, 200, "exactly 200 visible items are counted");
+assert.equal(itemBoundary.truncated, false, "exactly 200 visible items are not truncated");
+for (const itemCount of [201, manyItems.length]) {
+    const truncatedProjection = buildCalendarProjection(model.normalizeStore({version: 3, items: manyItems.slice(0, itemCount), events: []}), {startDate: "2026-09-10", endDateExclusive: "2026-09-12"});
+    assert.equal(truncatedProjection.items.length, 200, "201+ visible items return only the first 200 items");
+    assert.equal(truncatedProjection.totalItems, itemCount, "totalItems reports pre-truncation count");
+    assert.deepEqual(truncatedProjection.items.map((item) => item.itemId), itemBoundary.items.map((item) => item.itemId), "item truncation preserves projection order");
+    assert.equal(truncatedProjection.truncated, true, "item overflow is explicitly truncated");
+}
 
 /* 隐私：投影不含备注/附件/externalRef。 */
 const payload = JSON.stringify(projection);

@@ -1,3 +1,13 @@
+# 2026-10-16 Task Horizon 原始来件复核与补丁收口（T-1871，D-485）
+
+找回并核对 2026-10-12 的 `checkin-provider-fix-guidance.zh-CN.md` 原件，原文件仍保留；仓库逐字节归档在 `docs/contracts/incoming/`，SHA-256 为 `656c79e3f6a7d85ae85bcd2d28739c9d382e00a9953a1517149261fbf0965599`。过去对话曾声称部分修复完成且未提交，但当前代码证据与部分声明不一致，不能推断缺失原因，也不把旧报告当交付凭证。本次按当前代码重建十项处理台账及独立回复稿。
+
+本轮修复 W-01（batch 复用严格身份解析）、W-02（落账日有效方向修订）、W-04（队列未执行/刷新失败/异常长度拒绝而不返回 undefined）、W-05（入队前数组及标量对象快照）。API 行为夹具覆盖历史双向切换、历史单位、通用非排期 logged、输入改写、1:1 回执与共享 eventId、写失败回滚、落盘后确认或反馈失败及同身份重试。v4 参考 bridge 补本地日守门，跨午夜/未来/无效时钟均保留原身份延后，不再调用单条接口误写今天。C-04 补恰好及超出 366 天/200 项的截断验收。
+
+C-01 远端 Store 变化通知、C-02 window 生命周期、C-03 point.scheduleType/asOfDate、W-03 合作专用限制仍待开发；W-06 仍需将正式消费端迁到 v5 batch 并补重载队列验收。两个 integrationContracts 均未声明。日历批先收口，再普通任务回写，再双插件现场；内部循环与撤回另立契约。文档已纠正配额累计量、截断、同步调用不可中断、single 无成功回执与 provider pending 自动恢复语义。原件、清单、回复及契约将作为可转发文件包交付，未自动外发。
+
+定向 API v5、方向修订、Task Horizon contract/bridge/mock、calendar projection/consumer kit、upstream proposals、API/生态文档与架构边界均通过。版本源、README 及发布说明同步为 18.17.6，最终 `pnpm run test:quality` EXIT 0；首轮旧结构正则已由真实行为测试覆盖，修正后全链通过，未放宽门禁。Chrome 明暗主题 visual-qa 均 EXIT 0、pageErrors=[]；宽度走查 56 表面、32 交互、8 对比度、10 混合布局及 16 长内容场景通过。无障碍 1345 组对比零违规；CSS 669430 bytes。安装包 882112 bytes，SHA-256 `2423592e00db72773a35a47a7c1c27db531842c465cf7ca49c452da294df8d5a`；发布后追加远端与资产回下载核对。
+
 # 2026-10-10 新用户首次使用体验（T-1838，D-466）
 
 新用户第一次打开 Today 空态时，继续看到“选模板→命名→打卡”三步说明，并可按需展开功能概览，了解今天、回顾、事项和更多入口的用途。创建第一个打卡项现在使用明确的主按钮，跳过引导保留为次级按钮；跳过后仍只保留创建入口，不对已有用户增加持续提示。
@@ -2819,6 +2829,44 @@ Today 条目附件的 `FileReader.onload/onerror` 现在复核绑定时页面、
 
 真实思源桌面、Android/TalkBack、第三方账号、缩放与保存面板仍按既有现场边界开放；本地自动化证据未替代现场验收。
 
+## 2026-10-16 T-1813 CSS 来源治理首个实现切片（D-473）
+
+修复 Today 空态/首次成功卡片主按钮的 light 主题对比度缺陷：渐变按钮补充 `--lc-checkin-accent-fill` 不透明回退背景，文字改用 `--lc-checkin-accent-contrast`，保留原有渐变层和交互。删除移动 Insight 图例与基础层完全相同的重复规则；更窄容器的 `gap: 3px` 特殊覆盖保持不变。
+
+验证：`pnpm run check`、`pnpm run build`、`pnpm test`、`pnpm run test:extended`、`pnpm run test:ui`、`pnpm run test:mobile`、`pnpm run test:legacy-style`、`pnpm run test:perf`、`node tests/accessibility-audit.test.cjs`、`node tests/css-hygiene.test.cjs` 和 `git diff --check` 均通过。无障碍审计为 0 缺名、0 正向 tabindex、0 键盘不可达、0 对比度违规（1345 组）；CSS 669,838 bytes，重复规则约 4,072 bytes，低于 660 KiB 硬线但仍高于 620 KB 软线。其余低字号、`:has()` 与 `!important` 继续保持只读归因，避免大规模重排。
+
+## 2026-10-16 T-1796 墓碑屏障回归修正
+
+三方差异投影继续排除恢复前未变化实体，但恢复基线中未变化的外部身份墓碑在远端出现同一 `source + externalRef` 重放时必须保留，否则重放事件会绕过墓碑重新进入合并结果。普通事件 ID 墓碑仍不被无条件带入显式恢复替换，保持恢复点精确语义。`normalized-transaction`、`storage-transaction`、`item-tombstone`、`tombstone-concurrency` 与完整 `pnpm test`/`pnpm run test:extended` 均通过。
+
+## 2026-10-15 T-1796 备份恢复交错审计与三方基线修正（D-469）
+
+先用共享存储夹具复现恢复后的真实缺陷：A 窗口选择空恢复点并成功精确写入后，B 窗口仍持有恢复前的项目、事件和较新同 ID 项；B 的 `enqueueMutation` 或卸载收尾若把完整旧 Store 与远端并集写回，会重新复活这些恢复点外实体。修复 `src/storage-transaction.ts` 的主 Store 协调为三方差异投影：只从 `local - baseline` 提取真正新增/修改/墓碑，再与远端 Store 合并；恢复前未变化实体随远端精确替换消失，恢复期间真实新增事件和删除墓碑仍保留。`enqueueMutation` 在锁内把重读远端记录为新的持久化基线，避免后续恢复点捕获陈旧 Store；`teardownFinalFlush` 共用同一差异投影。恢复入口原有锁、失败回滚和 undefined 哨兵拒绝保持不变。
+
+验证：`node tests/storage-transaction.test.cjs`（恢复精确替换、旧项目/旧事件/旧版本不回流、恢复后新事件、卸载收尾、持久化失败、既有 200 组并发断言）、`node tests/restore-audit.test.cjs`、`node tests/cross-window-merge.test.cjs`、`node tests/item-tombstone.test.cjs`、`node tests/teardown-budget.test.cjs`、`pnpm run check`、`pnpm test` 全部通过。`pnpm run test:extended` 在既有无障碍对比中止：`accessibility-audit` 报 1 个 light 主题 13px “打卡”文本对比度 1.07:1，未涉及本次存储改动；需另按 T-1788/T-1815 处理。真实思源双窗口复测仍为 host-pending。
+
+下一步回到当前顺序的 **T-1807 主 Store 快照写放大测量**：固定 1k/10k/100k 事件、附件和墓碑规模，分别测量恢复点读写、序列化、内存和写后校验成本，再决定是否需要分层/压缩；随后进入 T-1799 墓碑生命周期设计。P1 的 API/Agent/快速入口幂等回执 T-1786 与 CSS 来源治理 T-1813 继续排在数据测量之后；真实宿主、Android/TalkBack、第三方来源、缩放和保存面板仍独立跟踪。
+
+## 2026-10-15 T-1807 主 Store 快照写放大首轮基线（D-470）
+
+新增只读观测脚本 `scripts/storage-snapshot-benchmark.cjs`，命令为 `pnpm run benchmark:storage`。脚本直接转译并调用 `model.ts` 与 `storage-transaction.ts` 的快照、归一化、恢复读取、历史追加、序列化、深拷贝写入、失败回滚、读回错配修复和三方协调函数，不启动 Plugin，也不宣称等价于真实思源 `saveData` I/O。矩阵固定为 1k/10k/100k 事件，plain、稀疏附件、事件/项目墓碑三组，恢复历史 1/3 条；输出带 Node、CPU、平台和 Git SHA 的 JSON 报告到 `.artifacts/storage-snapshot-benchmark.json`。
+
+首轮本机（Node v24.16.0，Intel i5-14600KF，Windows x64，Git `e1d0cb0c`）结果：100k plain 主 Store 约 16.1 MB，三份历史约 48.2 MB，主档加三份历史约为主档 4.0 倍；三份历史追加多数轮次约 1.5～1.6 s，偶发约 2.9 s 运行时离群值，历史序列化约 105～197 ms，深拷贝写后校验约 546～921 ms。100k 墓碑组追加约 1.58 s；稀疏附件组主档约 16.4 MB。读回错配注入已确认事务修复路径会触发第二次尝试并保留竞态事件。新增失败阶段模拟：备份写失败时主档/备份均不变；主档写失败时主档不变且备份按现有先备份后主档顺序已变化。上述失败结果是纯函数/内存 host 模拟，不等于真实宿主回滚证据；仍不设置硬阈值，不据此改 Store v3、恢复语义或墓碑策略。
+
+## 2026-10-15 v18.17.5 发布范围复核
+
+发布摘要记录了统一 SVG 和字号不低于 12px 的目标，但当前源码覆盖尚未达到全库口径：样式仍有 7～11px 声明（例如 `src/ui/components.scss:547,9376`、`src/ui/content-responsive.scss:33`），控件/状态仍有 Unicode 或 emoji 字符（例如 `src/render/archived.ts:119`、`src/render/fragments.ts:119,166`、`src/index.ts:4603,6982`）。将 v18.17.5 视为局部视觉交付；T-1814 与 T-1825 保持开放，后续发布摘要应明确范围，不回写已发布历史记录。
+
+## 2026-10-16 T-1799 墓碑生命周期设计收口
+
+完成 [墓碑生命周期设计](docs/tombstone-lifecycle-design-2026-10.md)：确认当前不能按时间、数量或主档是否仍有实体直接裁剪事件/项目墓碑。旧窗口、外部 `source + externalRef` 重放、合法旧恢复点、迁移导入和同名新项目都可能使这种裁剪复活已删除事实或误删合法恢复内容。
+
+设计将候选分为：当前推荐的“保留墓碑、优化索引/分桶/序列化表示”；需要新增可持久化 generation/epoch 与确认水位后才能实施的压缩；以及必须先完成代际证明的用户显式维护操作。T-1799 暂不改 Store v3、不引入 schema v4、不删除现有墓碑，等待 T-1807 真实宿主 I/O、重载和大附件证据。
+
+## 2026-10-16 T-1807 真实宿主基准入口补齐
+
+新增 `tests/e2e/storage-snapshot-host.spec.mjs` 与 `pnpm run benchmark:storage:host`。该入口复用隔离思源内核 E2E 的工作区/token/插件安装守门，仅在显式运行时执行 1k/10k/100k 事件样本；通过真实内核文件接口核对主档与恢复历史字节数，测量 API 记录耗时，并重载确认已提交事件仍保留且不重复。首轮本机独立内核（思源 3.8.7）合并结果已写入 `.artifacts/storage-host-benchmark.json`：1k 主档约 198.5 KB、393 ms；10k 约 2.01 MB、695 ms；100k 约 20.39 MB、3.71 s；恢复历史分别约 397.3 KB、4.22 MB、42.79 MB。另以 1k 事件加 400 KB 合法图片样本复测，主档约 731.9 KB、495 ms，报告为 `.artifacts/storage-host-benchmark-attachment.json`。失败写入注入会使当前写队列保持等待，未纳入真实宿主通过证据；失败写入/失败后重载、跨窗口并发和恢复重试仍待独立靶场补测。
+
 # 2026-10-15 v18.17.5 现代桌面质感重塑与 UI 原型 v3 对齐（R-RELEASE-18.17.5）
 
 完成 Today 行动台 Hero「下一步」行动卡落地、Bento 进度与连续打卡卡片微光高光与漫反射阴影重构；Settings 首屏落实 2×2 Bento 健康总览矩阵与呼吸指示灯；排版全局启用等宽数字（tabular-nums）与弹簧物理缓动微交互；纯化残留的 Unicode 纯文本符号为统一标准 SVG 矢量图标；清理 7px~11px 极端微小字号至规范 ≥12px。README、变更记录和发布说明已同步。
@@ -2826,3 +2874,57 @@ Today 条目附件的 `FileReader.onload/onerror` 现在复核绑定时页面、
 验证证据：生产构建与发布资产检查通过，覆盖类型（tsc 零错误）、主/UI/移动/生态/扩展/性能测试、发布资产和四步回滚演练；CSS 669,836 bytes，低于 660 KiB 硬上限。包 SHA-256 为 `63d8471754cf5224a36b59a639010d25fb03c5ce8d76ada7a16f8bdd50c04837`。
 
 真实思源桌面、Android/TalkBack、第三方账号、缩放与保存面板仍按既有现场边界开放；本地自动化证据未替代现场验收。
+# 2026-10-16 T-1813 CSS 来源治理第二个小切片（D-476）
+
+继续按“只删语义等价重复来源”的纪律收敛 CSS：桌面 `@container lc5 (min-width: 720px)` 中的 `.lc-checkin__topnav-actions`、`.lc-checkin__topnav-action` 及 hover 基础声明与文件后段全局声明完全重复，且后段仍负责最终尺寸、间距和焦点覆盖，因此删除容器内重复块不会改变最终样式。此前已删除移动 Insight 图例与基础规则的重复声明。
+
+验证：`pnpm run build`、`pnpm run check`、`node scripts/css-audit.cjs --json`、`node tests/css-hygiene.test.cjs`、`git diff --check` 全部通过。CSS 产物 669,753 bytes，重复规则约 3,986 bytes，785 个类 token、0 个死类；构建仅保留既有 Webpack 体积 warning。下一步保持小切片，优先做 T-1814 字号下限或 T-1815 状态对比度的可验证规则，不做大面积重排。
+
+# 2026-10-16 T-1813 CSS 来源治理第三个小切片（D-477）
+
+继续清理无最终计算贡献的移动 Insight 图例尺寸声明：`@container lc5 (max-width: 600px)` 中 `.lc-checkin__insight-legend i` 的 8×8/radius:2px 会被文件后段同选择器和 `content-responsive.scss` 的更高特异性 Insights 规则覆盖，因此删除尺寸块，保留四条颜色状态规则和窄屏 gap 3px 覆盖。
+
+验证：`pnpm run build`、`pnpm run check`、`node scripts/css-audit.cjs --json`、`node tests/css-hygiene.test.cjs`、`git diff --check` 全部通过。CSS 产物 669,472 bytes，重复规则约 3,703 bytes，785 个类 token、0 个死类；构建仅保留既有 Webpack 体积 warning。
+
+# 2026-10-16 T-1814 字号来源治理首个小切片（D-478）
+
+清理两个移动导航字号声明：`max-width: 340px` 下的 7px 和 `max-width: 600px` 下的 8px 与文件后段全局 9px 规则选择器、层叠顺序相同，实际从未生效。删除源声明不改变显示结果，也不宣称全库已经达到 12px 下限；下一步仍需按正文、辅助、徽标和紧凑控件在 320/390px、dock、英文和 400% 缩放下分层验证。
+
+验证：`pnpm run build`、`pnpm run check`、`node scripts/css-audit.cjs --json`、`node tests/css-hygiene.test.cjs`、`git diff --check` 全部通过。CSS 产物 669,403 bytes，重复规则约 3,703 bytes，785 个类 token、0 个死类。
+
+# 2026-10-16 T-1814 字号层叠审计与主链复验（D-479）
+
+对剩余 7～11px 声明做了层叠审计：多数属于实际生效的日历角标、来源/状态徽标、紧凑控件或图例，不能按数值批量提升；本轮只清理了两个实际被后置 9px 全局规则覆盖的移动导航 7px/8px 声明。`pnpm test` 全链通过；`accessibility-audit` 为 0 缺名、0 正向 tabindex、0 键盘不可达、0 对比度违规（1345 组），响应式、主题和 Insight 无障碍定向测试均通过。下一步需要 Chrome 窄宽/英文/400% 缩放证据后再决定真实字号提升。
+# 2026-10-16 T-1815 回执折叠面板遮挡修复（D-480）
+
+Chrome 英文浅色 Dock 宽度走查首次跑到真实交互时发现：Today 记录回执的事实详情面板带有 `hidden` 属性，但 `.lc-checkin__record-details { display: grid; }` 是作者规则，且回执被提升到 `.lc-checkin` 外层宿主，已有 `.lc-checkin [hidden]` 规则无法覆盖它；结果折叠面板仍参与命中测试，拦截“撤销”按钮。新增全局组件规则 `.lc-checkin__record-details[hidden] { display: none !important; }`，并在 `tests/record-details.test.cjs` 增加结构断言。
+
+验证：`node tests/record-details.test.cjs`、`pnpm run build`、`pnpm run check`、`pnpm test`、`node tests/accessibility-audit.test.cjs`、`node tests/insight-a11y.test.cjs`、`node tests/responsive-layout.test.cjs`、`node tests/ui-theme.test.cjs`、Chrome 英文浅色 `node tests/width-walkthrough.cjs` 全部通过。宽度矩阵覆盖 280/320/360/640/844/1180/2000px、短屏、编辑器预览、交互状态、双主题、长列表与真实记录/撤销；无障碍审计 0 对比度违规（1345 组）。
+
+# 2026-10-16 T-1815 状态对比度治理（D-481）
+
+Chrome 双主题状态审计发现完成事项芯片 `.is-complete` 的 `opacity:.6` 会把浅色正文和完成小字压到 4.5:1 以下，且现有无障碍审计不覆盖带事项数据的 Today banner；提醒行 `.is-completed/.is-snoozed/.is-skipped` 的 `opacity:.68` 也会降低浅色和深色文字对比度。现将两组父级透明度改为 `opacity:1`，完成事项芯片改用显式 `muted` 文本与 `muted-surface` 背景，保留完成/延后/跳过的状态颜色与行为。`tests/ui-theme.test.cjs` 增加来源守门。
+
+验证：`pnpm run build`、`pnpm test`、`node scripts/css-audit.cjs --json`、`node tests/css-hygiene.test.cjs`、`node tests/ui-theme.test.cjs`、`node tests/record-details.test.cjs`、Chrome `node tests/accessibility-audit.test.cjs`（0 缺名、0 正向 tabindex、0 键盘不可达、0 对比度违规/1345 组）、Chrome 英文浅/深主题 `node tests/width-walkthrough.cjs` 和 `node tests/visual-qa.cjs` 全部通过。当前 CSS 669,430 bytes，重复规则约 3,703 bytes，785 个类 token、0 个死类，低于 660 KiB 硬线但仍高于 620 KB 软提醒。
+
+# 2026-10-16 T-1807 真实宿主预算复测（D-482）
+
+在独立工作区使用真实思源 3.8.7 内核复测 `saveData/loadData`：1k/10k/100k 事件主档约 198.5 KB/2.01 MB/20.39 MB，单次 API 写入约 335/635/3693 ms，恢复历史约 397.3 KB/4.22 MB/42.79 MB；另以 1k 事件加 400 KB 合法图片样本测得主档约 731.9 KB、写入约 359 ms。每组均通过写后读取、重载后事件保留且无重复事实；报告落在 `.artifacts/storage-host-benchmark.json` 和 `.artifacts/storage-host-benchmark-attachment.json`。
+
+失败写入后的宿主重载恢复、稳定跨窗口并发和恢复重试仍没有现场证据；失败注入继续只计入纯函数/内存事务测试，不把一次 host benchmark 写成完整可靠性通过。下一步仍不改 Store v3 或引入 schema v4，先补失败/并发靶场或转入 T-1786 的跨入口幂等回执切片。
+
+# 2026-10-16 T-1807 失败重载与双窗口并发夹具补齐
+
+在既有真实宿主快照基线之外补齐两类显式证据入口：`tests/e2e/storage-snapshot-host.spec.mjs` 现在以空的 count 项目同时从两个真实前端实例调用 `recordEvent`，要求两个独立 `externalRef` 都落盘，两个窗口重载后仍各自读到两条事实；`tests/e2e/storage-failure-reload.spec.mjs` 仅在本轮 benchmark 环境中替换插件实例的 `saveData`，拒绝主 Store 写入而保留待处理箱的真实辅助存储，确认失败调用不留下内存/磁盘事件，重载后待处理身份自动或手动重试最终只形成一条事件。
+
+两个新增夹具均由 `pnpm run benchmark:storage:host` 显式拉起，普通 `test:e2e` 不执行；`node --check`、`tests/storage-transaction.test.cjs`、`tests/css-hygiene.test.cjs`、`tests/ui-theme.test.cjs` 和 `git diff --check` 已通过。当前机器的独立 3.8.7 靶场尚未重跑这两个补测，因此 T-1807 仍保持进行中；受控 `saveData` 注入不能替代思源内核自然故障证据。若补测稳定，下一步进入 T-1799 的表示/索引成本评估；若宿主证据仍受限，则转入 T-1786 的跨入口 request-id、幂等回执与失败重试切片。
+
+# 2026-10-16 T-1807 真实宿主补测完成（D-484）
+
+使用全新隔离工作区 `D:\AI\Codex\e2e-t1807-current`、思源 3.8.7、端口 6828 执行 `pnpm run benchmark:storage:host`，3/3 通过：
+
+- 1k/10k/100k 主档约 198.5 KB/2.01 MB/20.39 MB；单次写入约 259/615/3757 ms；恢复历史约 398.1 KB/4.22 MB/42.79 MB；每组写后读取和重载事件保留均通过。
+- 双窗口并发用空的 count 项目写入两个独立 externalRef，宿主文件保留 2 条事件，两个窗口重载后都收敛到同一 2 条事实；报告为 `.artifacts/storage-host-concurrency.json`。
+- 受控失败夹具仅替换插件实例 `saveData` 并拒绝 `checkin-store`，确认失败调用内存事件为 0，重载后同身份最终只有 1 条 durable 事件；报告为 `.artifacts/storage-host-failure-reload.json`。这不是内核自然磁盘/网络故障证明。
+
+T-1807 的真实宿主预算、并发和插件写入口恢复证据已补齐，可以继续 T-1786。自然 I/O 故障注入、压缩/分层策略仍不因本轮结果自动立项；Store v3/schema v4 保持不变。

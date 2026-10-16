@@ -2,8 +2,13 @@
   "status": "draft",
   "proposal": "taskhorizon-calendar-consumer",
   "version": 1,
-  "updatedAt": "2026-10-10",
-  "direction": "provider-side API is stable and shipped; this draft specifies the consumer layer Task Horizon would add",
+  "updatedAt": "2026-10-16",
+  "direction": "base calendar.read API is shipped; C-01/C-02/C-03 cooperation additions and the Task Horizon consumer remain pending acceptance",
+  "providerReadiness": {
+    "taskHorizonCalendar": "not-declared",
+    "taskHorizonCompletion": "not-declared",
+    "pendingCalendarAcceptance": ["C-01 remote merge notification", "C-02 API lifecycle", "C-03 per-point scheduleType and asOfDate"]
+  },
   "targetPlugin": "Task Horizon",
   "consumes": {
     "provider": "siyuan-checkin",
@@ -23,7 +28,7 @@
     "coalesce and re-read on checkin:item-created, checkin:item-updated, checkin:item-deleted, checkin:item-archived, checkin:event-recorded, checkin:event-deleted, or checkin:analytics-updated; ignore only suggestion-workflow-updated for this projection",
     "degrade to hidden layer on missing plugin, missing capability, unload, or error; clear stale cached projection and refresh on recovery",
     "legacy v4-only consumers must not surface hidden items from stale caches: keep legacy aggregate or hide the fine-grained layer",
-    "display-only: never writes task state back from the projection; task completion write-back stays on recordEvent with taskhorizon:<blockId>:<localDate>, decoupled from the visibility switch"
+    "display-only: never writes task state back from the projection; new task completion cooperation proposes v5 recordEventsBatch even for one entry, with taskhorizon:<blockId>:<localDate>, decoupled from the visibility switch; W-03 dedicated validation and W-06 consumer queue/reload acceptance are still pending"
   ],
   "acceptance": [
     "dual-side contract fixtures",

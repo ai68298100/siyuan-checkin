@@ -6,7 +6,8 @@ const vm = require("node:vm");
 const source = fs.readFileSync(path.join(__dirname, "..", "examples", "task-horizon-bridge", "plugin.js"), "utf8");
 const context = {console, module: {exports: {}}, exports: {}, globalThis: {}};
 vm.runInNewContext(source, context, {filename: "task-horizon-bridge/plugin.js"});
-const {createTaskHorizonBridge: createRawTaskHorizonBridge} = context.module.exports;
+const {createTaskHorizonBridge: createBridgeFactory} = context.module.exports;
+const createRawTaskHorizonBridge = (options = {}) => createBridgeFactory({now: () => new Date(2026, 8, 18, 12), ...options});
 /* Most cases exercise one explicitly bound target; target-selection cases
    below call the raw factory intentionally. */
 const createTaskHorizonBridge = (options = {}) => createRawTaskHorizonBridge({itemId: "task-item", ...options});
@@ -262,10 +263,10 @@ const checkin = {
         ["record missing item", (await stabilityBridge.recordTaskCompletion({blockId: "stability-2", localDate: "2026-09-18", itemId: ""})) === undefined],
         ["record bad type", (await stabilityBridge.recordTaskCompletion({blockId: 7, localDate: "2026-09-18"})) === undefined],
         ["record bad date type", (await stabilityBridge.recordTaskCompletion({blockId: "stability-3", localDate: 7})) === undefined],
-        ["record future valid", (await stabilityBridge.recordTaskCompletion({blockId: "stability-4", localDate: "2099-12-31"})).itemId === "task-item"],
-        ["record leap valid", (await stabilityBridge.recordTaskCompletion({blockId: "stability-5", localDate: "2028-02-29"})).itemId === "task-item"],
+        ["record future deferred", (await stabilityBridge.recordTaskCompletion({blockId: "stability-4", localDate: "2099-12-31"})) === undefined && stabilityBridge.getPendingCompletions().some((entry) => entry.externalRef === "taskhorizon:stability-4:2099-12-31" && entry.pendingReason === "date-not-current")],
+        ["record leap deferred", (await stabilityBridge.recordTaskCompletion({blockId: "stability-5", localDate: "2028-02-29"})) === undefined && stabilityBridge.getPendingCompletions().some((entry) => entry.externalRef === "taskhorizon:stability-5:2028-02-29" && entry.pendingReason === "date-not-current")],
         ["record leap invalid", (await stabilityBridge.recordTaskCompletion({blockId: "stability-6", localDate: "2027-02-29"})) === undefined],
-        ["record boundary valid", (await stabilityBridge.recordTaskCompletion({blockId: "stability-7", localDate: "2026-01-01"})).itemId === "task-item"],
+        ["record boundary deferred", (await stabilityBridge.recordTaskCompletion({blockId: "stability-7", localDate: "2026-01-01"})) === undefined && stabilityBridge.getPendingCompletions().some((entry) => entry.externalRef === "taskhorizon:stability-7:2026-01-01" && entry.pendingReason === "date-not-current")],
         ["record boundary invalid", (await stabilityBridge.recordTaskCompletion({blockId: "stability-8", localDate: "2026-13-01"})) === undefined],
         ["stop returns", stabilityBridge.stop() === undefined],
         ["stop repeat", stabilityBridge.stop() === undefined],
@@ -275,7 +276,8 @@ const checkin = {
     ];
     for (const [label, passed] of stabilityMatrix) assert.equal(passed, true, `stability matrix case: ${label}`);
     assert.equal(stabilityMatrix.length, 30, "second 30-case stability matrix remains complete");
-    const calendarBridge = createTaskHorizonBridge({checkin});
+    let calendarNow = new Date(2026, 8, 18, 12);
+    const calendarBridge = createTaskHorizonBridge({checkin, now: () => calendarNow});
     const validDates = [
         "2024-02-29", "2028-02-29", "2000-02-29", "1996-02-29", "2400-02-29",
         "2026-01-01", "2026-01-31", "2026-03-01", "2026-03-31", "2026-04-01",
@@ -288,6 +290,7 @@ const checkin = {
     ];
     const calendarMatrix = [];
     for (const [index, localDate] of validDates.entries()) {
+        calendarNow = new Date(`${localDate}T12:00:00`);
         const result = await calendarBridge.recordTaskCompletion({blockId: `calendar-valid-${index}`, localDate, itemId: "task-item"});
         calendarMatrix.push([`valid date ${localDate}`, result && result.externalRef === `taskhorizon:calendar-valid-${index}:${localDate}`]);
     }
@@ -436,7 +439,7 @@ const checkin = {
     for (const [label, passed] of targetMatrix) assert.equal(passed, true, `target matrix case: ${label}`);
     assert.equal(targetMatrix.length, 20, "explicit target matrix remains complete");
     const payloadCalls = [];
-    const payloadBridge = createTaskHorizonBridge({checkin: {...checkin,
+    const payloadBridge = createTaskHorizonBridge({now: () => new Date(2026, 8, 19, 12), checkin: {...checkin,
         recordEvent: async (payload) => { payloadCalls.push(payload); return {id: `payload-${payloadCalls.length}`, ...payload}; },
     }});
     const payloadItemIds = ["item-1", "item_2", "item.3", "中文事项", "4", "A", "z", "task#8", "item/9", "item:10", " spaced ", "é-12", "ITEM-13", "long-item-14", "final-item"];
@@ -468,7 +471,7 @@ const checkin = {
     for (let index = 0; index < 15; index += 1) {
         const before = identityWrites;
         const boundItemId = `same-item-${index}`;
-        const itemBridge = createRawTaskHorizonBridge({itemId: boundItemId, checkin: {...checkin,
+        const itemBridge = createRawTaskHorizonBridge({itemId: boundItemId, now: () => new Date(2026, 8, 20, 12), checkin: {...checkin,
             getItems: () => [{id: boundItemId, name: "测试项目"}],
             recordEvent: async (payload) => {
                 identityWrites += 1;
@@ -487,7 +490,7 @@ const checkin = {
         const shared = {blockId: `cross-item-${index}`, localDate: "2026-09-21"};
         const leftItemId = `left-${index}`;
         const rightItemId = `right-${index}`;
-        const makeItemBridge = (itemId) => createRawTaskHorizonBridge({itemId, checkin: {...checkin,
+        const makeItemBridge = (itemId) => createRawTaskHorizonBridge({itemId, now: () => new Date(2026, 8, 21, 12), checkin: {...checkin,
             getItems: () => [{id: itemId, name: "测试项目"}],
             recordEvent: async (payload) => {
                 identityWrites += 1;
@@ -511,7 +514,8 @@ const checkin = {
     for (const [label, passed] of identityKeyMatrix) assert.equal(passed, true, `identity-key matrix case: ${label}`);
     assert.equal(identityKeyMatrix.length, 30, "tenth 30-case identity-key matrix remains complete");
     const stressCalls = [];
-    const stressBridge = createTaskHorizonBridge({checkin: {...checkin,
+    let stressNow = new Date(2026, 8, 18, 12);
+    const stressBridge = createTaskHorizonBridge({now: () => stressNow, checkin: {...checkin,
         recordEvent: async (payload) => { stressCalls.push(payload); return {id: `stress-${stressCalls.length}`, ...payload}; },
     }});
     const stressMatrix = [];
@@ -520,6 +524,7 @@ const checkin = {
         const day = String((index % 28) + 1).padStart(2, "0");
         const blockId = `stress-valid-${index}`;
         const localDate = `2026-${month}-${day}`;
+        stressNow = new Date(`${localDate}T12:00:00`);
         const result = await stressBridge.recordTaskCompletion({blockId, localDate});
         stressMatrix.push(result && result.externalRef === `taskhorizon:${blockId}:${localDate}`);
     }
@@ -536,7 +541,8 @@ const checkin = {
     assert.equal(stressMatrix.every(Boolean), true, "all generated stress matrix cases pass");
     assert.equal(stressCalls.length, 100, "only valid stress inputs reach recordEvent");
     const replayCalls = [];
-    const replayBridge = createTaskHorizonBridge({checkin: {...checkin,
+    let replayNow = new Date(2026, 8, 18, 12);
+    const replayBridge = createTaskHorizonBridge({now: () => replayNow, checkin: {...checkin,
         recordEvent: async (payload) => {
             replayCalls.push({...payload});
             return {id: `replay-${replayCalls.length}`, ...payload};
@@ -545,6 +551,7 @@ const checkin = {
     const replayMatrix = [];
     for (let index = 0; index < 150; index += 1) {
         const input = {blockId: `replay-block-${index}`, localDate: `2026-${String((index % 12) + 1).padStart(2, "0")}-${String((index % 28) + 1).padStart(2, "0")}`};
+        replayNow = new Date(`${input.localDate}T12:00:00`);
         const first = await replayBridge.recordTaskCompletion(input);
         const second = await replayBridge.recordTaskCompletion(input);
         const preserved = first.externalRef === second.externalRef && first.itemId === second.itemId && replayBridge.getPendingCompletions().length === 0;
@@ -553,5 +560,91 @@ const checkin = {
     assert.equal(replayMatrix.length, 300, "300-case replay matrix remains complete");
     assert.equal(replayMatrix.every(Boolean), true, "all replay cases preserve identity and empty pending state");
     assert.equal(replayCalls.length, 300, "each replay reaches public recordEvent for facade idempotency");
-    console.log("Task Horizon bridge example checks passed: readiness, refresh, write, retry, validation, cleanup, ten 30-case matrices and two 300-case generated stress matrices.");
+
+    /* v4 cannot preserve a source date once a write is deferred across midnight. */
+    let midnightNow = new Date(2026, 8, 18, 23, 59, 59, 900);
+    let midnightFail = true;
+    const midnightCalls = [];
+    const midnightDiagnostics = [];
+    const midnightBridge = createTaskHorizonBridge({
+        now: () => midnightNow,
+        onError: (diagnostic) => midnightDiagnostics.push(diagnostic),
+        checkin: {...checkin, recordEvent: async (payload) => {
+            midnightCalls.push({...payload});
+            if (midnightFail) throw new Error("temporary failure near midnight");
+            return {id: `midnight-${midnightCalls.length}`, ...payload};
+        }},
+    });
+    const beforeMidnight = {blockId: "before-midnight", localDate: "2026-09-18"};
+    assert.equal(await midnightBridge.recordTaskCompletion(beforeMidnight), undefined);
+    midnightFail = false;
+    assert.equal((await midnightBridge.retryPending()).succeeded, 1, "a same-day retry still writes successfully");
+    assert.deepEqual(midnightCalls[0], midnightCalls[1], "same-day retries preserve the exact original payload");
+    midnightFail = true;
+    const acrossMidnight = {blockId: "across-midnight", localDate: "2026-09-18"};
+    await midnightBridge.recordTaskCompletion(acrossMidnight);
+    const originalPending = {...midnightBridge.getPendingCompletions()[0]};
+    assert.equal(originalPending.pendingReason, "transport");
+    midnightNow = new Date(2026, 8, 19, 0, 0, 0, 100);
+    midnightFail = false;
+    const writesBeforeRetry = midnightCalls.length;
+    const midnightRetry = await midnightBridge.retryPending();
+    assert.equal(midnightRetry.attempted, 0, "a cross-midnight retry never invokes the v4 writer");
+    assert.equal(midnightRetry.deferred, 1);
+    assert.equal(midnightRetry.remaining, 1);
+    assert.equal(midnightCalls.length, writesBeforeRetry);
+    assert.deepEqual({...midnightBridge.getPendingCompletions()[0]}, {...originalPending, pendingReason: "date-not-current"}, "cross-midnight deferral changes only the diagnostic reason");
+    assert.equal(await midnightBridge.recordTaskCompletion(acrossMidnight), undefined, "a repeated source callback also respects the date boundary");
+    assert.equal(midnightBridge.getPendingCompletions().length, 1, "repeated callbacks keep one pending identity");
+    assert.equal(midnightCalls.length, writesBeforeRetry);
+    await midnightBridge.recordTaskCompletion({blockId: "future-completion", localDate: "2026-09-20"});
+    assert.equal(midnightCalls.length, writesBeforeRetry, "future completions are also retained without writing today");
+    assert.equal(midnightBridge.getPendingCompletions().length, 2);
+    assert.equal(midnightDiagnostics.some(({phase, error}) => phase === "record-date" && error === "date-not-current"), true);
+    const currentCompletion = await midnightBridge.recordTaskCompletion({blockId: "current-completion", localDate: "2026-09-19"});
+    assert.equal(currentCompletion.externalRef, "taskhorizon:current-completion:2026-09-19", "today's new completion remains writable");
+    assert.equal(midnightBridge.discardPendingCompletion(acrossMidnight), true, "the user may explicitly discard the original pending identity");
+    assert.equal(midnightBridge.getPendingCompletions().length, 1);
+
+    /* Recheck the clock for every queued entry, not only at batch startup. */
+    let batchNow = new Date(2026, 8, 18, 23, 59, 59, 900);
+    let batchSeedFailures = true;
+    let releaseMidnightBatch;
+    const midnightBatchGate = new Promise((resolve) => { releaseMidnightBatch = resolve; });
+    let midnightBatchWrites = 0;
+    const midnightBatch = createTaskHorizonBridge({now: () => batchNow, checkin: {...checkin,
+        recordEvent: async (payload) => {
+            midnightBatchWrites += 1;
+            if (batchSeedFailures) throw new Error("seed failure");
+            await midnightBatchGate;
+            return {id: "midnight-batch", ...payload};
+        },
+    }});
+    for (const blockId of ["midnight-batch-first", "midnight-batch-second"]) {
+        await midnightBatch.recordTaskCompletion({blockId, localDate: "2026-09-18"});
+    }
+    batchSeedFailures = false;
+    const runningMidnightBatch = midnightBatch.retryPending();
+    batchNow = new Date(2026, 8, 19, 0, 0, 0, 100);
+    releaseMidnightBatch();
+    const midnightBatchResult = await runningMidnightBatch;
+    assert.equal(midnightBatchResult.attempted, 1);
+    assert.equal(midnightBatchResult.succeeded, 1);
+    assert.equal(midnightBatchResult.deferred, 1, "the next queued payload is deferred after midnight");
+    assert.equal(midnightBatchWrites, 3, "only the first retry started before midnight");
+    assert.equal(midnightBatch.getPendingCompletions()[0].externalRef, "taskhorizon:midnight-batch-second:2026-09-18");
+    assert.equal(midnightBatch.getPendingCompletions()[0].pendingReason, "date-not-current");
+
+    let validClock = false;
+    let clockWrites = 0;
+    const clockBridge = createTaskHorizonBridge({now: () => validClock ? new Date(2026, 8, 18, 12) : new Date(NaN), checkin: {...checkin,
+        recordEvent: async (payload) => { clockWrites += 1; return {id: "clock-recovered", ...payload}; },
+    }});
+    await clockBridge.recordTaskCompletion({blockId: "invalid-clock", localDate: "2026-09-18"});
+    assert.equal(clockWrites, 0, "an invalid clock fails closed");
+    assert.equal(clockBridge.getPendingCompletions()[0].pendingReason, "clock-invalid");
+    validClock = true;
+    assert.equal((await clockBridge.retryPending()).succeeded, 1, "a restored same-day clock allows an explicit retry");
+    assert.equal(clockWrites, 1);
+    console.log("Task Horizon bridge example checks passed: readiness, refresh, write, retry, validation, cleanup, ten 30-case matrices, two 300-case generated stress matrices, and cross-midnight deferral.");
 })().catch((error) => { console.error(error); process.exitCode = 1; });

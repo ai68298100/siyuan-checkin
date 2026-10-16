@@ -66,6 +66,26 @@
 
         const completionKey = (itemId, externalRef) => JSON.stringify([itemId, "api", externalRef]);
 
+        /* v4 captures its own invocation date. A historical externalRef cannot
+           select that date, so retain it for explicit handling instead of
+           accidentally recording yesterday's completion as today's fact. */
+        const deferNonCurrentCompletion = (key, payload) => {
+            let reason;
+            try {
+                const now = typeof options.now === "function" ? new Date(options.now()) : new Date();
+                if (!Number.isFinite(now.valueOf())) throw new Error("invalid clock");
+                const localToday = `${String(now.getFullYear()).padStart(4, "0")}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+                if (payload.externalRef.slice(-10) !== localToday) reason = "date-not-current";
+            } catch {
+                reason = "clock-invalid";
+            }
+            if (!reason) return false;
+            pending.set(key, payload);
+            pendingReasons.set(key, reason);
+            reportError("record-date", reason);
+            return true;
+        };
+
         const cleanupSubscription = () => {
             if (typeof unsubscribe === "function") {
                 try { unsubscribe(); } catch (error) { reportError("unsubscribe", error); }
@@ -257,6 +277,7 @@
             if (existing) return existing;
             const payload = {itemId, value: 1, unit: targetUnit, source: "api", externalRef};
             const run = (async () => {
+                if (deferNonCurrentCompletion(key, payload)) return undefined;
                 try {
                     const result = await checkin.recordEvent(payload);
                     // Single-record v4 cannot distinguish rejection causes. Keep the exact
@@ -287,15 +308,20 @@
         const retryPending = () => {
             if (retryInFlight) return retryInFlight;
             if (stopped || !checkin || typeof checkin.recordEvent !== "function") {
-                return Promise.resolve({attempted: 0, succeeded: 0, rejected: 0, failed: 0, remaining: pending.size});
+                return Promise.resolve({attempted: 0, succeeded: 0, rejected: 0, failed: 0, deferred: 0, remaining: pending.size});
             }
             const run = (async () => {
                 let attempted = 0;
                 let succeeded = 0;
                 let rejected = 0;
                 let failed = 0;
+                let deferred = 0;
                 for (const [key, payload] of [...pending.entries()]) {
                     if (stopped) break;
+                    if (deferNonCurrentCompletion(key, payload)) {
+                        deferred += 1;
+                        continue;
+                    }
                     attempted += 1;
                     try {
                         const result = await checkin.recordEvent(payload);
@@ -314,7 +340,7 @@
                         reportError("retry", error);
                     }
                 }
-                return {attempted, succeeded, rejected, failed, remaining: pending.size};
+                return {attempted, succeeded, rejected, failed, deferred, remaining: pending.size};
             })();
             retryInFlight = run.finally(() => {
                 if (retryInFlight === retryPromise) retryInFlight = undefined;

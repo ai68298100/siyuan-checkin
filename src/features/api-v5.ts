@@ -2,6 +2,7 @@
    事件范围读与项目统一投影的过滤、限量、截断判定。
    输入校验(TypeError)在 api.ts 完成；本模块只做纯数据投影，不执行 getter 之外的副作用。 */
 import {CHECKIN_EVENTS_READ_LIMITS, CHECKIN_ITEMS_QUERY_LIMITS} from "../api-contract";
+import {isTaskHorizonExternalRef} from "../ecosystem";
 import type {CheckinEvent, CheckinItem, CheckinKind} from "../types";
 
 const CHECKIN_KINDS: readonly CheckinKind[] = ["binary", "count", "duration", "quantity", "custom"];
@@ -72,7 +73,7 @@ export function projectItems(items: readonly CheckinItem[], options: {includeArc
    duplicate → discarded → blocked → recorded；批内重复 externalRef 的条目
    不得重复入账。落盘/持久化/广播由宿主在单一受保护单元内完成。 */
 
-import {dateKey, getItemById, getItemRevisionForDate, isItemAvailableOnDate} from "../model";
+import {dateKey, getItemById, getItemDirectionForDate, getItemRevisionForDate, isItemAvailableOnDate} from "../model";
 import type {CheckinStore} from "../types";
 
 export interface BatchRecordInput {
@@ -169,6 +170,10 @@ export function planBatchRecord(store: CheckinStore, inputs: readonly unknown[],
                 continue;
             }
             externalRef = input.externalRef.trim();
+            if (externalRef.startsWith("taskhorizon:") && !isTaskHorizonExternalRef(externalRef)) {
+                pushRejected("invalid-external-ref");
+                continue;
+            }
         }
         let note: string | undefined;
         if (input.note !== undefined) {
@@ -223,11 +228,11 @@ export function planBatchRecord(store: CheckinStore, inputs: readonly unknown[],
             results.push({kind: "blocked", reason: "archived-item"});
             continue;
         }
-        if (item.direction === "atMost") {
+        const completionDate = new Date(Number(entry.localDate.slice(0, 4)), Number(entry.localDate.slice(5, 7)) - 1, Number(entry.localDate.slice(8, 10)));
+        if (getItemDirectionForDate(item, completionDate) === "atMost") {
             results.push({kind: "blocked", reason: "at-most-item"});
             continue;
         }
-        const completionDate = new Date(Number(entry.localDate.slice(0, 4)), Number(entry.localDate.slice(5, 7)) - 1, Number(entry.localDate.slice(8, 10)));
         if (!isItemAvailableOnDate(item, completionDate)) {
             results.push({kind: "blocked", reason: "not-scheduled"});
             continue;

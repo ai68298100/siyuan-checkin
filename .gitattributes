@@ -2,3 +2,4 @@
 *.ps1 -text
 *.bat -text
 *.cmd -text
+docs/contracts/incoming/checkin-provider-fix-guidance-2026-10-12.zh-CN.md -text

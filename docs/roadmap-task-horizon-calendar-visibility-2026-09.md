@@ -1,7 +1,11 @@
 # 小驴打卡 × Task Horizon 日历可见性规划
 
-更新时间：2026-09-22  
-状态：**可行性与范围研究完成；仅登记开发计划，未修改运行代码、数据结构、公开 API 或 Task Horizon 机器契约。**
+研究快照：2026-09-22；历史说明更新于 2026-10-16。
+状态：**历史研究文档，下文“当前”“新增”“未实现”等描述均指研究当日，不是当前开发状态。** 项目级可见性字段、编辑器开关与 v5 `calendar.read/getCalendarProjection` 后续已落地。本次验收版本为 v18.17.6（本次验收基线，正式发布状态见 GitHub Release）；现状与缺口以 [合作设计](checkin-taskhorizon-cooperation.md) 和 [API v5 参考](api-v5.md) 为准。对方源码依据仅是 2026-10-10 核对的 Task Horizon v3.1.8 快照（commit `58ec06f23627962d0e83794611826ba4cfebb832`），不代表最新版本。
+
+现阶段仍未完整就绪的合作项为 C-01（远端合并刷新）、C-02（API 生命周期通知）、C-03（`point.scheduleType` 与 `asOfDate`）、W-03（新 Task Horizon 身份专用写入校验）；没有发布 `integrationContracts` 就绪声明。当前投影合法范围超过 366 天或可见项目超过 200 个时截断并置 `truncated`；`quotaRate` 保持实际投影末日所属周期的累计量，配额日 `complete` 表示有正值记录。超过 366 天时实际只计算前 366 天，返回 `endDateExclusive` 仍回显请求上界，不能用请求上界解释 `quotaRate` 所属周期。新合作优先 v5 batch；legacy 单条 `undefined` 是没有成功回执，可能进入提供端待处理箱后自动恢复。
+
+新合作普通任务回写目标固定在提案范围 `count + daily + atLeast`（每日目标 N，非周/月 `schedule.quota`）；配额项目只用于 L1 只读投影。API 缺失、未就绪与 v4 兼容摘要应分别降级；现有 API 没有独立授权状态，用户启用由消费端设置负责。服务恢复后的自动重新探测/刷新仍需 C-02 与消费端接线，当前只能要求消费者核对当前会话并提供主动重试。
 
 ## 一、结论先行
 
@@ -76,7 +80,7 @@ MVP 采用“项目 × 日期”的只读投影：
 - 只在项目对该本地日期有效/有排期时生成计划摘要；非排期日不伪造“未完成任务”。
 - 当天状态由小驴侧统一计算并返回：`pending`、`complete`、`skipped`、`at-most-safe`、`at-most-breach` 等；Task Horizon 只负责呈现。
 - `SKIP` 是中性状态，不渲染成失败；`atMost` 无事件的“守住”与发生事件的“破戒”不能套普通至少型完成率。
-- 周/月配额以“周期进度 + 当天是否贡献”表达，不拆成 N 个伪任务；数值/单位沿用项目当前日期修订。
+- 周/月配额仅在 L1 只读投影中以“周期累计量 + 当天是否贡献”表达，不拆成 N 个伪任务，不作为本轮普通任务完成回写目标；数值/单位沿用项目当前日期修订。
 - 日期归属只使用事件 `localDate` 和本地排期，不用 UTC `occurredAt` 重新推导，避免跨时区倒日。
 
 这样处理可以同时满足“默认都显示”和“单项关闭后不显示”，又不会让任务管理器与小驴各自计算出不同的完成口径。
@@ -88,14 +92,14 @@ MVP 采用“项目 × 日期”的只读投影：
 1. Task Horizon 探测 `window.siyuanCheckin`，等待 `whenReady()`，协商基础只读能力与新的日历投影能力。
 2. 小驴侧只返回有界、只读、无备注/附件/私有存储字段的日历投影。服务端按 `taskHorizonCalendarVisible !== false` 过滤隐藏项目，不能让消费者先读全量再靠 UI 过滤。
 3. 投影按 `[startDate, endDateExclusive)` 返回项目摘要和日期状态，并附 `truncated`/限制信息；范围、项目数和日期点均有限制。
-4. Task Horizon 缓存当前范围；收到项目创建/更新/删除/归档或事件新增/删除、分析刷新事件后取消旧请求、合并刷新并重读。`item-updated` 覆盖显示开关变化，`item-archived` 覆盖生命周期变化；不能遗漏 `item-created`、`item-deleted` 或 `event-deleted`。
+4. Task Horizon 缓存当前范围；收到项目创建/更新/删除/归档或事件新增/删除、分析刷新事件后丢弃旧结果、合并刷新并重读。`item-updated` 覆盖显示开关变化，`item-archived` 覆盖生命周期变化；不能遗漏 `item-created`、`item-deleted` 或 `event-deleted`。后续已实现的 `getCalendarProjection()` 是同步、有界调用，不能靠 Abort/timeout 中断正在执行的读取。
 5. 投影不可用、超时、能力缺失或版本不兼容时，图层进入可诊断的 `unavailable/degraded`，不显示陈旧的全量内容，也不影响小驴本地使用。
 
 首选 API 方向是新增一个**通用只读 `calendar.read` 能力及有界 `getCalendarProjection()`**，而不是让 Task Horizon 复制排期、配额、跳过和负向习惯算法。具体字段和上限在 T-1389/T-1391 的双方契约评审中冻结。若双方决定暂不增加新能力，最低可行退路是：`queryItems()` 返回可见性字段，`getEventsInRange()` 只读取可见项目并由消费方按文档口径聚合；这只能作为兼容/实验路径，不能替代长期投影契约。
 
 ### 写入（任务完成 → 打卡）
 
-- 继续使用 `recordEvent()` 和 `taskhorizon:<blockId>:<localDate>`，重复回放仍返回已有事件而不新增。
+- 历史方案采用 `recordEvent()` 和 `taskhorizon:<blockId>:<localDate>`；当前新合作优先 v5 `recordEventsBatch()`，目标为每日次数、正向累计项目（每日目标 N，非 `schedule.quota`），保留原身份和源完成时刻。legacy 单条参考桥仅作当日兼容路径。
 - 日历隐藏默认不影响写回；Task Horizon 只有在用户明确选择目标项目后才可写入。
 - 如果未来需要“项目可以显示，但不允许任务完成回写”或“隐藏日历且禁止回写”，新增独立 `taskHorizonWriteBackEnabled`（或等价设置）并走单独契约，不把两个动作绑在一个 checkbox 上。
 - 补录历史日期、跨午夜、多个窗口同时完成、任务被撤销/重新勾选等情况，必须先冻结日期与撤销语义，再扩展 bridge；不能用随机 externalRef 或当前时刻猜测历史归属。
@@ -143,7 +147,7 @@ MVP 采用“项目 × 日期”的只读投影：
 | **T-1389** | Task Horizon 日历可见性模型与双方契约研究（本任务） | 本文；确定字段语义、投影边界、旧消费者降级和是否采用 `calendar.read`/`getCalendarProjection`；不改业务代码 |
 | **T-1390** | 项目级可见性字段与默认迁移 | `CheckinItem` 可选字段、`normalizeItem` 缺省 true、编辑器保存/冲突指纹/导出兼容、旧数据无需批量重写 |
 | **T-1391** | 日历只读投影与统一状态口径 | 有界项目×日期投影、排期/配额/SKIP/atMost/归档/时区语义；公开能力、manifest、文档和契约测试；消费端缺口进入 T-1395 上游 API 方案 |
-| **T-1392** | Task Horizon 消费端图层、刷新与回退 | 能力协商、隐藏过滤、缓存/Abort/单飞、刷新事件、legacy 降级、错误诊断；不读取私有数据；缺失能力先走公开 PR 双轨 |
+| **T-1392** | Task Horizon 消费端图层、刷新与回退 | 能力协商、隐藏过滤、缓存/合并刷新/旧结果丢弃、七类数据刷新事件、legacy 降级、错误诊断；同步投影不能用 Abort/timeout 中断；不读取私有数据；缺失能力先走公开 PR 双轨 |
 | **T-1393** | 设置与项目编辑器 UX | 高级区开关、默认开启、说明“只影响任务管理器日历”、保存失败回滚、双语/无障碍/窄屏显示 |
 | **T-1394** | 双向联动边界与真实宿主验收 | 回写与显示开关解耦、历史/补录日期、重复回放、删除墓碑、多窗口、桌面/页签/dock/Android；双方 contract test 和现场证据齐全后再决定进入哪个 v18.x 小版本 |
 | **T-1395** | 合作插件公开 API 协同与 PR 双轨保障 | 若消费端缺少公开能力，准备最小 API/bridge issue/PR、contract fixture、示例和 fallback；未合并/发布/真实宿主验收前不作为稳定主路径，不重复累计 |

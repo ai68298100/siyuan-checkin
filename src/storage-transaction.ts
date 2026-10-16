@@ -15,6 +15,46 @@ export interface VerifiedStoreWrite {
     repaired: boolean;
 }
 
+/**
+ * Keep only the local projection that differs from the last committed
+ * baseline before merging it into a newer remote snapshot.  A plain union of
+ * the whole local store would treat every unchanged pre-restore entity as a
+ * concurrent write and resurrect it after an exact snapshot restore.
+ */
+export function projectLocalStoreChanges(baseline: CheckinStore, local: CheckinStore, remote?: CheckinStore): CheckinStore {
+    const changed = <T extends {id?: string; eventId?: string; itemId?: string}>(
+        before: readonly T[],
+        after: readonly T[],
+        key: (value: T) => string,
+    ): T[] => {
+        const beforeByKey = new Map(before.map((value) => [key(value), JSON.stringify(value)]));
+        return after.filter((value) => beforeByKey.get(key(value)) !== JSON.stringify(value));
+    };
+    const changedEventTombstones = changed(baseline.eventTombstones, local.eventTombstones, (tombstone) => tombstone.eventId);
+    /* An unchanged external identity tombstone is still needed when the
+       remote side contains a replay of that identity. Generic event-id
+       tombstones intentionally stay out of this projection so an explicit
+       restore can bring the selected event back exactly. */
+    const baselineEventTombstones = new Map(baseline.eventTombstones.map((tombstone) => [tombstone.eventId, JSON.stringify(tombstone)]));
+    const replayBarriers = remote
+        ? local.eventTombstones.filter((tombstone) => baselineEventTombstones.get(tombstone.eventId) === JSON.stringify(tombstone)
+            && Boolean(tombstone.source && tombstone.externalRef)
+            && remote.events.some((event) => event.source === tombstone.source && event.externalRef === tombstone.externalRef))
+        : [];
+    const eventTombstones = [...new Map([...changedEventTombstones, ...replayBarriers].map((tombstone) => [tombstone.eventId, tombstone])).values()];
+    return {
+        ...local,
+        items: changed(baseline.items, local.items, (item) => item.id),
+        events: changed(baseline.events, local.events, (event) => event.id),
+        /* Carry changed tombstones like other local mutations. Unchanged
+           external-identity barriers are added above only when the remote
+           snapshot contains their matching replay; ordinary ID tombstones
+           stay out so an explicit restore remains an exact replacement. */
+        eventTombstones,
+        itemTombstones: changed(baseline.itemTombstones || [], local.itemTombstones || [], (tombstone) => tombstone.itemId),
+    };
+}
+
 /** Build the deterministic pre-mutation snapshot while an exclusive storage lock is held. */
 export function reconcileStoreSnapshots(
     baseline: unknown,
@@ -33,7 +73,8 @@ export function reconcileNormalizedStoreSnapshots(
     remote: CheckinStore,
 ): StoreReconciliation {
     const localMatchesRemote = areNormalizedStoresEqual(local, remote);
-    const merged = localMatchesRemote ? local : mergeNormalizedStores(local, remote);
+    const localChanges = projectLocalStoreChanges(baseline, local, remote);
+    const merged = localMatchesRemote ? local : mergeNormalizedStores(remote, localChanges);
     const conflict = detectNormalizedStoreConflict(baseline, remote);
     return {
         remote,

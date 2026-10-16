@@ -6,13 +6,15 @@
 
 | 用途 | 分支 / 引用 | 说明 |
 | --- | --- | --- |
-| 稳定安装包 | `main` + 发布 tag | Release、`package.zip` 和用户安装说明以这里为准。当前版本为 v18.17.2。 |
-| 当前开发 | `dev/thispc-1002` | 双机合并记录与后续开发分支；稳定安装和其他机器同步以 `main` 为准。 |
+| 稳定安装包 | `main` + 发布 tag | Release、`package.zip` 和用户安装说明以这里为准。当前版本为 v18.17.5。 |
+| 当前开发 | `main` | 当前代码以 `main` 为统一基线；`dev/thispc-1002` 是 2026-10-08 已合入 `main` 的历史分支，不作为当前开发线。 |
 | 用户入口 | GitHub Releases | 页面上的“最新版本”只指已发布 tag，不指向开发分支。 |
 
 2026-10-08 双机合并窗口与 v18.17.0 发布已完成：`main` 已统一包含两台电脑的代码，发布提交为 `af9caf9b`，GitHub 默认分支为 `main`，正式 Release 地址为 https://github.com/ai68298100/siyuan-checkin/releases/tag/v18.17.0。后续新功能继续在开发分支或短期特性分支进行，完成验证后再合入 `main`；发布 tag 和 Release 只从 `main` 创建。
 
 2026-10-09 全插件复核补丁 v18.17.1 已发布：提交 `ef4c1c312ef07354f6f354ec83395e39c7f10bb6` 已推送到 `main`，tag 与正式 Release 地址为 https://github.com/ai68298100/siyuan-checkin/releases/tag/v18.17.1，`package.zip` SHA-256 为 `5d3a3d3ceeb9272f2797b9719672b505473ccafea092c9116cbd9f2068d1a213`。真实宿主/设备现场和第三方账号仍按兼容矩阵单独验收。
+
+截至 2026-10-15，v18.17.5 已从 `main` 发布；`dev/thispc-1002` 指向的 v18.17.0 历史提交已是 `main` 的祖先。新开发以 `main` 为基线，发布 tag 与 Release 仍只从 `main` 创建。
 
 ## 自动化
 

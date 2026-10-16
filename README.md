@@ -8,34 +8,37 @@
 
 把一次行动记录下来，再用同一份可追溯数据完成统计、提醒、复盘和笔记联动。
 
-**当前版本：18.17.5**
+**当前版本：18.17.6**
 
-18.17.5 聚焦现代桌面质感重塑与 UI 原型 v3 对齐，引入 Hero「下一步」行动卡、Bento 统计网格与健康总览矩阵；这里介绍本次更新与已实现功能，后续开发进展见 [PROGRESS](PROGRESS.md)。
+18.17.6 完善恢复与跨窗口可靠性、外部批量写入边界及状态可读性；这里介绍本次更新与已实现功能，后续开发进展见 [PROGRESS](PROGRESS.md)。
 
 > **内测说明**：小驴考试、小驴管家、小驴闪卡和小驴常用目前仍处于内测阶段，部分功能和思源宿主兼容性正在验证中。欢迎通过交流 QQ 群 **871707735** 反馈问题、提交需求；对稳定性有较高要求时，请等待对应插件发布正式版。
 
 [![最新 Release](https://img.shields.io/github/v/release/ai68298100/siyuan-checkin?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-checkin/releases/latest) [![CI](https://github.com/ai68298100/siyuan-checkin/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-checkin/actions/workflows/ci.yml) [![License](https://img.shields.io/github/license/ai68298100/siyuan-checkin)](LICENSE)
 
-[最新 Release](https://github.com/ai68298100/siyuan-checkin/releases/latest) · [18.17.5 发布说明](docs/releases/release-notes-18.17.5.md) · [问题反馈](https://github.com/ai68298100/siyuan-checkin/issues) · [开发文档](docs/)
+[最新 Release](https://github.com/ai68298100/siyuan-checkin/releases/latest) · [18.17.6 发布说明](docs/releases/release-notes-18.17.6.md) · [问题反馈](https://github.com/ai68298100/siyuan-checkin/issues) · [开发文档](docs/)
 
 </div>
 
-### 本次更新（18.17.5）
+### 本次更新（18.17.6）
 
-本版聚焦现代桌面质感重塑与 UI 原型 v3 对齐，打造低压力现代个人行动台。
+本版完善恢复、跨窗口与外部批量写入的可靠性，并修正回执折叠和状态对比度。
 
-新增：Hero 行动卡与 Bento 布局
-- Today 首屏落地 Hero「下一步行动卡」，突出当前最该做的下一步小步，支持一键记录与快速专注。
-- Settings 设置页首屏落实 2×2 Bento 健康总览卡片网格，状态胶囊带有彩色呼吸指示灯并支持一键去配置。
+新增：存储测量与合作核对材料
 
-优化：现代桌面质感与微材质
-- 引入物理微材质：卡片顶部 1px 物理微高光（明暗主题自适应）与双层漫反射环境光阴影。
-- 排版与数字防抖动：全局启用等宽数字（tabular-nums），消除计数、计时器与百分比抖动。
-- 交互手感提升：引入仿 iOS/macOS 物理弹簧微缓动曲线，按钮悬停浮雕与按压物理回弹。
+- 提供主档快照基准，覆盖大样本、双窗口及受控写失败后重载恢复。
+- 按 Task Horizon 原始来件整理逐项处理清单和回复材料，明确下一批验收条件。
 
-优化：图标矢量化与排版字阶
-- 纯化残留的 Unicode 纯文本符号为标准规范 SVG 矢量图标，杜绝跨系统字体差异变形。
-- 全面清理 7px~11px 极端微小字号，收敛提升至 ≥12px，确保在窄屏与 Dock 侧边栏下清晰可读。
+优化：状态可读性与批量输入
+
+- 完成事项芯片和提醒行使用明确颜色，补齐首次成功按钮回退色并清理重复样式。
+- 批量写入捕获调用时输入，按落账日的有效规则修订判定方向。
+
+修复：恢复与外部写入边界
+
+- 避免旧窗口把恢复前未变化的项目、事件和修订重新合入，保留真实并发新增。
+- 隐藏回执面板不再占位或遮挡点击；批量未实际执行时拒绝 Promise，并统一 Task Horizon 身份校验。
+- v4 参考 bridge 跨日重试保留原身份并延后，避免误记到今天。Task Horizon 新合作仍待完成日历通知与专用写入验收。
 
 
 <div align="center">
@@ -45,7 +48,7 @@
 ## 仓库与版本状态
 
 - **稳定安装包**来自 `main` 分支上的发布 tag；普通用户请从 [Releases](https://github.com/ai68298100/siyuan-checkin/releases) 下载，不要直接下载开发分支源码。
-- **当前开发**以 `main` 为统一基线；`dev/thispc-1002` 保留为双机合并记录和后续开发分支，真实思源客户端验收以兼容矩阵中的现场证据为准。
+- **当前开发**以 `main` 为统一基线；`dev/thispc-1002` 是已合入 `main` 的历史双机开发分支，不作为当前开发线。真实思源客户端验收以兼容矩阵中的现场证据为准。
 - **问题反馈**请优先使用 [Issue 模板](https://github.com/ai68298100/siyuan-checkin/issues/new/choose)，安全漏洞请看 [安全报告说明](SECURITY.md)；不要在公开 Issue 中粘贴 Key、Token、笔记内容或完整诊断导出。
 
 [安装与开始](#安装与兼容性) · [核心功能](#核心功能) · [联动与来源](#笔记联动与外部来源) · [接入 API](#api) · [开发与验证](#开发与验证) · [交流](#小驴系列与交流)
@@ -99,6 +102,10 @@
 
 <details>
 <summary>历史版本更新（点击展开）</summary>
+
+### 18.17.5
+
+现代桌面质感与 UI 原型 v3 对齐：Today Hero 下一步行动卡、Settings Bento 健康总览、卡片高光与阴影、等宽数字、减少动效适配及部分图标与字号治理。详见 [18.17.5 发布说明](docs/releases/release-notes-18.17.5.md)。
 
 ### 18.17.1
 
@@ -190,6 +197,8 @@ corepack pnpm run test:ui        # UI、响应式、文档和稳定性守门
 corepack pnpm run test:mobile    # 移动端布局、键盘、旋转和触控守门
 corepack pnpm run test:ecosystem # API、事件和外部联动守门
 corepack pnpm run test:perf      # 大量事件和投影性能基线
+corepack pnpm run benchmark:storage # 主 Store 快照写放大观测（不设发布门槛）
+corepack pnpm run benchmark:storage:host # 显式真实思源宿主快照/并发/失败重载观测
 corepack pnpm run build          # 生产构建，输出 dist/ 与 package.zip
 corepack pnpm run test:quality   # 发布前完整质量链
 ```
@@ -210,6 +219,8 @@ node tests/width-walkthrough.cjs
 corepack pnpm run test:e2e
 corepack pnpm run test:e2e:readonly
 ```
+
+真实宿主快照基准必须另外提供独立的 `CHECKIN_E2E_WORKSPACE`、`SIYUAN_TOKEN` 和可用端口（可用 `CHECKIN_E2E_PORT` 覆盖默认端口）；它会运行 1k/10k/100k 样本、双窗口并发和受控写失败重载夹具，结果写入 `.artifacts/storage-host-benchmark*.json`，不属于发布硬门槛。
 
 完整路线见[当前开发状态](docs/development-roadmap-current.md)和[自动化证据报告](docs/automation-evidence-report-2026-09.md)。
 
