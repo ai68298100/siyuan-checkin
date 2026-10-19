@@ -3006,3 +3006,20 @@ dark 主题下选中态卡片底色（accent 14% 混 `#1A1B22`）与 hover 态�
 
 验证：所有视觉门禁与主链通过；CSS 657 KiB 仍低于 660 KiB 硬线。
 
+# 2026-10-19 T-1817 主次操作按钮层级第二切片（D-492）
+
+按 30/34/38 三档 button-height token 迁移 6 类核心按钮的 height 定义：
+
+- `.lc-checkin__record-button` 默认 28 → `var(--lc-checkin-button-height-sm)` (30)；
+- `.lc-checkin-dock-host .lc-checkin__record-button` 30 → `button-height-sm`；
+- `.lc-checkin-dock-host .lc-checkin__quick-button` 30 → `button-height-sm`；
+- `.lc-checkin__text-button` 默认 34（响应式覆写 1624）→ `button-height`；
+- `.lc-checkin--settings .lc-checkin__text-button` 38 → `button-height-lg`，圆角同步切到 `button-radius`；
+- `.lc-checkin--editor .lc-checkin__save-button` 42 保留为字面量（关键大主按钮基线），圆角切到 `button-radius`。
+
+`--lc-checkin-control-height: 36px` 作为 36 字符的"主按钮基线"已隐含在 tokens.scss，36 字符的设置/导航按钮继续走该 token 路径，不强行压成 34。
+
+剩余 4 级动作语义化命名（primary/secondary/quiet/destructive/icon）与 workbench/maintenance-responsive 之间的按钮收口留作下一切片。
+
+验证：所有视觉门禁与主链通过；CSS 657 KiB 仍低于 660 KiB 硬线。
+

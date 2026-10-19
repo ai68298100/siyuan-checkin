@@ -3028,3 +3028,9 @@
 - `__text-button` 与 `__save-button` 的 `border-radius` 已切到 `button-radius`，基线按钮 primary/secondary/quiet 的 radius 收口。
 - 不动 6 类核心按钮的 height（28/30/34/36/38/42px 实际变体），更不动 secondary/quiet/destructive/icon 四级动作的语义化命名（每张卡一个主动作、长文案可换行、桌面与移动共用语义）。
 - 范围限定：先收口 token 基线（radius），再下一切片按 `button-height-sm/md/lg` 收口 height 变体，最后用 4 级动作复合类做语义化。
+
+## D-492：T-1817 主次操作按钮层级第二切片（2026-10-19）
+
+- 按 30/34/38 三档 button-height token 迁移 6 类核心按钮的 height 定义：record-button 默认（28→30）/ dock record 与 quick（30）/ text-button 默认 34 / settings text-button 38 等。
+- 36 字符保留为字面量（与 `--lc-checkin-control-height: 36px` 主按钮基线一致）；42 字符保留为字面量（关键大主按钮基线，例如编辑器 save 按钮）。
+- 范围限定：不强行压缩 36/42 字符差异，不重命名按钮类（`__text-button` / `__record-button` / `__save-button` / `__primary-button` 仍按功能命名）；4 级动作语义化与 workbench / maintenance-responsive 按钮收口留作下一切片。
