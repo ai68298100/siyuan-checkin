@@ -1,3 +1,14 @@
+# 2026-10-20 版本化多桶备份 envelope、单桶事务回滚与 any 清零（T-1861/T-1862，D-515）
+
+**v18.18.0 持续增强——🛡️ 工程基建与规范合规**：
+1. **单桶事务回滚（T-1861）**：`persistUserTemplates` / `persistCustomIconLibrary` 包裹 `saveData` 为 try/catch，磁盘写入失败时恢复调用前内存快照，杜绝内存与磁盘漂移。
+2. **TypeScript `any` 清零**：`src/render/bind-editor.ts` 中唯一残留的 `listener: any` 参数改为 `EventListenerOrEventListenerObject`，全仓 `grep "as any\| any\[\]\|: any"` 零命中。
+3. **版本化多桶备份 envelope（T-1862，D-515）**：
+   - 新增 `src/backup-envelope.ts` 定义 `BackupEnvelope { envelopeVersion, pluginVersion, exportedAt, buckets }`；`envelopeVersion=1` 作为解析守卫（当前只接受 v1，未来协议不兼容时分流）。
+   - `DEFAULT_BACKUP_BUCKETS` 主档强包含；11 个辅助桶默认不包含；敏感桶（审计/诊断/提醒动作/提醒送达/AI 分析缓存）默认遮罩（载荷 null）。
+   - `defaultResolutionForCategory` 复用 D-514 分类语义：追加型 `merge`；覆盖/增删改/主档 `overwrite`。
+4. **守门**：新增 `tests/backup-envelope.test.cjs`，纳入 `test:v18`；`check` + `test:v18`（25 项）+ `test` 全绿。
+
 # 2026-10-20 辅助存储桶三分类架构与拆除生命周期（T-1860，D-514）
 
 **v18.18.0 持续增强——辅助存储桶跨窗口审计、合并分类与生命周期治理**：

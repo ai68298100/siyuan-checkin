@@ -3190,6 +3190,14 @@
   3. 显式删除与增删改型（Explicit Delete & Mutation）：用户模板（`USER_TEMPLATES_NAME`）、自定义图标库（`CUSTOM_ICON_LIBRARY_NAME`）、问卷日记独立桶（`JOURNAL_DATA_NAME`）与建议工作流。纯粹并集会导致用户主动删除的项被远端脏文件复活；`persistUserTemplates` 与 `persistCustomIconLibrary` 统一计算差集（`deletedIds` / `deletedIcons`），先剥离远端待删除项后再合并；问卷独立桶基于 `lastPersisted` 脏检查，无本地编辑时跟随远端，有本地编辑时保持本地状态。
 - **守门与测试**：新增 `tests/auxiliary-buckets-lifecycle.test.cjs` 并纳入 `test:v18`，对三类桶的静态代码断言、删除防复活模拟、AI 历史回滚及覆盖型偏好隔离进行全量验证。
 
+## D-515：版本化多桶备份 envelope 协议（T-1862，2026-10-20）
+
+- **协议结构**：`BackupEnvelope { envelopeVersion, pluginVersion, exportedAt, buckets: Record<string, BackupBucketPayload> }`。`envelopeVersion` 作为解析守卫（当前仅接受 `1`），未来协议不兼容时通过版本号分流；`pluginVersion` 用于未来迁移决策；`exportedAt` 用于冲突报告的时间戳展示。
+- **默认桶注册表 `DEFAULT_BACKUP_BUCKETS`**：主档（`checkin-store`）`defaultIncluded: true` 强包含；其余辅助桶（视图偏好、模板、图标、问卷、审计、专注诊断、提醒动作、建议工作流、提醒送达、AI 分析缓存、场合桶）`defaultIncluded: false`，用户逐桶 opt-in。
+- **敏感桶遮罩**：审计日志、专注诊断、提醒动作、提醒送达、AI 分析缓存默认 `masked: true`（载荷为 `null`），导出时显式勾选才纳入。
+- **默认导入决策**：`defaultResolutionForCategory` 复用 D-514 分类语义——追加型默认 `merge`（并集），覆盖/增删改/主档默认 `overwrite`（后写者胜）。`skip` 由用户显式选择。
+- **守门文件**：`src/backup-envelope.ts` + `tests/backup-envelope.test.cjs`（纳入 `test:v18`）。
+
 
 
 

@@ -431,7 +431,7 @@
 
 - [x] T-1860 辅助存储桶跨窗口审计与 AI 历史合并（P1，T-1622 后续，D-514 2026-10-20）——建立三类辅助存储桶分类体系（追加型/覆盖型/显式删除与增删改型）；AI 历史与审计日志在 `onDataChanged` 采用并集合并且 `saveData` 失败时回滚内存（`this.analysisHistory = previousHistory`），`onunload` 有界预算排空；视图偏好坚持 LWW 覆盖杜绝重置被并集破坏；模板与图标计算 `deletedIds`/`deletedIcons` 过滤远端快照杜绝删除复活缺陷；问卷日记基于 `lastPersisted` 脏检查无本地冲突时同步；新增 `tests/auxiliary-buckets-lifecycle.test.cjs` 守门测试并接入 `test:v18`。
 - [ ] T-1861 用户模板/图标/问卷配置的单桶事务（P1，T-1622 后续）——`bind-editor`、问卷设置和 `src/index.ts` 存在直接 `saveData`；补快照、失败回滚、写后校验、跨窗口读改写和损坏数据归一化，保存失败不得显示成功或清空草稿。验收覆盖编辑、删除、排序、重复应用和卸载收尾。
-- [ ] T-1862 版本化多桶备份 envelope（P1，T-1627 明列后续）——在主档备份边界已澄清后，研究可选桶的逐桶预览、覆盖/合并/跳过、敏感字段遮罩、版本迁移、冲突报告和整体回滚；模板、问卷、图标、事项、提醒动作、偏好、失败箱必须明确默认是否包含，旧主档导入保持兼容。
+- [x] T-1862 版本化多桶备份 envelope（P1，T-1627 明列后续，D-515 2026-10-20）——建立 `BackupEnvelope { envelopeVersion, pluginVersion, exportedAt, buckets }` 协议；`DEFAULT_BACKUP_BUCKETS` 注册主档强包含、辅助桶默认不包含、敏感桶（审计/诊断/提醒/AI 缓存）默认遮罩；`defaultResolutionForCategory` 复用 D-514 分类语义（追加型 merge，覆盖/增删改 overwrite）；`parseBackupEnvelope` 作为版本化守卫（当前只接受 v1）；新增 `src/backup-envelope.ts` 与 `tests/backup-envelope.test.cjs` 守门并纳入 `test:v18`。
 - [ ] T-1863 CSV 错误行明细与截断标志可见化（P2，T-1628 明列后续）——导入入口目前主要展示 invalid 计数；把行号、字段、原因、截断提醒和“继续导入已解析部分/取消”做成双语可复制预览，超长文件不阻塞界面，取消零写入。复用已有 RFC 4180 解析结果，不在 UI 复制判定逻辑。
 - [ ] T-1864 i18n 调用点缺参/多余参与宿主文案检查（P2，T-1623 明列后续）——在重复占位符修复后，对 `t()` 调用参数集合、原始键名回退、宿主 `langText`/`title`、动态 HTML 属性做有界静态检查；复核 `shared.ts` 的块标题/排期格式化、`bind-editor.ts` 图标下载/导入错误等直接中文；区分字典文本、数据单位和用户内容，英文界面及命令面板/顶栏/dock 均要有实际渲染证据。
 - [ ] T-1865 遗留 `template-manager` 退役或正式接线决策（P2，D-316）——先核对全仓导入、测试、样式、固定 id 和发布资源引用，再形成“退役清理”或“按现行模板模型接线”的决策；不得为满足双语检查而给未接线原型补运行入口，退役后加入不得回流守门。
