@@ -9,8 +9,17 @@ const commands = ["node", "pnpm", "git", "gh"];
 const result = {node: process.version, commands: {}, browsers: [], dependencies: {typescript: false, webpack: false}, repo: {root}};
 for (const command of commands) {
     try {
-        const executable = process.platform === "win32" && command === "pnpm" && fs.existsSync("C:/Program Files/nodejs/pnpm.cmd") ? "C:/Program Files/nodejs/pnpm.cmd" : command;
-        result.commands[command] = execFileSync(executable, ["--version"], {encoding: "utf8"}).trim();
+        let output = "";
+        if (process.platform === "win32") {
+            try {
+                output = execFileSync("cmd.exe", ["/c", command, "--version"], {encoding: "utf8"}).trim();
+            } catch {
+                output = execFileSync(command, ["--version"], {encoding: "utf8"}).trim();
+            }
+        } else {
+            output = execFileSync(command, ["--version"], {encoding: "utf8"}).trim();
+        }
+        result.commands[command] = output;
     }
     catch { result.commands[command] = null; }
 }
