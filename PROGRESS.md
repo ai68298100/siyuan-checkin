@@ -3053,3 +3053,20 @@ dark 主题下选中态卡片底色（accent 14% 混 `#1A1B22`）与 hover 态�
 
 验证：所有视觉门禁与主链通过；CSS 658 KiB（673839 bytes）仍低于 660 KiB 硬线。
 
+# 2026-10-19 T-1816 卡片 surface 第三切片：success/accent 软化收口（D-496）
+
+`tokens.scss` 新增 3 对软化色 token：
+
+- `--lc-checkin-success-bg-soft` (10% light / 14% dark success 混入 surface) — 全完成 banner 底色
+- `--lc-checkin-success-border-soft` (28% light / 32% dark success 混入 border-strong) — 全完成 banner 边色
+- `--lc-checkin-accent-soft-strong` (22% accent 混入 transparent) — accent-soft 背景面的强化边
+
+`components.scss` 中：
+
+- `__all-done` (today 1684 行) 切到 `success-bg-soft` / `success-border-soft`；
+- `__all-done` 主类（1085 行）边切到 `accent-soft-strong`。
+
+`__calendar-day` 4 档保留 lilac 偏移；`__week-load-row > span.is-on` 保留 `accent-soft` 单色（二档不需 4 档）。
+
+验证：所有视觉门禁与主链通过；CSS 658 KiB（674275 bytes）仍低于 660 KiB 硬线。
+

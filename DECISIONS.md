@@ -3056,3 +3056,9 @@
 - `tests/low-pressure-baseline.test.cjs` 的 `var(--lc-checkin-accent)` 契约断言更新为 `accent|heat-step` 接受形式。
 - `__calendar-day` 4 档保留 lilac 偏移（暖色 vs 紫语义差异），不强行并入。
 - 范围限定：未动 `__all-done`、week-load、review-compare、focus-timer、quick-dock、mobile-nav 与 workbench / maintenance-responsive 之间的卡片收口。
+
+## D-496：T-1816 卡片 surface 第三切片：success/accent 软化收口（2026-10-19）
+
+- `tokens.scss` 新增 3 对软化色 token：`success-bg-soft`（10/14%）/ `success-border-soft`（28/32%）/ `accent-soft-strong`（22% accent 混入 transparent）。
+- `__all-done` (today 1684) 切到 `success-bg-soft` + `success-border-soft`；`__all-done` 主类 (1085) 边切到 `accent-soft-strong`。
+- 范围限定：calendar-day 4 档保留 lilac 偏移；week-load-row.is-on 保留单色 accent-soft（二档语义不需 4 档）。剩余 review-compare、focus-timer、quick-dock、mobile-nav 四个高频面。

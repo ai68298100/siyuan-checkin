@@ -73,6 +73,9 @@
     --lc-checkin-heat-step-2: color-mix(in srgb, var(--lc-checkin-accent) 22%, var(--lc-checkin-surface));
     --lc-checkin-heat-step-3: color-mix(in srgb, var(--lc-checkin-accent) 42%, var(--lc-checkin-surface));
     --lc-checkin-heat-step-4: var(--lc-checkin-accent);
+    --lc-checkin-success-bg-soft: color-mix(in srgb, var(--lc-checkin-success) 10%, var(--lc-checkin-surface));
+    --lc-checkin-success-border-soft: color-mix(in srgb, var(--lc-checkin-success) 28%, var(--lc-checkin-border-strong));
+    --lc-checkin-accent-soft-strong: color-mix(in srgb, var(--lc-checkin-accent) 22%, transparent);
     --lc-checkin-card-elevated: var(--lc-checkin-card-highlight), var(--lc-checkin-card-shadow);
     --lc-checkin-card-elevated-hover: var(--lc-checkin-card-highlight), var(--lc-checkin-card-shadow-hover);
     --lc-checkin-primary-gradient: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%);
@@ -224,6 +227,8 @@
     --lc-checkin-heat-step-2: color-mix(in srgb, var(--lc-checkin-accent) 28%, var(--lc-checkin-surface));
     --lc-checkin-heat-step-3: color-mix(in srgb, var(--lc-checkin-accent) 52%, var(--lc-checkin-surface));
     --lc-checkin-heat-step-4: var(--lc-checkin-accent);
+    --lc-checkin-success-bg-soft: color-mix(in srgb, var(--lc-checkin-success) 14%, var(--lc-checkin-surface));
+    --lc-checkin-success-border-soft: color-mix(in srgb, var(--lc-checkin-success) 32%, var(--lc-checkin-border-strong));
     --lc-checkin-card-elevated: var(--lc-checkin-card-highlight), var(--lc-checkin-card-shadow);
     --lc-checkin-card-elevated-hover: var(--lc-checkin-card-highlight), var(--lc-checkin-card-shadow-hover);
     --lc-checkin-primary-gradient: linear-gradient(135deg, #7C83FD 0%, #6366F1 100%);
