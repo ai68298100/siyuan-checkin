@@ -3023,3 +3023,15 @@ dark 主题下选中态卡片底色（accent 14% 混 `#1A1B22`）与 hover 态�
 
 验证：所有视觉门禁与主链通过；CSS 657 KiB 仍低于 660 KiB 硬线。
 
+# 2026-10-19 T-1820 空态/引导/加载/错误状态视觉语言第一切片（D-493）
+
+`tokens.scss` 新增 3 对状态语义 token（`state-radius` 10px / `state-padding` 12px / `state-title-weight` 600 / `state-description-size` 12px）。`components.scss` 中 `__error` / `__empty` / `__empty-title` / `__empty-description` 与 1991 行移动端宽屏 `__empty` 全部切到上述 token。
+
+`__error` 的 padding/radius 进一步切到 T-1818 的 field token（`padding: var(--lc-checkin-field-padding-y) var(--lc-checkin-field-padding-x); border-radius: var(--lc-checkin-field-radius);`），保持与字段一致的"基座错误"识别。
+
+`tests/ui-state-ledger.test.cjs` 的硬编码 `padding:10px` 断言同步更新到 token 形式——契约测试随 SCSS 演进。
+
+剩余：统一图标、loading/slow/error/empty 高度与反馈节奏；`__onboard-start` / `__onboard-skip` 引导按钮与主按钮的层级关系；T-1788 错误态视觉矩阵按 T-1813 治理节奏逐个收口。
+
+验证：所有视觉门禁与主链通过；CSS 657 KiB（673041 bytes）仍低于 660 KiB 硬线。
+

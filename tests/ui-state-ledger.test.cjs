@@ -93,7 +93,7 @@ bilingual("today.consoleFocusMissing", "专注缺失提示");
 
 /* —— 族 8：成功/错误提示基座（回顾助手错误已收编） —— */
 assert.match(review, /class="lc-checkin__error" role="alert"/, "回顾助手错误必须用基座错误类");
-assert.match(components, /\.lc-checkin__error \{ padding:10px; border:1px solid var\(--lc-checkin-danger\);/, "基座错误样式存在");
+assert.match(components, /\.lc-checkin__error \{ padding:var\(--lc-checkin-field-padding-y\) var\(--lc-checkin-field-padding-x\); border:1px solid var\(--lc-checkin-danger\);/, "基座错误样式存在（已切到 field token）");
 assert.match(components, /\.lc-checkin\[data-appearance="light"\] \.lc-checkin__error \{/, "错误样式具备亮色变体");
 assert.ok(!review.includes('class="is-error"'), "回顾助手不得再使用散落的 is-error 类（已收编到基座）");
 

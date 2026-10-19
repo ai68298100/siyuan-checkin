@@ -3034,3 +3034,11 @@
 - 按 30/34/38 三档 button-height token 迁移 6 类核心按钮的 height 定义：record-button 默认（28→30）/ dock record 与 quick（30）/ text-button 默认 34 / settings text-button 38 等。
 - 36 字符保留为字面量（与 `--lc-checkin-control-height: 36px` 主按钮基线一致）；42 字符保留为字面量（关键大主按钮基线，例如编辑器 save 按钮）。
 - 范围限定：不强行压缩 36/42 字符差异，不重命名按钮类（`__text-button` / `__record-button` / `__save-button` / `__primary-button` 仍按功能命名）；4 级动作语义化与 workbench / maintenance-responsive 按钮收口留作下一切片。
+
+## D-493：T-1820 空态/引导/加载/错误状态视觉语言第一切片（2026-10-19）
+
+- `tokens.scss` 新增 3 对状态语义 token：`state-radius` (10px) / `state-padding` (12px) / `state-title-weight` (600) / `state-description-size` (12px)。
+- `components.scss` 中 `__error` / `__empty` / `__empty-title` / `__empty-description` 与 1991 行移动端宽屏 `__empty` 全部切到 state token。
+- `__error` 的 padding/radius 进一步切到 T-1818 的 field token，保持与字段一致的"基座错误"识别。
+- `tests/ui-state-ledger.test.cjs` 的硬编码 `padding:10px` 断言同步更新到 token 形式——契约测试随 SCSS 演进。
+- 范围限定：未动统一图标、loading/slow/error/empty 高度与反馈节奏；`__onboard-start` / `__onboard-skip` 引导按钮与主按钮的层级关系、T-1788 错误态视觉矩阵按 T-1813 治理节奏逐个收口。

@@ -646,7 +646,7 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__empty { min-width:0; overflow-wrap:anywhere; }
 .lc-checkin__empty-title { overflow-wrap:anywhere; }
 .lc-checkin__empty-description { overflow-wrap:anywhere; }
-.lc-checkin__error { padding:10px; border:1px solid var(--lc-checkin-danger); border-radius:8px; color:var(--lc-checkin-danger-text); background:color-mix(in srgb,var(--lc-checkin-danger) 8%,transparent); overflow-wrap:anywhere; }
+.lc-checkin__error { padding:var(--lc-checkin-field-padding-y) var(--lc-checkin-field-padding-x); border:1px solid var(--lc-checkin-danger); border-radius:var(--lc-checkin-field-radius); color:var(--lc-checkin-danger-text); background:color-mix(in srgb,var(--lc-checkin-danger) 8%,transparent); overflow-wrap:anywhere; }
 .lc-checkin__error button { margin-top:7px; }
 .lc-checkin[data-appearance="light"] .lc-checkin__error { background:color-mix(in srgb,var(--lc-checkin-danger) 6%,transparent); }
 /* T-1526 退役死规则组：骨架屏（skeleton 家族，keyframes+主题变体）、
@@ -1349,9 +1349,10 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__focus-button { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border: 1px solid transparent; border-radius: 7px; color: var(--lc-checkin-muted); background: transparent; font-size: 14px; cursor: pointer;
     &:hover { border-color: var(--lc-checkin-accent-text); color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); }
 }
-.lc-checkin__empty { display: flex; align-items: center; justify-content: center; flex-direction: column; color: var(--lc-checkin-muted); text-align: center; }
+.lc-checkin__empty { display: flex; align-items: center; justify-content: center; flex-direction: column; padding: var(--lc-checkin-state-padding); border-radius: var(--lc-checkin-state-radius); color: var(--lc-checkin-muted); text-align: center; }
 .lc-checkin__empty-mark { margin-bottom: 12px; color: var(--lc-checkin-accent-text); font-size: 25px; }
-.lc-checkin__empty-description { max-width: 220px; margin-top: 6px; font-size: 12px; line-height: 1.6; }
+.lc-checkin__empty-title { font-weight: var(--lc-checkin-state-title-weight); }
+.lc-checkin__empty-description { max-width: 220px; margin-top: 6px; font-size: var(--lc-checkin-state-description-size); line-height: 1.6; }
 .lc-checkin__empty-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
 .lc-checkin__text-button { margin-top: 15px; padding: 4px 9px; border: 0; border-radius: var(--lc-checkin-button-radius); color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); font-size: 12px; cursor: pointer; }
 .lc-checkin__editor-header { align-items: center; justify-content: flex-start; margin-bottom: 20px; }
@@ -1988,7 +1989,7 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 @container lc5 (max-width: 600px) {
     .lc-checkin__empty,
     .lc-checkin__history-empty,
-    .lc-checkin__empty-description { width: 100%; max-width: 100%; box-sizing: border-box; min-height: 88px; padding: 16px 12px; border-radius: 10px; }
+    .lc-checkin__empty-description { width: 100%; max-width: 100%; box-sizing: border-box; min-height: 88px; padding: 16px var(--lc-checkin-state-padding); border-radius: var(--lc-checkin-state-radius); }
     .lc-checkin__empty-title { font-size: 15px; }
     .lc-checkin__empty-description { color: var(--lc-checkin-muted); font-size: 11px; line-height: 1.5; }
     .lc-checkin__sync-notice { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
