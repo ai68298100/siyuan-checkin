@@ -3111,3 +3111,11 @@ dark 主题下选中态卡片底色（accent 14% 混 `#1A1B22`）与 hover 态�
 - 产物指标：CSS 656.8 KiB（672,603 bytes），低于 660 KiB（675,840 bytes）硬线 3.16 KiB；0 死类，0 对比度违规。
 - 验证：`pnpm run check`、`pnpm build`、`node tests/css-hygiene.test.cjs`、`node tests/responsive-layout.test.cjs`、`node tests/ui-theme.test.cjs`、`node tests/accessibility-audit.test.cjs`、`pnpm test` 全部零报错通过。
 
+# 2026-10-19 T-1819 顶部导航与分区导航活动态与焦点规范第一切片（D-501）
+
+- 顶部导航标签 `.lc-checkin__topnav-tabs button` 高度切到 `var(--lc-checkin-button-height-lg)`，圆角切到 `var(--lc-checkin-button-radius-pill)`，显式补齐 `:focus-visible { outline: 2px solid var(--lc-checkin-accent); outline-offset: 2px; }` 键盘焦点环；活动选中态强化字重至 650 并使用 accent-text / accent-soft；
+- 设置侧栏导航 `.lc-checkin__settings-nav button` 圆角切到 `button-radius-pill`，高度切到 `button-height`，活动态保留 accent 强化指示与选中底色；
+- 回顾/数据范围选择条 `.lc-checkin--review .lc-checkin__range-tabs button` 及其自定义展开钮圆角全部收口到 `button-radius-pill`，选中卡片投影切到 `card-shadow`，补齐 `:focus-visible` 焦点指示环；
+- 产物指标：CSS 657.3 KiB（673,114 bytes），低于 660 KiB（675,840 bytes）硬线 2.66 KiB；0 死类，0 对比度违规。
+- 验证：`pnpm run check`、`pnpm build`、`node tests/css-hygiene.test.cjs`、`node tests/responsive-layout.test.cjs`、`node tests/ui-theme.test.cjs`、`node tests/accessibility-audit.test.cjs`、`pnpm test` 全部零报错通过。
+

@@ -3532,20 +3532,21 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     min-height: 28px;
     padding: 0 13px;
     border: 0;
-    border-radius: 999px;
+    border-radius: var(--lc-checkin-button-radius-pill);
     color: var(--lc-checkin-muted);
     background: transparent;
     font-size: 12px;
     font-weight: 620;
     cursor: pointer;
 }
-.lc-checkin--review .lc-checkin__range-tabs button.is-selected { color: var(--lc-checkin-accent-text); background: var(--lc-checkin-surface); box-shadow: var(--lc-checkin-shadow-sm); }
+.lc-checkin--review .lc-checkin__range-tabs button:focus-visible { outline: 2px solid var(--lc-checkin-accent); outline-offset: 1px; }
+.lc-checkin--review .lc-checkin__range-tabs button.is-selected { color: var(--lc-checkin-accent-text); background: var(--lc-checkin-surface); box-shadow: var(--lc-checkin-card-shadow); }
 .lc-checkin--review .lc-checkin__custom-range-disclosure { flex: none; }
 .lc-checkin--review .lc-checkin__custom-range-disclosure > summary {
     min-height: 30px;
     padding: 0 12px;
     border: 1px solid var(--lc-checkin-border);
-    border-radius: 999px;
+    border-radius: var(--lc-checkin-button-radius-pill);
     color: var(--lc-checkin-muted);
     background: var(--lc-checkin-surface);
     font-size: 11.5px;
@@ -4183,10 +4184,10 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 }
 .lc-checkin__settings-nav button {
     flex: none;
-    min-height: 34px;
+    min-height: var(--lc-checkin-button-height);
     padding: 0 14px;
     border: 1px solid transparent;
-    border-radius: 999px;
+    border-radius: var(--lc-checkin-button-radius-pill);
     color: var(--lc-checkin-muted);
     background: transparent;
     font-size: 12.5px;
@@ -6742,10 +6743,10 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     display: flex;
     align-items: center;
     gap: 6px;
-    min-height: 38px;
+    min-height: var(--lc-checkin-button-height-lg);
     padding: 6px 16px;
     border: 0;
-    border-radius: 999px;
+    border-radius: var(--lc-checkin-button-radius-pill);
     color: var(--lc-checkin-muted);
     background: transparent;
     font-size: 13px;
@@ -6754,7 +6755,8 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 }
 .lc-checkin__topnav-tabs button span { display: grid; place-items: center; width: 18px; height: 18px; }
 .lc-checkin__topnav-tabs button:hover { color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); }
-.lc-checkin__topnav-tabs button.is-selected { color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); }
+.lc-checkin__topnav-tabs button:focus-visible { outline: 2px solid var(--lc-checkin-accent); outline-offset: 2px; }
+.lc-checkin__topnav-tabs button.is-selected { color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); font-weight: 650; }
 .lc-checkin__topnav-tabs button.is-selected span { color: inherit; background: transparent; }
 .lc-checkin__topnav-actions { display: flex; align-items: center; gap: 4px; margin-left: auto; }
 .lc-checkin__topnav-action {

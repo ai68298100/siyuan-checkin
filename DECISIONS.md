@@ -3091,3 +3091,10 @@
 - 事项小标题与说明 `.lc-checkin__occasion-row-body small` 从单行 ellipsis 改为 2 行 clamp，保证信息完整度。
 - 历史记录备注 `.lc-checkin__history-event-note` 移除窄屏强制单行截断，统一走自适应换行，确保横向无溢出。
 - 范围限定：第一切片聚焦排版基础设施与高频卡片；独立展开/复制组件交互留作下一阶段。
+
+## D-501：T-1819 顶部导航与分区导航活动态与焦点规范第一切片（2026-10-19）
+
+- 顶部导航标签 `.lc-checkin__topnav-tabs button` 高度切到 `var(--lc-checkin-button-height-lg)`，圆角切到 `var(--lc-checkin-button-radius-pill)`，显式补齐 `:focus-visible { outline: 2px solid var(--lc-checkin-accent); outline-offset: 2px; }` 键盘焦点环；活动选中态强化字重至 650 并使用 accent-text / accent-soft。
+- 设置侧栏导航 `.lc-checkin__settings-nav button` 圆角切到 `button-radius-pill`，高度切到 `button-height`，活动态保留 accent 强化指示与选中底色。
+- 回顾/数据范围选择条 `.lc-checkin--review .lc-checkin__range-tabs button` 及其自定义展开钮圆角全部收口到 `button-radius-pill`，选中卡片投影切到 `card-shadow`，补齐 `:focus-visible` 焦点指示环。
+- 范围限定：第一切片收口顶部与主要分区导航的高亮/圆角/高度与焦点；移动端导航栏折叠与横向滚动溢出蒙层指示留作下一切片。
