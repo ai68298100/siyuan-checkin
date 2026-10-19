@@ -3098,3 +3098,9 @@
 - 设置侧栏导航 `.lc-checkin__settings-nav button` 圆角切到 `button-radius-pill`，高度切到 `button-height`，活动态保留 accent 强化指示与选中底色。
 - 回顾/数据范围选择条 `.lc-checkin--review .lc-checkin__range-tabs button` 及其自定义展开钮圆角全部收口到 `button-radius-pill`，选中卡片投影切到 `card-shadow`，补齐 `:focus-visible` 焦点指示环。
 - 范围限定：第一切片收口顶部与主要分区导航的高亮/圆角/高度与焦点；移动端导航栏折叠与横向滚动溢出蒙层指示留作下一切片。
+
+## D-502：T-1823 Review/Insights 数据可视化皮肤统一第一切片（2026-10-19）
+
+- `content-responsive.scss` 中的 `.lc-checkin__insight-stats` 统计容器及其子项分割线统一接入 v3 卡片语义 token（`card-border` / `radius` / `card-bg` / `card-shadow`），消灭跨宽屏与默认态的材质跳变。
+- `components.scss` 中的 `.lc-checkin__insight-legend` 与 `.lc-checkin__insight-grid` 未达成状态统一收敛到 `color-mix(in srgb, var(--lc-checkin-danger) 70%, transparent)`，消除图例与图表网格颜色不一（原先混用 accent 52%、danger 62%、danger 70%）的表达分裂。
+- 范围限定：第一切片聚焦统计卡材质与基础状态色对齐；后续切片处理热力图刻度、空态纹理和高低对比模式。

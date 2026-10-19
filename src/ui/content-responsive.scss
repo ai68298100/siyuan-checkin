@@ -119,9 +119,9 @@
     .lc-checkin__editor-header { min-width: 0; }
     .lc-checkin__editor-header > div { min-width: 0; flex: 1 1 0; }
     .lc-checkin__editor-header :is(.lc-checkin__title, .lc-checkin__eyebrow) { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
-    .lc-checkin__insight-stats { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; padding-block: 10px; border: 1px solid var(--lc-checkin-border); border-radius: 14px; background: var(--lc-checkin-surface); }
+    .lc-checkin__insight-stats { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; padding-block: 10px; border: 1px solid var(--lc-checkin-card-border); border-radius: var(--lc-checkin-radius); background: var(--lc-checkin-card-bg); box-shadow: var(--lc-checkin-card-shadow); }
     .lc-checkin__insight-stats > div { min-width: 0; min-height: 54px; padding: 2px 12px; border: 0; border-radius: 0; background: transparent; }
-    .lc-checkin__insight-stats > div + div { border-left: 1px solid var(--lc-checkin-border); }
+    .lc-checkin__insight-stats > div + div { border-left: 1px solid var(--lc-checkin-card-border); }
     .lc-checkin__insight-stats > div::after { display: none; }
     .lc-checkin__insight-stats span { font-size: 12px; line-height: 1.4; overflow: visible; white-space: normal; overflow-wrap: anywhere; }
     .lc-checkin__eyebrow { display: flex; align-items: center; gap: 6px; font-size: 12px; line-height: 1.5; }

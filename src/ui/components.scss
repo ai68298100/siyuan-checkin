@@ -568,7 +568,7 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__insight-picker select { min-width:0; flex:1; min-height:36px; }
 .lc-checkin__insight-legend span { display:inline-flex; align-items:center; gap:4px; }
 .lc-checkin__insight-legend i { width:8px; height:8px; border-radius:2px; background:var(--lc-checkin-muted-surface); }
-.lc-checkin__insight-legend .is-missed { background:color-mix(in srgb,var(--lc-checkin-accent) 52%,var(--lc-checkin-muted-surface)); }
+.lc-checkin__insight-legend .is-missed { background: color-mix(in srgb, var(--lc-checkin-danger) 70%, transparent); }
 .lc-checkin__insight-legend .is-off { opacity:.45; }
 /* 10.0 foundation pass 7: form, history and occasion detail consistency. */
 .lc-checkin__field { min-width:0; }
@@ -4449,7 +4449,7 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__insight-grid span { width: 13px; height: 13px; border-radius: 4px; background: var(--lc-checkin-muted-surface); }
 .lc-checkin__insight-grid span.is-complete { background: var(--lc-checkin-success); }
 .lc-checkin__insight-grid span.is-partial { background: var(--lc-checkin-warning); }
-.lc-checkin__insight-grid span.is-missed { background: color-mix(in srgb, var(--lc-checkin-danger) 62%, transparent); }
+.lc-checkin__insight-grid span.is-missed { background: color-mix(in srgb, var(--lc-checkin-danger) 70%, transparent); }
 .lc-checkin__insight-grid-range { display: flex; justify-content: space-between; margin-top: 6px; color: var(--lc-checkin-muted); font-size: 9.5px; }
 .lc-checkin__coaching-list { display: grid; gap: 7px; }
 .lc-checkin__coaching-item { display: grid; gap: 3px; padding: 10px 12px; border: 1px solid var(--lc-checkin-border); border-left: 3px solid var(--lc-checkin-accent); border-radius: var(--lc-checkin-radius); background: var(--lc-checkin-muted-surface); }

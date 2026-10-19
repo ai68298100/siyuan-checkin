@@ -3119,3 +3119,10 @@ dark 主题下选中态卡片底色（accent 14% 混 `#1A1B22`）与 hover 态�
 - 产物指标：CSS 657.3 KiB（673,114 bytes），低于 660 KiB（675,840 bytes）硬线 2.66 KiB；0 死类，0 对比度违规。
 - 验证：`pnpm run check`、`pnpm build`、`node tests/css-hygiene.test.cjs`、`node tests/responsive-layout.test.cjs`、`node tests/ui-theme.test.cjs`、`node tests/accessibility-audit.test.cjs`、`pnpm test` 全部零报错通过。
 
+# 2026-10-19 T-1823 Review/Insights 数据可视化皮肤统一第一切片（D-502）
+
+- `src/ui/content-responsive.scss`：`.lc-checkin__insight-stats` 统计容器及其子项分割线从旧的 `surface + border` 统一切到 v3 标准卡片体系（`border: 1px solid var(--lc-checkin-card-border); border-radius: var(--lc-checkin-radius); background: var(--lc-checkin-card-bg); box-shadow: var(--lc-checkin-card-shadow);`），彻底消除了宽屏和窄屏统计卡材质不一的问题；
+- `src/ui/components.scss`：修复图例与图表格子之间未达成/未记录（`is-missed`）状态颜色的割裂问题（原先有的地方用 `accent 52%`、有的用 `danger 70%`、有的用 `danger 62%`），统一对齐为 `color-mix(in srgb, var(--lc-checkin-danger) 70%, transparent)`，确保全站数据可视化图例与图表网格像素 100% 同源；
+- 产物指标：CSS 657.3 KiB（673,055 bytes），低于 660 KiB（675,840 bytes）硬线 2.72 KiB；0 死类，0 对比度违规。
+- 验证：`pnpm run check`、`pnpm build`、`node tests/css-hygiene.test.cjs`、`node tests/responsive-layout.test.cjs`、`node tests/ui-theme.test.cjs`、`node tests/accessibility-audit.test.cjs`、`pnpm test` 全部零报错通过。
+
