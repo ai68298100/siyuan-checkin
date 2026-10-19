@@ -3126,3 +3126,10 @@ dark 主题下选中态卡片底色（accent 14% 混 `#1A1B22`）与 hover 态�
 - 产物指标：CSS 657.3 KiB（673,055 bytes），低于 660 KiB（675,840 bytes）硬线 2.72 KiB；0 死类，0 对比度违规。
 - 验证：`pnpm run check`、`pnpm build`、`node tests/css-hygiene.test.cjs`、`node tests/responsive-layout.test.cjs`、`node tests/ui-theme.test.cjs`、`node tests/accessibility-audit.test.cjs`、`pnpm test` 全部零报错通过。
 
+# 2026-10-19 T-1821 编辑器长表单分组与粘性操作栏第一切片（D-503）
+
+- `src/ui/components.scss`：优化 `.lc-checkin__form-scroll` 表单滚动视口底部内边距，从原固定 `18px` 扩展至 `calc(58px + env(safe-area-inset-bottom))`，彻底解决长表单滚动至底部时最后一个表单字段或模板预览被粘性操作栏（sticky footer）遮挡的体验问题；
+- `src/ui/components.scss`：`.lc-checkin__editor-actions` 粘性操作栏背景升级为 `color-mix(in srgb, var(--lc-checkin-bg) 92%, transparent)` 配合 `backdrop-filter: blur(8px)`，阴影从硬编码 `rgba(0, 0, 0, .05)` 收敛为语义化 `var(--lc-checkin-nav-shadow)`，确保明暗双主题下内容滚入底部时均呈现优雅细腻的磨砂半透与上投阴影；
+- 产物指标：CSS 657.4 KiB（673,159 bytes），低于 660 KiB（675,840 bytes）硬线 2.61 KiB；0 死类，0 对比度违规。
+- 验证：`pnpm run check`、`pnpm build`、`node tests/css-hygiene.test.cjs`、`node tests/responsive-layout.test.cjs`、`node tests/ui-theme.test.cjs`、`node tests/accessibility-audit.test.cjs`、`pnpm test` 全部零报错通过。
+

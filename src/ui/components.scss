@@ -1363,8 +1363,8 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__editor-header { align-items: center; justify-content: flex-start; margin-bottom: 20px; }
 .lc-checkin__back-button { flex: 0 0 auto; border: 0; background: transparent; font-size: 27px; }
 .lc-checkin__form { display: flex; flex-direction: column; gap: 16px; }
-.lc-checkin__form-scroll { display: flex; min-height: 0; flex: 1; flex-direction: column; gap: 16px; overflow-y: auto; padding: 0 2px 18px; scrollbar-width: thin; }
-.lc-checkin__editor-actions { display: flex; flex: 0 0 auto; flex-direction: column; gap: 4px; margin: 0 -2px; padding: 10px 2px 2px; border-top: 1px solid var(--lc-checkin-border-strong); background: var(--lc-checkin-bg); box-shadow: 0 -8px 16px rgba(0, 0, 0, .05); }
+.lc-checkin__form-scroll { display: flex; min-height: 0; flex: 1; flex-direction: column; gap: 16px; overflow-y: auto; padding: 0 2px calc(58px + env(safe-area-inset-bottom)); scrollbar-width: thin; }
+.lc-checkin__editor-actions { display: flex; flex: 0 0 auto; flex-direction: column; gap: 4px; margin: 0 -2px; padding: 10px 2px 2px; border-top: 1px solid var(--lc-checkin-border-strong); background: color-mix(in srgb, var(--lc-checkin-bg) 92%, transparent); backdrop-filter: blur(8px); box-shadow: var(--lc-checkin-nav-shadow); }
 .lc-checkin__field-heading { display: flex; align-items: baseline; justify-content: space-between; color: var(--lc-checkin-muted); font-size: 11px;
     small { color: var(--lc-checkin-muted); font-size: 10px; }
 }

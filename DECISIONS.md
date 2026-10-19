@@ -3104,3 +3104,9 @@
 - `content-responsive.scss` 中的 `.lc-checkin__insight-stats` 统计容器及其子项分割线统一接入 v3 卡片语义 token（`card-border` / `radius` / `card-bg` / `card-shadow`），消灭跨宽屏与默认态的材质跳变。
 - `components.scss` 中的 `.lc-checkin__insight-legend` 与 `.lc-checkin__insight-grid` 未达成状态统一收敛到 `color-mix(in srgb, var(--lc-checkin-danger) 70%, transparent)`，消除图例与图表网格颜色不一（原先混用 accent 52%、danger 62%、danger 70%）的表达分裂。
 - 范围限定：第一切片聚焦统计卡材质与基础状态色对齐；后续切片处理热力图刻度、空态纹理和高低对比模式。
+
+## D-503：T-1821 编辑器长表单分组与粘性操作栏第一切片（2026-10-19）
+
+- `.lc-checkin__form-scroll` 底部安全区内边距扩展至 `calc(58px + env(safe-area-inset-bottom))`，杜绝长表单末尾字段或模板预览被 sticky footer 遮挡。
+- `.lc-checkin__editor-actions` 粘性操作栏背景升级为 `color-mix(in srgb, var(--lc-checkin-bg) 92%, transparent)` + `backdrop-filter: blur(8px)`，阴影收敛至 `var(--lc-checkin-nav-shadow)`，消除明暗双主题下硬编码半透黑阴影。
+- 范围限定：第一切片解决滚动遮挡与操作栏半透阴影；后续切片梳理基础字段→排期→高级的分组视觉隔离与折叠动效。
