@@ -50,7 +50,7 @@ const OVERVIEW_CHANNELS = new Set(Object.keys(OVERVIEW_CHANNEL_FEATURE));
 import {renderCheckinLogView, renderItemView, renderOccasionBannerView, renderRecentRecordView, renderSaveStatusView, renderSyncNoticeView, renderTodayView, renderUpcomingOccasionsView} from "./render/fragments";
 import {bindTodayHandlers, type BindTodayHost} from "./render/bind-today";
 import {bindOccasionsHandlers, type BindOccasionsHost} from "./render/bind-occasions";
-import {bindEditorHandlers, type BindEditorHost} from "./render/bind-editor";
+import {bindEditorHandlers, cleanupEditorFor, type BindEditorHost} from "./render/bind-editor";
 import {bindPageNavigationHandlers, type BindPageNavigationHost} from "./render/bind-page-navigation";
 import {bindMoreNavigationFor, renderMoreView, type MoreNavigationHost} from "./render/more";
 import {saveEditorForm, type SaveFormHost} from "./render/save-form";
@@ -432,6 +432,7 @@ export default class CheckinPlugin extends Plugin {
     /* T-114 兼容镜像：实际待恢复焦点已归 RootContext，保留该字段供旧诊断
        harness 读取最后活跃 root 的值，不再作为跨 root 的事实来源。 */
     private pendingFocusItemId?: string;
+    private pendingFocusByRoot = new WeakMap<HTMLElement, string>();
     private pendingLocalItemId?: string;
     /* 仅当变更发生在当前日时才尝试 Today 局部刷新；跨日事件必须走完整投影。 */
     private pendingLocalItemDate?: string;
@@ -568,8 +569,11 @@ export default class CheckinPlugin extends Plugin {
     }
     /* T-1361 会话诊断（环形容量 20，内存态不落盘；导出经设置页）。 */
     private diagnostics: CheckinDiagnostic[] = [];
+    private lastInitError?: string;
 
     recordDiagnostic(code: CheckinDiagnosticCode, detail?: string): void {
+        const sanitized = detail ? sanitizeDiagnosticDetail(detail) : undefined;
+        detail = sanitized;
         this.diagnostics = appendDiagnostic(this.diagnostics, {code, at: new Date().toISOString(), ...(detail ? {detail} : {})});
     }
 
@@ -631,6 +635,7 @@ export default class CheckinPlugin extends Plugin {
             getStore: () => this.store,
             getNow: () => currentCalendarDate(),
             onJumpDate: (date: string) => this.jumpToHistoryDate(date, this.primaryRoot()),
+            onJumpToday: () => this.showToday(this.primaryRoot()),
             /* T-1351：汇总行 → 项目洞察；锚点行 → 打开锚点文档（内核 rootID，经 openTab）。 */
             onJumpItem: (itemId: string) => this.jumpToItemInsights(itemId),
             onJumpItemAnchor: (blockId: string, isSourceCurrent?: () => boolean) => void this.jumpToItemAnchorDoc(blockId, isSourceCurrent),
@@ -2260,6 +2265,7 @@ private reviewCompatibilitySnapshot?: {
         this.disposing = false;
         this.acceptingOperations = true;
         this.initializationState = "loading";
+        this.notifyApiStateChanged("loading");
         this.initializationRetryPromise = undefined;
         this.layoutReadyBindingsInstalled = false;
         this.resetReadyPromise();
@@ -2496,6 +2502,7 @@ private reviewCompatibilitySnapshot?: {
             if (this.disposed || this.disposing) return;
             this.initializationState = "ready";
             this.settleReady(true);
+            this.notifyApiStateChanged("ready");
             if (snapshotHistoryCorruption) {
                 this.auditEntries = appendStoreAudit(this.auditEntries, {type: "restore", at: new Date().toISOString(), details: {status: "rejected", source: "local-snapshot", failureKind: "snapshot-history-corrupt", invalidCount: snapshotHistoryCorruption.invalidCount}});
                 this.recordDiagnostic("migration-rejected", "snapshot-history-corrupt");
@@ -2509,9 +2516,11 @@ private reviewCompatibilitySnapshot?: {
             void this.recoverExternalPendingBox();
         } catch (error) {
             if (this.disposed || this.disposing) return;
+            this.lastInitError = String(error);
             this.storageReady = false;
             this.initializationState = "failed";
             this.settleReady(false);
+            this.notifyApiStateChanged("failed");
             /* persist() 自身已经记录 save-failed；启动层只补充尚未覆盖的批量读取失败，避免重复诊断。 */
             if (initializationFailurePhase !== "persist") this.recordDiagnostic("load-failed", "startup-load-failed");
             /* T-1783：宿主异常可能包含工作区绝对路径、请求参数或凭据片段。
@@ -2603,6 +2612,7 @@ this.scheduleMidnightRefresh();
         this.settingsDrafts.clear();
         this.closeAvatarEditor?.();
         this.disposing = true;
+        this.notifyApiStateChanged("unavailable");
         /* 拆除预算由宿主统一计时，这里从 onunload 入口开始自计一个更小的预算，
            让队列排空与补写都在被强制销毁之前给出确定的结果或提示。 */
         const deadline = createTeardownDeadline(TEARDOWN_DRAIN_BUDGET_MS);
@@ -2629,6 +2639,7 @@ this.scheduleMidnightRefresh();
         [this.dockElement, this.tabElement, this.quickDialogElement].forEach((root) => {
             if (!root) return;
             disposeResponsiveCharts(root);
+            cleanupEditorFor(root);
             const cleanup = this.settingsNavigationCleanups.get(root);
             cleanup?.();
             this.settingsNavigationCleanups.delete(root);
@@ -2738,6 +2749,17 @@ this.scheduleMidnightRefresh();
         this.activeRoot = undefined;
         this.pendingFocusItemId = undefined;
         this.currentPage = "today";
+    }
+
+    /** C-02：广播全局 API 状态变更事件，供 Task Horizon 等第三方安全感知生命周期。 */
+    private notifyApiStateChanged(state: "loading" | "ready" | "failed" | "unavailable") {
+        if (typeof window !== "undefined" && typeof window.dispatchEvent === "function") {
+            try {
+                window.dispatchEvent(new CustomEvent("checkin:api-state-changed", {detail: {state}}));
+            } catch {
+                // 防御式容错
+            }
+        }
     }
 
     /* 方法体外置于 api.ts（T-022）；宿主成员经 CheckinApiHost 结构化接口声明。 */
@@ -3624,7 +3646,7 @@ this.scheduleMidnightRefresh();
                 cloneItem: (item) => this.cloneItem(item),
                 revisionFingerprint: (item, date) => this.revisionFingerprint(item, date),
                 enqueueMutation: (fn) => this.enqueueMutation(fn),
-                recordEvent: (item, value, moment, fingerprint, note) => this.recordEvent(item, value, moment, fingerprint, note),
+                recordEvent: (item, value, moment, fingerprint, note, attachment, externalRef) => this.recordEvent(item, value, moment, fingerprint, note, attachment, externalRef),
                 setOccasionCompleted: (id, date, completed) => this.setOccasionCompleted(id, date, completed),
                 createItem: async (created) => {
                     /* T-1622：经 enqueueMutation 写入——主 Store 的锁内重读合并（reconcile）
@@ -4187,6 +4209,13 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
         return this.rootContexts.get(root)?.page ?? this.currentPage;
     }
 
+    private setPendingFocusFor(itemId: string, root: HTMLElement): void {
+        this.pendingFocusByRoot.set(root, itemId);
+        const context = this.rootContexts.get(root);
+        if (context) context.pendingFocusItemId = itemId;
+        if (this.activeRoot === root) this.pendingFocusItemId = itemId;
+    }
+
     public hasRootContext(root: HTMLElement): boolean { return this.rootContexts.has(root); }
 
     public isSurfaceRoot(root: HTMLElement, page?: PageId): boolean {
@@ -4605,8 +4634,13 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
                失败文案与 msg.dataLoadFail 同口径声明「已停止写入」。 */
             const loading = this.initializationState === "loading";
             const stateAttrs = loading ? 'role="status"' : 'role="alert"';
-            root.innerHTML = `<div class="lc-checkin" data-appearance="${this.resolvedAppearance()}" data-palette="${this.palette}"><div class="lc-checkin__empty" ${stateAttrs}><div class="lc-checkin__empty-mark">▱</div><div class="lc-checkin__empty-title">${loading ? t("init.loading") : t("init.failed")}</div>${loading ? "" : `<div class="lc-checkin__empty-description">${t("init.failedHint")}</div><div class="lc-checkin__empty-actions"><button class="lc-checkin__text-button" type="button" data-action="retry-initialization">${t("init.retry")}</button></div>`}</div></div>`;
-            if (!loading) root.querySelector<HTMLButtonElement>("[data-action=\"retry-initialization\"]")?.addEventListener("click", () => void this.retryInitialization(root));
+            root.innerHTML = `<div class="lc-checkin" data-appearance="${this.resolvedAppearance()}" data-palette="${this.palette}"><div class="lc-checkin__empty" ${stateAttrs}><div class="lc-checkin__empty-mark">▱</div><div class="lc-checkin__empty-title">${loading ? t("init.loading") : t("init.failed")}</div>${loading ? "" : `<div class="lc-checkin__empty-description">${t("init.failedHint")}</div><div class="lc-checkin__empty-actions"><button class="lc-checkin__text-button" type="button" data-action="retry-init" data-action="retry-initialization">${t("init.retry")}</button><button class="lc-checkin__text-button" type="button" data-action="copy-init-diagnostics">${t("init.copyDiagnostics")}</button></div>`}</div></div>`;
+            if (!loading) {
+                const retryButton = root.querySelector<HTMLButtonElement>("[data-action=\"retry-init\"], [data-action=\"retry-initialization\"]");
+                retryButton?.addEventListener("click", () => void this.retryInitialization(root));
+                root.querySelector<HTMLButtonElement>("[data-action=\"copy-init-diagnostics\"]")?.addEventListener("click", () => this.copyInitDiagnostics());
+                setTimeout(() => retryButton?.focus(), 10);
+            }
             return;
         }
         /* 页面滚动位置记忆（T-112）：内容替换前按「旧页」捕获，渲染完恢复「新页」记忆——
@@ -4719,7 +4753,8 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
         }
         /* 打卡后焦点归位（T-114）：重渲染后把焦点还原到刚操作卡片的主按钮，键盘流无缝继续；
            该卡已被过滤/消失时保持容器焦点。 */
-        const focusItemId = context.pendingFocusItemId;
+        const focusItemId = this.pendingFocusByRoot.get(root) ?? (root === this.rootPages.lastActiveRoot() ? this.pendingFocusItemId : undefined); // const focusItemId = context.pendingFocusItemId;
+        this.pendingFocusByRoot.delete(root);
         context.pendingFocusItemId = undefined;
         if (this.activeRoot === root) this.pendingFocusItemId = undefined;
         if (focusItemId && page === "today") {
@@ -4753,7 +4788,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
            保留宿主旧模板的迁移能力，同时让当前 SVG 标记幂等。 */
         const setDirectIcon = (node: HTMLElement, name: UiIconName) => {
             if (node.firstElementChild?.matches("svg.lc-checkin__glyph")) return;
-            node.innerHTML = uiIcon(name);
+            node.replaceChildren(this.iconNode(name));
         };
         const replaceOccasionIcon = (button: HTMLElement, name: UiIconName) => {
             const icon = button.querySelector<HTMLElement>(".lc-checkin__action-icon");
@@ -6708,7 +6743,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
         const initialFocusDate = report.days.find((day) => day.isToday)?.date || report.days[report.days.length - 1]?.date;
         const insightGrid = report.days.map((day) => {
             const atMost = day.direction === "atMost";
-            const statusText = atMost && day.status === "complete" ? t("insights.atMostKept")
+            const statusText = atMost && day.status === "complete" ? (day.isToday ? t("insights.atMostHolding") : t("insights.atMostKept"))
                 : atMost && day.status === "missed" && day.progress > 0 ? t("insights.atMostBreach")
                     : day.status === "complete" ? t("insights.complete")
                         : day.status === "partial" ? t("insights.partial")
@@ -7156,7 +7191,7 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
     private showEditorForLinkedItem(itemId: string, root?: HTMLElement): void {
         const item = this.store.items.find((candidate) => candidate.id === itemId && !candidate.archived);
         if (!item) { showMessage(t("msg.alreadyGenerated")); return; }
-        this.showEditor(item, undefined, root || this.rootPages.lastActiveRoot() || undefined);
+        this.showEditor(item, undefined, root ?? this.rootPages.lastActiveRoot() ?? undefined); // this.showEditor(item, undefined, root || this.rootPages.lastActiveRoot() || undefined)
     }
 
     /* 方法体外置于 render/fragments.ts（T-022）。 */
@@ -8385,12 +8420,18 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
         await this.recordEvent(item, remaining, moment, expectedRevisionFingerprint);
     }
 
-    private async recordEvent(item: CheckinItem, value: number, moment: ActionMoment, expectedRevisionFingerprint?: string, note?: string, attachment?: string): Promise<CheckinEvent | undefined> {
+    private async recordEvent(item: CheckinItem, value: number, moment: ActionMoment, expectedRevisionFingerprint?: string, note?: string, attachment?: string, externalRef?: string): Promise<CheckinEvent | undefined> {
         const current = getActiveItemById(this.store, item.id);
         const actionDate = calendarDateFromKey(moment.localDate);
         const revision = current ? getItemRevisionForDate(current, actionDate) : undefined;
         if (!current || !revision || !isItemAvailableOnDate(current, actionDate)) {
             return undefined;
+        }
+        if (externalRef) {
+            const existing = this.store.events.find((event) => event.itemId === current.id && event.externalRef === externalRef);
+            if (existing) {
+                return {...existing};
+            }
         }
         if (revision.kind === "binary" && (getItemDirectionForDate(current, actionDate) === "atMost"
             ? getEventsForDay(this.store, current.id, actionDate).some((event) => !isSkipEvent(event))
@@ -8403,7 +8444,8 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
             return undefined;
         }
         const previous = this.store;
-        const event = this.makeEvent(current, value, "manual", revision.unit, note?.trim() || undefined, undefined, moment, attachment);
+        const source: CheckinEvent["source"] = externalRef?.startsWith("agent:") ? "api" : "manual";
+        const event = this.makeEvent(current, value, source, revision.unit, note?.trim() || undefined, externalRef, moment, attachment);
         const next = appendEvent(this.store, event);
         if (next === this.store) return undefined;
         this.store = next;
@@ -9301,6 +9343,8 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
                 if (refreshed && !this.disposed && !this.disposing) {
                     this.invalidateSummary();
                     this.renderBackgroundUpdate();
+                    /* C-01：远端 Store 产生变化进入本地后广播一次 analytics-updated；无变化不通知。 */
+                    this.broadcast({type: "analytics-updated", analyticsAsOf: dateKey(new Date())});
                 }
             }
         });
@@ -9367,22 +9411,43 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
     }
 
     /** 初始化失败页的显式恢复入口：重用同一插件实例，避免重复注册宿主监听。 */
-    private retryInitialization(originRoot?: HTMLElement): Promise<void> {
-        if (this.disposed || this.disposing || this.initializationState === "ready") return Promise.resolve();
+    private async retryInitialization(): Promise<void>;
+    private async retryInitialization(originRoot?: HTMLElement): Promise<void>;
+    private async retryInitialization(originRoot?: HTMLElement): Promise<void> {
+        if (this.disposed || this.disposing || this.initializationState === "ready") return;
         if (this.initializationRetryPromise) return this.initializationRetryPromise;
         this.initializationState = "loading";
         this.storageReady = false;
         this.resetReadyPromise();
         this.render();
         let attempt: Promise<void>;
-        attempt = this.onLayoutReady().finally(() => {
+        attempt = this.onLayoutReady().then(() => {
+            if (this.initializationState === "ready") {
+                showMessage(t("init.retrySuccess"));
+            }
+        }).finally(() => {
             if (this.initializationRetryPromise === attempt) this.initializationRetryPromise = undefined;
             if (this.initializationState === "failed" && originRoot?.isConnected) {
-                originRoot.querySelector<HTMLButtonElement>("[data-action=\"retry-initialization\"]")?.focus({preventScroll: true});
+                const retryButton = originRoot.querySelector<HTMLButtonElement>("[data-action=\"retry-init\"], [data-action=\"retry-initialization\"]");
+                retryButton?.focus();
             }
         });
         this.initializationRetryPromise = attempt;
         return attempt;
+    }
+
+    private copyInitDiagnostics(): void {
+        const payload = JSON.stringify({
+            state: this.initializationState,
+            lastInitError: this.lastInitError,
+            diagnostics: this.diagnostics,
+            time: new Date().toISOString(),
+        }, null, 2);
+        if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+            void navigator.clipboard.writeText(payload).then(() => {
+                showMessage(t("init.diagnosticsCopied"));
+            });
+        }
     }
 
     private invalidateSummary() {

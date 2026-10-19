@@ -118,7 +118,7 @@ export function parseCustomIconLibrary(text: string): string[] {
 }
 
 export function renderIconMarkup(value: string): string {
-    const raw = typeof value === "string" ? value.trim() : "";
+    const raw = typeof value === "string" ? value.replace(/[\u0000-\u001f\u007f]/g, "").trim() : "";
     if (isSafeIconImage(raw)) {
         return `<img src="${escapeHtml(raw)}" alt="" loading="lazy" referrerpolicy="no-referrer" />`;
     }

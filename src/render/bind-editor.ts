@@ -32,6 +32,12 @@ const USER_TEMPLATES_NAME = "checkin-user-templates";
 const MAX_CUSTOM_ICON_BYTES = 240_000;
 const editorRootBindingCleanups = new WeakMap<HTMLElement, () => void>();
 
+export function cleanupEditorFor(root: HTMLElement): void {
+    const previousCleanup = editorRootBindingCleanups.get(root);
+    previousCleanup?.();
+    editorRootBindingCleanups.delete(root);
+}
+
 function safeEditorErrorDetail(error: unknown): string {
     const raw = error instanceof Error ? error.message : typeof error === "string" ? error : "";
     return sanitizeDiagnosticDetail(raw) || t("common.unknownError");
@@ -146,13 +152,8 @@ function setLinkagePlanPlanned(root: HTMLElement, planned: boolean): void {
 }
 
 export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): void {
-    /* The editor root survives page redraws while its children are replaced.
-       Tear down root-level delegated listeners before installing the current
-       session closures, otherwise one click runs once per redraw and stale
-       editor state can win. */
+    cleanupEditorFor(root);
     let inferenceTimer: ReturnType<typeof setTimeout> | undefined;
-    const previousCleanup = editorRootBindingCleanups.get(root);
-    previousCleanup?.();
     const cleanups: Array<() => void> = [];
     const cleanup = () => {
         if (inferenceTimer) clearTimeout(inferenceTimer);
@@ -161,9 +162,18 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         if (editorRootBindingCleanups.get(root) === cleanup) editorRootBindingCleanups.delete(root);
     };
     editorRootBindingCleanups.set(root, cleanup);
+    const addRootListener = (type: string, listener: any, options?: boolean | AddEventListenerOptions) => {
+        root.addEventListener(type, listener, options);
+        cleanups.push(() => {
+            if (type === "click") {
+                root.removeEventListener("click", listener);
+            } else {
+                root.removeEventListener(type, listener, options);
+            }
+        });
+    };
     const listenRootClick = (listener: (event: MouseEvent) => void) => {
-        root.addEventListener("click", listener);
-        cleanups.push(() => root.removeEventListener("click", listener));
+        addRootListener("click", listener as EventListener);
     };
     const editor = host.editorStateForRoot?.(root);
     const isCurrentSession = () => editor && host.isCurrentEditorSession ? host.isCurrentEditorSession(root, editor) : root.isConnected;

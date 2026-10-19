@@ -98,6 +98,7 @@ export interface BindPageNavigationHost {
     showInsights(item?: import("../types").CheckinItem, root?: HTMLElement): void;
     render(root?: HTMLElement): void;
     setArchivedQueryForRoot?(root: HTMLElement, value: string): void;
+    applyPreference?(mutate: () => void, success?: () => void): void;
     persistViewPreferences(): Promise<void>;
     reviewFoldSections: Set<string>;
     reviewFoldTouched: boolean;
@@ -295,15 +296,18 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
             const id = details.dataset.reviewFold || "";
             const previousFolds = new Set(reviewValue("reviewFoldSections", host.reviewFoldSections));
             const previousTouched = reviewValue("reviewFoldTouched", host.reviewFoldTouched);
-            applyPersistentMutation(() => {
+            const mutate = () => {
                 rememberFoldDefaults();
                 if (details.open) reviewValue("reviewFoldSections", host.reviewFoldSections).add(id);
                 else reviewValue("reviewFoldSections", host.reviewFoldSections).delete(id);
                 writeReviewValue("reviewFoldTouched", true);
-            }, () => {
-                writeReviewValue("reviewFoldSections", previousFolds);
-                writeReviewValue("reviewFoldTouched", previousTouched);
-            });
+            };
+            if (host.applyPreference) {
+                host.applyPreference(mutate);
+            } else {
+                mutate();
+                void host.persistViewPreferences();
+            }
             if (details.open && details.dataset.reviewLazy === "true") {
                 renderReviewPreservingView(`[data-review-fold="${CSS.escape(id)}"] > summary`);
             }
@@ -358,9 +362,16 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         const itemId = (event.currentTarget as HTMLSelectElement).value;
         /* T-1590：归档项目可选中回看（只读洞察，动作区提供「在归档中查看」）。 */
         if (!host.store.items.some((item) => item.id === itemId)) return;
-        const previousItemId = insightValue("insightsItemId", host.insightsItemId);
-        applyPersistentMutation(() => writeInsightValue("insightsItemId", itemId), () => writeInsightValue("insightsItemId", previousItemId));
-        renderInsightsPreservingFocus("[data-insight-item]");
+        const mutate = () => {
+            writeInsightValue("insightsItemId", itemId);
+        };
+        if (host.applyPreference) {
+            host.applyPreference(mutate, () => host.render());
+        } else {
+            mutate();
+            void host.persistViewPreferences();
+            renderInsightsPreservingFocus("[data-insight-item]");
+        }
     });
     /* T-1590 洞察范围切换：会话态字段，切换只重渲染（项目/滚动由既有机制保持）。 */
     root.querySelectorAll<HTMLElement>("[data-insight-range]").forEach((button) => button.addEventListener("click", () => {
@@ -599,19 +610,23 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         renderReviewPreservingView("[data-review-assistant-goal]");
     });
     root.querySelectorAll<HTMLElement>("[data-action='review-assistant']").forEach(button => button.addEventListener("click", () => {
-        const previousFolds = new Set(reviewValue("reviewFoldSections", host.reviewFoldSections));
-        const previousTouched = reviewValue("reviewFoldTouched", host.reviewFoldTouched);
-        applyPersistentMutation(() => {
+        const mutate = () => {
             rememberFoldDefaults();
             writeReviewValue("reviewWorkspace", "overview");
             reviewValue("reviewFoldSections", host.reviewFoldSections).add("report");
             writeReviewValue("reviewFoldTouched", true);
-        }, () => {
-            writeReviewValue("reviewFoldSections", previousFolds);
-            writeReviewValue("reviewFoldTouched", previousTouched);
-        });
-        renderReviewPage('[data-review-fold="report"] > summary');
-        root.querySelector<HTMLElement>("[data-review-assistant-goal]")?.focus({preventScroll: true});
+        };
+        const applyUI = () => {
+            renderReviewPage('[data-review-fold="report"] > summary');
+            root.querySelector<HTMLElement>("[data-review-assistant-goal]")?.focus({preventScroll: true});
+        };
+        if (host.applyPreference) {
+            host.applyPreference(mutate, applyUI);
+        } else {
+            mutate();
+            void host.persistViewPreferences();
+            applyUI();
+        }
     }));
     /* T-1516：分母明细日期跳记录——沿用 jumpToHistoryDate 通道，
        不清空既有筛选/排序（与节奏日跳转的清筛选行为不同）。 */
@@ -815,16 +830,17 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         const selector = `details[data-review-fold="${CSS.escape(foldId)}"]`;
         let target = root.querySelector<HTMLDetailsElement>(selector);
         if (!target) return;
-        const previousFolds = new Set(reviewValue("reviewFoldSections", host.reviewFoldSections));
-        const previousTouched = reviewValue("reviewFoldTouched", host.reviewFoldTouched);
-        applyPersistentMutation(() => {
+        const mutate = () => {
             rememberFoldDefaults();
             reviewValue("reviewFoldSections", host.reviewFoldSections).add(foldId);
             writeReviewValue("reviewFoldTouched", true);
-        }, () => {
-            writeReviewValue("reviewFoldSections", previousFolds);
-            writeReviewValue("reviewFoldTouched", previousTouched);
-        });
+        };
+        if (host.applyPreference) {
+            host.applyPreference(mutate);
+        } else {
+            mutate();
+            void host.persistViewPreferences();
+        }
         if (target.dataset.reviewLazy === "true") {
             renderReviewPreservingView(`${selector} > summary`);
             target = root.querySelector<HTMLDetailsElement>(selector);
@@ -1517,52 +1533,70 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
     /* 移动端固定底栏会盖住 in-flow 下拉菜单的底缘：details 打开后若菜单底部
        落入底栏区域，按遮挡量滚动最近的可滚动祖先（兜底 window）让出空间；
        桌面无底栏，测得高度 0 不触发。守门桩 root 无 DOM 事件接口时跳过。 */
-    if (typeof root.addEventListener === "function") {
-        const previousToggleListener = reviewMoreMenuToggleListeners.get(root);
-        if (previousToggleListener && typeof root.removeEventListener === "function") {
-            root.removeEventListener("toggle", previousToggleListener, true);
-        }
-        const toggleListener: EventListener = (event) => {
-            const target = event.target;
-            if (!(target instanceof HTMLDetailsElement) || !target.open) return;
-            const menu = target.querySelector<HTMLElement>(".lc-checkin__review-more-menu");
-            if (!menu) return;
-            const doc = root.ownerDocument;
-            const nav = doc.querySelector(".lc-checkin__mobile-nav");
-            const navHeight = nav instanceof HTMLElement && nav.offsetHeight > 0 ? nav.offsetHeight : 0;
-            if (navHeight === 0) return;
-            const view = doc.defaultView;
-            if (!view) return;
-            const rect = menu.getBoundingClientRect();
-            const limit = view.innerHeight - navHeight - 8;
-            const overflow = Math.ceil(rect.bottom - limit);
-            if (overflow <= 0) return;
-            let scroller: HTMLElement | null = menu.parentElement;
-            while (scroller && scroller !== doc.body) {
-                const style = view.getComputedStyle(scroller);
-                if (/(auto|scroll)/.test(style.overflowY) && scroller.scrollHeight > scroller.clientHeight) break;
-                scroller = scroller.parentElement;
+    if (!root.dataset) (root as unknown as {dataset: Record<string, string>}).dataset = {};
+    if (root.dataset.reviewToggleBound !== "true") {
+        root.dataset.reviewToggleBound = "true";
+        if (typeof root.addEventListener === "function") {
+            const previousToggleListener = reviewMoreMenuToggleListeners.get(root);
+            if (previousToggleListener && typeof root.removeEventListener === "function") {
+                root.removeEventListener("toggle", previousToggleListener, true);
             }
-            if (scroller && scroller !== doc.body) scroller.scrollTop += overflow;
-            else view.scrollBy({top: overflow});
-        };
-        root.addEventListener("toggle", toggleListener, true);
-        reviewMoreMenuToggleListeners.set(root, toggleListener);
+            const toggleListener: EventListener = (event) => {
+                const target = event.target;
+                if (!(target instanceof HTMLDetailsElement) || !target.open) return;
+                const menu = target.querySelector<HTMLElement>(".lc-checkin__review-more-menu");
+                if (!menu) return;
+                const doc = root.ownerDocument;
+                const nav = doc.querySelector(".lc-checkin__mobile-nav");
+                const navHeight = nav instanceof HTMLElement && nav.offsetHeight > 0 ? nav.offsetHeight : 0;
+                if (navHeight === 0) return;
+                const view = doc.defaultView;
+                if (!view) return;
+                const rect = menu.getBoundingClientRect();
+                const limit = view.innerHeight - navHeight - 8;
+                const overflow = Math.ceil(rect.bottom - limit);
+                if (overflow <= 0) return;
+                let scroller: HTMLElement | null = menu.parentElement;
+                while (scroller && scroller !== doc.body) {
+                    const style = view.getComputedStyle(scroller);
+                    if (/(auto|scroll)/.test(style.overflowY) && scroller.scrollHeight > scroller.clientHeight) break;
+                    scroller = scroller.parentElement;
+                }
+                if (scroller && scroller !== doc.body) scroller.scrollTop += overflow;
+                else view.scrollBy({top: overflow});
+            };
+            root.addEventListener("toggle", toggleListener, true);
+            reviewMoreMenuToggleListeners.set(root, toggleListener);
+        }
     }
     /* 报告设置：改动即写回视图偏好；不触发重渲染（复选框自身状态就是真值）。 */
     root.querySelectorAll<HTMLInputElement>("[data-report-option]").forEach((input) => {
         input.addEventListener("change", () => {
             const key = input.dataset.reportOption as keyof ReportSectionToggles;
             if (!(key in host.reportSections)) return;
-            const previous = {...host.reportSections};
-            applyPersistentMutation(() => { host.reportSections = {...host.reportSections, [key]: input.checked}; }, () => { host.reportSections = previous; });
+            const mutate = () => {
+                host.reportSections = {...host.reportSections, [key]: input.checked};
+            };
+            if (host.applyPreference) {
+                host.applyPreference(mutate);
+            } else {
+                mutate();
+                void host.persistViewPreferences();
+            }
         });
     });
     /* T-1343：报告来源筛选改动即写回视图偏好，不触发重渲染。 */
     root.querySelector<HTMLSelectElement>("[data-report-source]")?.addEventListener("change", (event) => {
         const value = (event.currentTarget as HTMLSelectElement).value;
-        const previous = host.reportSource;
-        applyPersistentMutation(() => { host.reportSource = ["manual", "tomato", "api", "import", "sireader", "siplayer"].includes(value) ? value : ""; }, () => { host.reportSource = previous; });
+        const mutate = () => {
+            host.reportSource = ["manual", "tomato", "api", "import", "sireader", "siplayer"].includes(value) ? value : "";
+        };
+        if (host.applyPreference) {
+            host.applyPreference(mutate);
+        } else {
+            mutate();
+            void host.persistViewPreferences();
+        }
     });
     /* T-1432 · R-A8：命名保存视图——应用/保存/删除。 */
     root.querySelector<HTMLSelectElement>("[data-saved-view]")?.addEventListener("change", (event) => {

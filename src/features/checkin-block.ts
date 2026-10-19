@@ -264,7 +264,7 @@ export function buildMonthViewHtml(store: CheckinStore, config: CheckinBlockConf
             : cell.scheduledCount
                 ? ` · ${cell.completedCount}/${cell.scheduledCount}${cell.overage ? ` · ${t("block.overageTag")}` : ""}${cell.incompleteNames.length ? `（缺：${cell.incompleteNames.join("、")}）` : ""}`
                 : "";
-        body.push(`<span class="${classes}" role="button" tabindex="0" data-jump-date="${cell.date}" aria-label="${escapeHtml(`${cell.date}${stateText}`)}" title="${escapeHtml(`${cell.date}${stateText}`)}"><i>${cell.dayOfMonth}</i></span>`);
+        body.push(`<button type="button" class="${classes}" data-jump-date="${cell.date}" aria-label="${escapeHtml(`${cell.date}${stateText}`)}" title="${escapeHtml(`${cell.date}${stateText}`)}"><i>${cell.dayOfMonth}</i></button>`);
     }
     const meta = t("block.monthMeta", {year, month: monthIndex + 1, done: cells.reduce((total, cell) => total + cell.completedCount, 0)});
     return `<div class="lc-checkin__renderblock lc-checkin__renderblock-month" data-renderblock-month="${year}-${String(monthIndex + 1).padStart(2, "0")}"><div class="lc-checkin__renderblock-grid" role="group" aria-label="${escapeHtml(meta)}">${headers}${body.join("")}</div><small class="lc-checkin__renderblock-meta">${escapeHtml(meta)}</small></div>`;
@@ -378,13 +378,33 @@ export function buildTodayRows(store: CheckinStore, items: CheckinItem[], asOf: 
     return rows;
 }
 
-/** R-17.3：当日 ≥2 条有效（非跳过）记录时返回早/午/晚计数，否则 undefined（不做单条噪音）。 */
-export function buildTodaySlotCounts(store: CheckinStore, itemId: string, asOf: Date): {morning: number; afternoon: number; evening: number} | undefined {
+/** T-1802：识别显式时区偏移字面时刻或按 timeZone 参数换算本地小时，消除跨时区漂移。 */
+export function getEventLocalHour(event: {occurredAt: string}, timeZone?: string): number {
+    if (!event?.occurredAt) return 0;
+    const match = /T(\d{2}):\d{2}/.exec(event.occurredAt);
+    if (match && !timeZone && /(?:[+-]\d{2}(?::?\d{2})?|Z)$/.test(event.occurredAt) && !event.occurredAt.endsWith("Z")) {
+        return Number(match[1]);
+    }
+    const date = new Date(event.occurredAt);
+    if (!Number.isFinite(date.getTime())) return 0;
+    if (timeZone) {
+        try {
+            const formatted = new Intl.DateTimeFormat("en-US", {timeZone, hour: "numeric", hourCycle: "h23"}).format(date);
+            return Number(formatted) || 0;
+        } catch {
+            // fallback
+        }
+    }
+    return date.getHours();
+}
+
+/** R-17.3 & T-1802：当日 ≥2 条有效（非跳过）记录时返回早/午/晚计数，否则 undefined（不做单条噪音）。 */
+export function buildTodaySlotCounts(store: CheckinStore, itemId: string, asOf: Date, options?: {timeZone?: string}): {morning: number; afternoon: number; evening: number} | undefined {
     const events = getEventsForDay(store, itemId, asOf).filter((event) => !isSkipEvent(event));
     if (events.length < 2) return undefined;
     const slots = {morning: 0, afternoon: 0, evening: 0};
     for (const event of events) {
-        const hour = new Date(event.occurredAt).getHours();
+        const hour = getEventLocalHour(event, options?.timeZone);
         if (hour < 12) slots.morning += 1;
         else if (hour < 18) slots.afternoon += 1;
         else slots.evening += 1;
@@ -415,7 +435,7 @@ export function buildTodayViewHtml(store: CheckinStore, config: CheckinBlockConf
     const activeCount = items.filter((item) => !item.archived).length;
     const hiddenCount = Math.max(0, activeCount - rows.length);
     const overflow = hiddenCount > 0
-        ? `<p class="lc-checkin__renderblock-today-truncated" role="status" aria-live="polite">${escapeHtml(t("block.todayTruncated", {shown: rows.length, n: hiddenCount}))}</p>`
+        ? `<div class="lc-checkin__renderblock-today-truncated" role="status" aria-live="polite">${escapeHtml(t("block.todayTruncated", {shown: rows.length, n: hiddenCount}))}<button type="button" class="lc-checkin__text-button" data-jump-today="true">${escapeHtml(t("block.todayViewAll"))}</button></div>`
         : "";
     return `<div class="lc-checkin__renderblock lc-checkin__renderblock-today">${overflow}${body}</div>`;
 }
@@ -481,7 +501,7 @@ export function buildHeatmapViewHtml(store: CheckinStore, config: CheckinBlockCo
     const body: string[] = Array.from({length: leading}, () => `<span class="lc-checkin__renderblock-cell is-empty" aria-hidden="true"><i></i></span>`);
     for (const day of days) {
         const classes = ["lc-checkin__renderblock-cell", day.skip ? "is-skip" : `is-level-${day.level}`, day.today ? "is-today" : ""].filter(Boolean).join(" ");
-        body.push(`<span class="${classes}" role="button" tabindex="0" data-jump-date="${day.date}" aria-label="${escapeHtml(day.date)}" title="${escapeHtml(day.date)}"><i></i></span>`);
+        body.push(`<button type="button" class="${classes}" data-jump-date="${day.date}" aria-label="${escapeHtml(day.date)}" title="${escapeHtml(day.date)}"><i></i></button>`);
     }
     const meta = t("block.heatmapMeta", {year, n: total});
     return `<div class="lc-checkin__renderblock lc-checkin__renderblock-heatmap" data-renderblock-year="${year}"><div class="lc-checkin__renderblock-grid is-year" role="group" aria-label="${escapeHtml(meta)}">${headers}${body.join("")}</div><small class="lc-checkin__renderblock-meta">${escapeHtml(meta)}</small></div>`;

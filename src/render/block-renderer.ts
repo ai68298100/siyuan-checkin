@@ -21,6 +21,7 @@ export interface BlockRendererDeps {
     getStore(): CheckinStore;
     getNow(): Date;
     onJumpDate?(date: string): void;
+    onJumpToday?(): void;
     /** T-1351：汇总行点击 → 回顾页该项目洞察。 */
     onJumpItem?(itemId: string): void;
     /** T-1351：锚点行点击 → 打开锚点所在文档（宿主经缓存索引定位）。 */
@@ -174,6 +175,11 @@ export function renderCheckinBlocksIn(protyleElement: HTMLElement, deps: BlockRe
                 deps.onJumpItemAnchor?.(anchorTarget.getAttribute("data-jump-anchor-block") || "", isCurrent);
                 return;
             }
+            const todayTarget = (event.target as HTMLElement).closest("[data-jump-today]");
+            if (todayTarget) {
+                deps.onJumpToday?.();
+                return;
+            }
             const itemTarget = (event.target as HTMLElement).closest("[data-jump-item]");
             if (itemTarget) deps.onJumpItem?.(itemTarget.getAttribute("data-jump-item") || "");
             const target = (event.target as HTMLElement).closest("[data-jump-date]");
@@ -183,8 +189,14 @@ export function renderCheckinBlocksIn(protyleElement: HTMLElement, deps: BlockRe
            键盘 Enter/Space 必须复用既有 click 委托；原生记录按钮不纳入，
            避免 Space/Enter 产生第二次写入。 */
         preview.addEventListener("keydown", (event) => {
-            if (!isActive() || !preview.isConnected || (event.key !== "Enter" && event.key !== " ")) return;
-            const target = (event.target as HTMLElement).closest("[role='button'][tabindex='0'][data-jump-date], [role='listitem'][tabindex='0'][data-jump-item], [data-jump-anchor-block]");
+            if (!isActive() || !preview.isConnected || (event.key !== "Enter" && event.key !== " " && event.key !== "Spacebar")) return;
+            const todayTarget = (event.target as HTMLElement).closest("[data-jump-today]");
+            if (todayTarget) {
+                event.preventDefault();
+                deps.onJumpToday?.();
+                return;
+            }
+            const target = (event.target as HTMLElement).closest("button[data-jump-date], [role='button'][tabindex='0'][data-jump-date], [role='listitem'][tabindex='0'][data-jump-item], [data-jump-anchor-block]");
             if (!target || !preview.contains(target)) return;
             event.preventDefault();
             (target as HTMLElement).click();

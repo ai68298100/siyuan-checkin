@@ -52,7 +52,9 @@ export interface BindTodayHost {
     render(root?: HTMLElement): void;
     persistViewPreferences(): Promise<void>;
     applyPreferenceMutation?(mutate: () => void): void;
+    focusTodaySearch(cursor?: number, root?: HTMLElement): void;
     focusTodaySearch(cursor?: number, root?: HTMLElement, cursorEnd?: number, direction?: "forward" | "backward" | "none"): void;
+    setPendingFocusFor?(itemId: string, root: HTMLElement): void;
     undoRecentRecord(): void;
     retrySave(): Promise<void> | void;
     showHistory(root?: HTMLElement): void;
@@ -213,6 +215,10 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
     const search = root.querySelector<HTMLInputElement>("[data-today-search]");
     let searchTimer: number | undefined;
     let composing = false;
+    const markPendingFocus = (itemId: string) => {
+        host.setPendingFocusFor?.(itemId, root);
+        if (host.setPendingFocusItem) host.setPendingFocusItem(root, itemId); // host.setPendingFocusItem(root, item.id);
+    };
     const cancelSearch = () => {
         if (searchTimer !== undefined) window.clearTimeout(searchTimer);
         searchTimer = undefined;
@@ -248,7 +254,8 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
         if (!token) return;
         quickEntryCancelled.add(token);
         host.render(root);
-        host.focusTodaySearch(search?.value.length, root);
+        const value = search ? search.value : "";
+        host.focusTodaySearch(value.length, root);
     }));
     root.querySelector<HTMLElement>("[data-action='quick-entry-record']")?.addEventListener("click", (event) => {
         const button = event.currentTarget as HTMLElement;

@@ -140,7 +140,7 @@ export function createCheckinApi(host: CheckinApiHost): CheckinApi {
         const normalized = normalizeSummaryProviderResult(output, host.store.items);
         return host.disposed || host.disposing || host.summaryProviders.get(provider.id) !== provider || !normalized ? undefined : normalized.text;
     };
-    return {
+    const api: CheckinApi = {
         name: CHECKIN_API_NAME,
         protocol: CHECKIN_API_PROTOCOL,
         version: CHECKIN_API_VERSION,
@@ -148,15 +148,17 @@ export function createCheckinApi(host: CheckinApiHost): CheckinApi {
         hasCapability: hasCheckinCapability,
         describe: getCheckinApiDescriptor,
         getCapabilityInfo: getCheckinCapabilityInfo,
-        isReady: () => host.initializationState === "ready" && host.acceptingOperations && !host.disposed,
-        whenReady: () => host.readyPromise.then((ready) => ready && host.acceptingOperations && !host.disposed),
+        /* C-02：isReady 与 whenReady 必须复验所属宿主就绪、未处于卸载中，且自身仍为全局挂载实例。 */
+        isReady: () => host.initializationState === "ready" && host.acceptingOperations && !host.disposed && !host.disposing && (typeof window === "undefined" || (window as Window & {siyuanCheckin?: CheckinApi})[CHECKIN_API_NAME] === api),
+        whenReady: () => host.readyPromise.then((ready) => ready && host.acceptingOperations && !host.disposed && !host.disposing && (typeof window === "undefined" || (window as Window & {siyuanCheckin?: CheckinApi})[CHECKIN_API_NAME] === api)),
         getStore: () => host.cloneStore(),
         getItems: () => host.store.items.filter((item) => !item.archived).map((item) => host.cloneItem(item)),
         getEvents: () => host.store.events.map((event) => ({...event})),
         getEventRangeSummary: (range, options) => getEventRangeSummary(host.store, range, options),
         /* T-1391（calendar.read）：服务端过滤隐藏/归档项目；纯数据快照，无备注/附件/externalRef。 */
         getCalendarProjection: (range) => {
-            const projection = buildCalendarProjection(host.store, range);
+            const asOfDate = dateKey(currentCalendarDate());
+            const projection = buildCalendarProjection(host.store, {...range, asOfDate});
             return {
                 ...projection,
                 items: projection.items.map((item) => ({...item, points: item.points.map((point) => ({...point}))})),
@@ -335,6 +337,7 @@ export function createCheckinApi(host: CheckinApiHost): CheckinApi {
             return dispose;
         },
     };
+    return api;
 }
 
 function isSummaryRange(value: unknown): value is SummaryRange {

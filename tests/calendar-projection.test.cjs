@@ -13,7 +13,7 @@ const transpile = (relative) => {
     fs.mkdirSync(path.dirname(target), {recursive: true});
     fs.writeFileSync(target, ts.transpileModule(source, {compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020}}).outputText);
 };
-["src/i18n.ts", "src/types.ts", "src/rules.ts", "src/model.ts", "src/shared.ts", "src/record-step.ts", "src/lunar.ts", "src/catalog.ts", "src/quota.ts", "src/features/reminder-preferences.ts", "src/features/first-success.ts", "src/date-keys.ts", "src/features/view-scope.ts", "src/features/weekly-review.ts", "src/view-preferences.ts", "src/features/note-query.ts", "src/features/note-anchor.ts", "src/features/summary-resident.ts", "src/features/health-inbox.ts", "src/features/weread-adapter.ts", "src/features/yeguif-adapter.ts", "src/features/calendar-projection.ts"].forEach(transpile);
+["src/i18n.ts", "src/types.ts", "src/rules.ts", "src/model.ts", "src/features/record-notes.ts", "src/ui/labels.ts", "src/shared.ts", "src/record-step.ts", "src/lunar.ts", "src/catalog.ts", "src/quota.ts", "src/features/reminder-preferences.ts", "src/features/first-success.ts", "src/date-keys.ts", "src/features/view-scope.ts", "src/features/weekly-review.ts", "src/view-preferences.ts", "src/features/note-query.ts", "src/features/note-anchor.ts", "src/features/summary-resident.ts", "src/features/health-inbox.ts", "src/features/weread-adapter.ts", "src/features/yeguif-adapter.ts", "src/features/calendar-projection.ts"].forEach(transpile);
 const model = require(path.join(outputRoot, "src/model.js"));
 const {normalizeViewPreferences} = require(path.join(outputRoot, "src/view-preferences.js"));
 const {buildCalendarProjection, CALENDAR_PROJECTION_LIMITS} = require(path.join(outputRoot, "src/features/calendar-projection.js"));
@@ -86,7 +86,7 @@ const unitProjection = buildCalendarProjection(model.normalizeStore({version: 3,
     makeEvent({id: "old-unit", itemId: "unit-revision", localDate: "2026-09-11", value: 100, unit: "杯"}),
 ]}), {startDate: "2026-09-11", endDateExclusive: "2026-09-12"});
 assert.equal(unitProjection.items[0].points[0].status, "pending", "old-unit event must not satisfy a new unit revision");
-assert.equal(unitProjection.items[0].points[0].value, 100, "raw value remains visible for auditability");
+assert.equal(unitProjection.items[0].points[0].value, 0, "mismatched unit must not count as value for new unit");
 assert.equal(unitProjection.items[0].points[0].progress, 0, "old-unit event must not inflate rule progress");
 
 /* 非排期日的真实记录 → logged；无记录的非排期日不生成点。 */

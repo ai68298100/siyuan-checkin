@@ -1,5 +1,6 @@
 import type {CheckinEvent, CheckinItem, CheckinQuota, CheckinSchedule, CheckinStore} from "./types";
 import {evaluateQuotaSchedule, getQuotaPeriodBounds} from "./rules";
+import {addDays as addDaysKey, daysBetweenHalfOpen} from "./date-keys";
 import {dateKey, getEventDateKey, getEventsInDateRange, getSkipDatesForItem, getItemRevisionForDate, isComplete, isItemAvailableOnDate, isScheduledToday, isSkipEvent} from "./model";
 const EVENT_RANGE_LIMITS = {maxDays: 366, maxPoints: 366, maxEvents: 5000} as const;
 
@@ -159,9 +160,7 @@ function isLocalDateKey(value: unknown): value is string {
 }
 
 function localDaySpan(startDate: string, endDateExclusive: string): number {
-    const [sy, sm, sd] = startDate.split("-").map(Number);
-    const [ey, em, ed] = endDateExclusive.split("-").map(Number);
-    return Math.round((new Date(ey, em - 1, ed).getTime() - new Date(sy, sm - 1, sd).getTime()) / 86400000);
+    return daysBetweenHalfOpen(startDate, endDateExclusive) ?? 0;
 }
 
 export function getEventsInCustomRange(store: CheckinStore, range: CustomSummaryRange): CheckinEvent[] {
@@ -275,7 +274,8 @@ function summarizeQuota(store: CheckinStore, item: CheckinItem, bounds: DateRang
     /* Use calendar-day arithmetic here. Subtracting 24 hours from a local
        midnight crosses the wrong civil day when DST changes (for example,
        2026-03-10 00:00 EDT minus 24h is 2026-03-08 23:00 EST). */
-    const elapsedEndKey = dateKey(addDays(bounds.end, -1));
+    const endKey = dateKey(bounds.end);
+    const elapsedEndKey = addDaysKey(endKey, -1) ?? endKey;
     interface QuotaPeriodBucket {
         representative: Date;
         schedule: CheckinSchedule;

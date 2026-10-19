@@ -27,6 +27,8 @@ export interface CalendarProjectionPoint {
     /** 该日生效修订的目标值与单位（quota 项目目标随周期，此处仍给当日修订值）。 */
     target: number;
     unit: string;
+    /** C-03：当日生效修订的排期类型（daily/weekly/workdays/custom/interval/quota）。 */
+    scheduleType?: string;
     /** 普通项目：0..1 完成比；atMost/quota 省略。 */
     progress?: number;
 }
@@ -48,6 +50,8 @@ export interface CalendarProjection {
     startDate: string;
     /** 半开区间上界（不含）。 */
     endDateExclusive: string;
+    /** C-03：投影生成时宿主本地基准日键（YYYY-MM-DD）。 */
+    asOfDate?: string;
     items: CalendarProjectionItem[];
     /** 截断前的可见项目总数（>items.length 即发生项目截断）。 */
     totalItems: number;
@@ -76,6 +80,7 @@ function eachDayKey(startDate: string, endDateExclusive: string): string[] {
 export interface CalendarProjectionInput {
     startDate: string;
     endDateExclusive: string;
+    asOfDate?: string;
 }
 
 /** 有界项目×日期投影。输入不合法抛 TypeError（与 v5 只读方法同一错误纪律）。 */
@@ -105,23 +110,22 @@ export function buildCalendarProjection(
             const available = isItemAvailableOnDate(item, at);
             const dayEvents = getEventsForDay(store, item.id, at);
             const skipDay = dayEvents.some((event) => isSkipEvent(event));
-            /* `value` 是原始日总量（公开契约字段）；完成/进度判断另用
-               当前修订单位的 matchingValue，避免单位变更后的旧事件污染规则。 */
-            const value = dayEvents.filter((event) => !isSkipEvent(event)).reduce((total, event) => total + event.value, 0);
+            /* T-1812：单日 value 与 progress 严格对齐当日生效修订单位，旧单位或不匹配单位不计入当日 value。 */
             const matchingValue = dayEvents.filter((event) => !isSkipEvent(event) && event.unit === revision.unit).reduce((total, event) => total + event.value, 0);
+            const value = matchingValue;
             const target = revision.target;
             if (skipDay) {
-                points.push({date, status: "skipped", value: 0, target, unit: revision.unit});
+                points.push({date, status: "skipped", value: 0, target, unit: revision.unit, scheduleType: revision.schedule.type});
                 continue;
             }
             if (revision.schedule.type === "quota") {
                 /* 配额：只有真实贡献日生成点；周期进度放 item 级 quotaRate，不拆伪任务。 */
-                if (value > 0 && available) points.push({date, status: "complete", value, target, unit: revision.unit});
+                if (value > 0 && available) points.push({date, status: "complete", value, target, unit: revision.unit, scheduleType: revision.schedule.type});
                 continue;
             }
             /* T-1766：方向按当日修订取值——普通↔戒除切换后，旧日点保持当时的口径。 */
             if (getItemDirectionForDate(item, at) === "atMost" && revision.schedule.type === "daily") {
-                if (available) points.push({date, status: isComplete(store, item, at) ? "at-most-safe" : "at-most-breach", value, target, unit: revision.unit});
+                if (available) points.push({date, status: isComplete(store, item, at) ? "at-most-safe" : "at-most-breach", value, target, unit: revision.unit, scheduleType: revision.schedule.type});
                 continue;
             }
             const scheduled = available && isScheduledToday(item, at);
@@ -133,11 +137,12 @@ export function buildCalendarProjection(
                     value,
                     target,
                     unit: revision.unit,
+                    scheduleType: revision.schedule.type,
                     ...(complete ? {} : {progress: target > 0 ? Math.min(1, matchingValue / target) : 0}),
                 });
                 continue;
             }
-            if (value > 0) points.push({date, status: "logged", value, target, unit: revision.unit});
+            if (value > 0) points.push({date, status: "logged", value, target, unit: revision.unit, scheduleType: revision.schedule.type});
         }
         /* 配额周期进度：以投影区间末日所在周期为准（单一路径复用 rules 的评估器）。 */
         let quotaRate: number | undefined;
@@ -162,15 +167,14 @@ export function buildCalendarProjection(
             ...(quotaRate !== undefined ? {quotaRate} : {}),
         };
     });
+    const totalDays = daysBetweenHalfOpen(range.startDate, range.endDateExclusive) ?? 0;
+    const asOfDate = range.asOfDate && isValidDateKey(range.asOfDate) ? range.asOfDate : range.startDate;
     return {
         startDate: range.startDate,
         endDateExclusive: range.endDateExclusive,
+        asOfDate,
         items: projected,
         totalItems: visible.length,
-        truncated: visible.length > projected.length || dayKeys.length < eachDayCount(range.startDate, range.endDateExclusive),
+        truncated: visible.length > projected.length || totalDays > CALENDAR_PROJECTION_LIMITS.maxDays,
     };
-}
-
-function eachDayCount(startDate: string, endDateExclusive: string): number {
-    return daysBetweenHalfOpen(startDate, endDateExclusive) ?? 0;
 }

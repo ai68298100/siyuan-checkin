@@ -1,3 +1,35 @@
+# 2026-10-19 可信行动事实层与生态连接里程碑（v18.18.0 交付）
+
+**v18.18.0 核心能力与自动化质量门禁全量通过**：
+1. **Task Horizon 合作提供端协议就绪**：
+   - C-01 锁内合并产生实际变更时广播 `analytics-updated`，卸载安全保护；
+   - C-02 API 生命周期规范：广播全局 `checkin:api-state-changed`（loading/ready/failed/unavailable），卸载时清理 window 全局挂载，`isReady` 与 `whenReady` 强化全局实例校验；
+   - C-03 日历投影每个 point 增补有效修订的 `scheduleType`，顶层输出宿主本地基准日 `asOfDate`；
+   - W-03 & T-1803 升级 `normalizeValidIso` 严格带时区 ISO 校验（彻底拒绝非法月日/时刻隐式滚日及 date-only 输入），判序严格固定为“格式校验 → 墓碑 discarded → 已存/批内 duplicate → 业务校验 blocked → 写入 recorded”；落地 Task Horizon 合作专用约束（value: 1、显式单位、身份日与落账本地日严格一致、count+daily+atLeast、当日未显式 SKIP）。
+2. **核心模型与日期时区正确性**：
+   - T-1774 戒除类今日暂守口径消歧：呈现层今日完成区标题自适应纯戒除（`today.atMostHoldingTitle`）与混合场景（`today.completedHolding`），洞察日格进行中展示为 `insights.atMostHolding`（今日守住中），底层 D-219 零破戒即守住承诺不变；
+   - T-1793 & T-1811 严格真实日期契约：日历投影、排期预演与周负荷全量接入严格公历校验，淘汰无界循环，改按 O(1) 跨度计算与 366 天截断；
+   - T-1794 配额末日 DST 算术：消除物理毫秒减法（杜绝美东夏令时 23 小时天漂移到前两日），改按 `addDaysKey(endKey, -1)` 纯整数日序号推导上一民历日；
+   - T-1812 日历投影数值戒除与单位同源：数值型 atMost 戒除项日状态改用 `isComplete` 单一模型判定，单日 value/progress 严格对齐当日生效修订单位；
+   - T-1802 渲染块时段统计对齐：引入 `getEventLocalHour` 消除跨时区早/午/晚分组漂移。
+3. **多表面交互隔离与编辑草稿保护（Multi-Root Isolation）**：
+   - T-1791 & T-1792 快速弹窗稳定性与草稿安全：`shouldProtectQuickDialogDraft` 依据弹窗自身 root 保护未保存草稿，外部关闭、重新打开重置以及 `.b3-dialog__close` 按钮统一拦截并确认；标题拖拽与双击最大化重构为容器事件委托；
+   - T-1804 & T-1805 多 root 搜索与后台刷新隔离：`focusTodaySearchFor` 显式传递发起 root 限制搜索聚焦，`pendingFocusByRoot` 隔离焦点归位，`renderBackgroundUpdateFor` 逐 root 检查并在编辑页跳过重绘；
+   - T-1806 上下文菜单几何边界与焦点还原：重构定位算法，结合 rootRect 与 visualViewport 计算相对偏移，点外关闭与 Esc 自动还原焦点；
+   - T-1809 & T-1810 跨表面导航 root 传递：事项页返回、关联项目编辑以及历史/Today 菜单导航统一传递当前 root，跨表面返回栈严格隔离；
+   - T-1789 & T-1790 委托监听幂等与销毁：`cleanupEditorFor` 统一销毁，单例标记消除重复监听；
+   - T-1779 页面级偏好一致性与回滚：6 处页面级偏好接入 `applyPreference`，持久化失败自动快照回滚并提示；
+   - T-1780 & T-1781 专注计时补偿与同步：Date.now() 单调时间戳自动补偿后台节流，>=60s 切换预设确认，多表面同步刷新；
+   - T-1785 动态图标安全：图片白名单，`replaceChildren` 消除 innerHTML；
+   - T-1800 & T-1801 渲染块增强：日期格全面升级为原生 `<button type="button">` 并增设 Enter/Space 键盘回调与 `:focus-visible` 焦点环，五项截断通知与查看全部入口。
+4. **竞品调研沉淀（D-392）**：深度对标 Loop Habit Tracker、Table Habit、Habitica、TickTick、Obsidian 插件与 Streaks，输出深度调研报告 `docs/benchmark-ecosystem-survey-2026-10.md`。
+5. **验证证据**：
+   - `pnpm run check`（TypeScript 零错误）；
+   - `pnpm run build`（生产打包 dist/ 成功，package.zip 成功生成）；
+   - 19 个新增专项测试用例全绿；
+   - Chrome 明暗双主题 `tests/visual-qa.cjs` 全部通过，`pageErrors: []`；
+   - Chrome `tests/width-walkthrough.cjs` 全 56 表面场景、32 交互状态、8 主题/动作色场景全部通过。
+
 # 2026-10-16 Task Horizon 原始来件复核与补丁收口（T-1871，D-485）
 
 **v18.17.6 已正式发布**：源码提交 `97d8ae94065f1bc16a343a4f6d4ce865dcc96548`，tag `v18.17.6`，Release：https://github.com/ai68298100/siyuan-checkin/releases/tag/v18.17.6 。远端 main 与 tag 的源码已核对；882112-byte 安装包回下载后与本地逐字节一致，ZIP 完整、清单版本正确，SHA-256 为 `2423592e00db72773a35a47a7c1c27db531842c465cf7ca49c452da294df8d5a`。发布源码 CI run `38827502945` 的 verify 与 browser-audit 均成功。后续文档证据提交不改变发布 tag 或资产。

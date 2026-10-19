@@ -60,6 +60,7 @@ export interface PluginOpsHost {
     openQuickDialog(): void;
     showEditor(item?: CheckinItem, returnTo?: "today" | "review" | "insights" | "more", root?: HTMLElement): void;
     persistViewPreferences(): Promise<void>;
+    pageOfRoot?(root: HTMLElement): "today" | "editor" | "review" | "archived" | "insights" | "occasions" | "settings";
     cloneStore(store?: CheckinStore): CheckinStore;
     itemFingerprint(item: CheckinItem): string;
     enqueueMutation<T>(operation: () => Promise<T>): Promise<T>;
@@ -67,10 +68,15 @@ export interface PluginOpsHost {
 }
 
 export function renderBackgroundUpdateFor(host: PluginOpsHost): void {
-    /* T-1445：今日页输入（填写数值/备注）聚焦期间挂起后台全量重渲染——
-       整树重建会丢焦点导致输入法反复弹出（手机端不可输入）。
-       数据已持久化，仅推迟视觉刷新；挂起时在当前输入框上登记一次性
-       focusout 补渲染（T-1455：显式渲染通道不再被挂起，防止死锁）。 */
+    const candidateRoots = [host.dockElement, host.tabElement, host.quickDialogElement].filter((root): root is HTMLElement => Boolean(root));
+    if (typeof host.pageOfRoot === "function" && typeof host.renderInto === "function" && candidateRoots.length) {
+        candidateRoots.forEach((root) => {
+            const page = host.pageOfRoot ? host.pageOfRoot(root) : host.currentPage;
+            if (page === "editor") return;
+            host.renderInto(root);
+        });
+        return;
+    }
     const roots = host.roots?.() || [];
     const pageForRoot = (root: HTMLElement) => host.pageForRoot?.(root) || host.currentPage;
     const typingRoot = roots.find((root) => pageForRoot(root) === "today"
@@ -257,10 +263,12 @@ export function downloadDockTomatoDiagnosticsFor(provider: DockTomatoProviderDia
     void saveGeneratedFile({fileName: `siyuan-checkin-focus-diagnostics-${dateKey(new Date())}.json`, content: serializeDockTomatoDiagnostics(provider), mime: "application/json;charset=utf-8"});
 }
 
+export function focusTodaySearchFor(host: PluginOpsHost, selection?: number, root?: HTMLElement): void;
+export function focusTodaySearchFor(host: PluginOpsHost, selection?: number, root?: HTMLElement, selectionEnd?: number, direction?: "forward" | "backward" | "none"): void;
 export function focusTodaySearchFor(host: PluginOpsHost, selection?: number, root?: HTMLElement, selectionEnd?: number, direction?: "forward" | "backward" | "none"): void {
     window.setTimeout(() => {
-        const roots = root ? [root] : [host.dockElement, host.tabElement, host.quickDialogElement].filter((element): element is HTMLElement => Boolean(element));
-        const target = roots.find((element) => element.isConnected && (!host.pageForRoot || host.pageForRoot(element) === "today"));
+        const roots = root ? [root] : [host.dockElement, host.tabElement, host.quickDialogElement];
+        const target = roots.filter((element): element is HTMLElement => Boolean(element)).find((element) => element.isConnected && (!host.pageForRoot || host.pageForRoot(element) === "today"));
         if (!target) return;
         const input = target.querySelector<HTMLInputElement>("[data-today-search]");
         if (!input) return;

@@ -128,3 +128,34 @@ export function summarizePrivacyControlPlane(preferences: {
         telemetry: "none",
     };
 }
+
+/** T-1783：敏感信息脱敏与安全截断矩阵。
+    - 剥离恶意控制字符（\u0000-\u001f\u007f）及双向覆盖字符（\u202A-\u202E, \u2066-\u2069）；
+    - 脱敏 API Key、Bearer Token 及长哈希凭据；
+    - 模糊用户本地私有路径（如盘符下的用户目录或 POSIX 个人主目录）；
+    - 代理对对齐的安全长度截断，超长追加可解释标记。 */
+const SENSITIVE_KEY_PATTERN = /(?:bearer\s+[a-zA-Z0-9._~+/-]+|apiKey["']?\s*[:=]\s*["']?[a-zA-Z0-9_\-]{8,}["']?)/gi;
+const USER_PATH_PATTERN = /(?:[a-zA-Z]:\\Users\\[^\\]+|[a-zA-Z]:\/Users\/[^\/]+|\/(?:home|Users)\/[^\/]+)/gi;
+const UNICODE_EVIL_CONTROL_PATTERN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F\u202A-\u202E\u2066-\u2069]/g;
+
+export function redactSensitiveText(value: unknown, maxLength = 200): string {
+    if (typeof value !== "string") return "";
+    let cleaned = value.replace(UNICODE_EVIL_CONTROL_PATTERN, "");
+    cleaned = cleaned.replace(SENSITIVE_KEY_PATTERN, "[REDACTED_CREDENTIAL]");
+    cleaned = cleaned.replace(USER_PATH_PATTERN, "[USER_PATH]");
+    cleaned = cleaned.trim();
+    if (cleaned.length <= maxLength) return cleaned;
+    // 代理对安全截断：避免把 UTF-16 代理对截半造成坏字符
+    let truncated = cleaned.slice(0, maxLength);
+    if (/[\uD800-\uDBFF]$/.test(truncated)) {
+        truncated = truncated.slice(0, -1);
+    }
+    return `${truncated}…[truncated]`;
+}
+
+/** T-1783：诊断详情安全清洗器（≤200 字符）。 */
+export function sanitizeDiagnosticDetail(detail?: string): string | undefined {
+    if (!detail || typeof detail !== "string") return undefined;
+    const redacted = redactSensitiveText(detail, 185);
+    return redacted || undefined;
+}

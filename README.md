@@ -8,37 +8,48 @@
 
 把一次行动记录下来，再用同一份可追溯数据完成统计、提醒、复盘和笔记联动。
 
-**当前版本：18.17.6**
+**当前版本：18.18.0**
 
-18.17.6 完善恢复与跨窗口可靠性、外部批量写入边界及状态可读性；这里介绍本次更新与已实现功能，后续开发进展见 [PROGRESS](PROGRESS.md)。
+18.18.0 达成「可信行动事实层与生态连接里程碑」；Task Horizon 提供端协议全面就绪，消除跨时区与 DST 算术漂移，落地多 root 跨表面交互隔离与编辑草稿保护，统一写入幂等与敏感信息脱敏矩阵。这里介绍本次更新与已实现功能，后续开发进展见 [PROGRESS](PROGRESS.md)。
 
 > **内测说明**：小驴考试、小驴管家、小驴闪卡和小驴常用目前仍处于内测阶段，部分功能和思源宿主兼容性正在验证中。欢迎通过交流 QQ 群 **871707735** 反馈问题、提交需求；对稳定性有较高要求时，请等待对应插件发布正式版。
 
 [![最新 Release](https://img.shields.io/github/v/release/ai68298100/siyuan-checkin?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-checkin/releases/latest) [![CI](https://github.com/ai68298100/siyuan-checkin/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-checkin/actions/workflows/ci.yml) [![License](https://img.shields.io/github/license/ai68298100/siyuan-checkin)](LICENSE)
 
-[最新 Release](https://github.com/ai68298100/siyuan-checkin/releases/latest) · [18.17.6 发布说明](docs/releases/release-notes-18.17.6.md) · [问题反馈](https://github.com/ai68298100/siyuan-checkin/issues) · [开发文档](docs/)
+[最新 Release](https://github.com/ai68298100/siyuan-checkin/releases/latest) · [18.18.0 发布说明](docs/releases/release-notes-18.18.0.md) · [问题反馈](https://github.com/ai68298100/siyuan-checkin/issues) · [开发文档](docs/)
 
 </div>
 
-### 本次更新（18.17.6）
+### 本次更新（18.18.0）
 
-本版完善恢复、跨窗口与外部批量写入的可靠性，并修正回执折叠和状态对比度。
+本次为「可信行动事实层与生态连接里程碑」大版本，收口 Task Horizon 提供端协议，强化多表面隔离与数据可信度。
 
-新增：存储测量与合作核对材料
+新增：生态协作与事实安全
 
-- 提供主档快照基准，覆盖大样本、双窗口及受控写失败后重载恢复。
-- 按 Task Horizon 原始来件整理逐项处理清单和回复材料，明确下一批验收条件。
+- **Task Horizon 提供端 C-01~03 就绪**：锁内变更广播、API 全局生命周期与日历有效排期类型/基准日输出。
+- **W-03 合作专用约束落地**：严格带时区 ISO 校验（杜绝非法滚日），墓碑优先于重复的判序，约束单次记录与当日未跳过。
+- **T-1786 统一写入幂等**：Agent 增加 requestId 幂等键，recordEvent 支持 externalRef 避免网络重试重复入账。
+- **T-1783 隐私脱敏矩阵**：清洗恶意控制字符与双向覆盖字符，自动脱敏 Bearer 令牌、API Key 与私有本地路径。
+- **T-1808 初始化失败修复通道**：失败屏增加可达重试与诊断复制按钮，提供锁内重试与结构化导出。
 
-优化：状态可读性与批量输入
+优化：核心模型与呈现一致性
 
-- 完成事项芯片和提醒行使用明确颜色，补齐首次成功按钮回退色并清理重复样式。
-- 批量写入捕获调用时输入，按落账日的有效规则修订判定方向。
+- **T-1774 戒除暂守口径消歧**：今日完成区与洞察日格自适应区分“守住中”与“已完成”，连击与底层承诺不变。
+- **T-1793 & T-1811 严格真实日期契约**：日历投影、排期预演与周负荷全量接入严格公历校验，淘汰无界循环。
+- **T-1794 配额末日 DST 算术**：消除物理毫秒减法（杜绝美东夏令时 23 小时跨度漂移），按民历日序号推导。
+- **T-1812 日历投影数值戒除与单位同源**：数值戒除改用 isComplete 单一判定，单日 value 严格对齐有效单位。
+- **T-1801 & T-1802 渲染块增强**：五项截断显式通知与直达工作台按钮，getEventLocalHour 消除时区漂移。
 
-修复：恢复与外部写入边界
+修复：多表面交互隔离与生命周期
 
-- 避免旧窗口把恢复前未变化的项目、事件和修订重新合入，保留真实并发新增。
-- 隐藏回执面板不再占位或遮挡点击；批量未实际执行时拒绝 Promise，并统一 Task Horizon 身份校验。
-- v4 参考 bridge 跨日重试保留原身份并延后，避免误记到今天。Task Horizon 新合作仍待完成日历通知与专用写入验收。
+- **T-1791 & T-1792 快速弹窗稳定性**：shouldProtectQuickDialogDraft 依据自身 root 保护草稿，容器事件委托挂载拖拽。
+- **T-1804 & T-1805 多 root 搜索与刷新隔离**：focusTodaySearchFor 限制 root，pendingFocusByRoot 隔离焦点，编辑页跳过后台重绘。
+- **T-1806 上下文菜单几何边界**：重构定位算法，结合 rootRect 与 visualViewport 计算相对偏移，点外与 Esc 还原焦点。
+- **T-1809 & T-1810 跨表面导航 root 传递**：事项页返回、关联项目编辑以及历史/Today 菜单导航统一传递当前 root。
+- **T-1789 & T-1790 委托监听幂等与销毁**：cleanupEditorFor 统一销毁，单例标记消除重复监听。
+- **T-1779 页面偏好回滚**：6 处页面级偏好接入 applyPreference 快照/回滚链。
+- **T-1780 & T-1781 专注计时补偿**：Date.now() 单调时间戳自动补偿后台节流，>=60s 切换预设确认，多表面同步刷新。
+- **T-1785 动态图标安全**：图片白名单，replaceChildren 消除 innerHTML。
 
 
 <div align="center">
@@ -102,6 +113,10 @@
 
 <details>
 <summary>历史版本更新（点击展开）</summary>
+
+### 18.17.6
+
+完善恢复、跨窗口与外部批量写入的可靠性，并修正回执折叠和状态对比度。详见 [18.17.6 发布说明](docs/releases/release-notes-18.17.6.md)。
 
 ### 18.17.5
 

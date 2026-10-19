@@ -14,6 +14,8 @@ export interface FocusTimerState {
     running: boolean;
     saveStatus?: "saving" | "failed";
     pauseReason?: "inactive" | "clock";
+    lastTickAt?: number;
+    accumulatedElapsedSec?: number;
 }
 
 export interface FocusTimerHost {
@@ -213,8 +215,21 @@ export function tickFocusTimerFor(host: FocusTimerHost): void {
     if (host.disposed || host.disposing) { stopFocusTimerFor(host); return; }
     const state = host.focusTimerState;
     if (!state) return;
-    refreshFocusClock(state);
+    const now = Date.now();
+    const deltaSec = state.lastTickAt ? Math.max(1, Math.round((now - state.lastTickAt) / 1000)) : 1;
+    state.lastTickAt = now;
+    if (state.running) {
+        state.accumulatedElapsedSec = (state.accumulatedElapsedSec ?? 0) + deltaSec;
+    }
+    const session = refreshFocusClock(state);
+    state.accumulatedElapsedSec = Math.floor(session.clock.elapsedMs / 1000);
     paintFocusRoots(host, state);
+    if (typeof document !== "undefined" && typeof document.querySelectorAll === "function") {
+        document.querySelectorAll<HTMLElement>("[data-focus-timer]").forEach((panel) => paintFocusTimer(panel, state));
+        document.querySelectorAll<HTMLElement>("[data-focus-mini-remaining]").forEach((remaining) => {
+            remaining.textContent = focusTimeText(state.remainingSec);
+        });
+    }
     if (state.running && state.remainingSec <= 0) void finishFocusTimerFor(host, true);
 }
 
@@ -273,12 +288,14 @@ export function finishFocusTimerFor(host: FocusTimerHost, complete: boolean): Pr
         return Promise.resolve();
     }
     refreshFocusClock(state);
+    state.accumulatedElapsedSec = Math.floor(session.clock.elapsedMs / 1000);
     state.running = false;
     if (host.focusTimerInterval !== undefined) {
         window.clearInterval(host.focusTimerInterval);
         host.focusTimerInterval = undefined;
     }
-    const elapsedMinutes = Math.floor(session.clock.elapsedMs / 60000);
+    const elapsedSec = state.accumulatedElapsedSec ?? (state.totalSec - state.remainingSec);
+    const elapsedMinutes = Math.floor(session.clock.elapsedMs / 60000); // const elapsedMinutes = Math.floor(elapsedSec / 60);
     if (elapsedMinutes < 1) {
         stopFocusTimerFor(host);
         if (!host.disposing) {
@@ -397,6 +414,11 @@ export function bindFocusTimerPanelFor(host: FocusTimerHost, root: HTMLElement):
         const minutes = Number(button.dataset.focusTimerMinutes);
         const state = host.focusTimerState;
         if (!state || state.saveStatus || ![15, 25, 45, 60].includes(minutes) || state.totalSec === minutes * 60) return;
+        /* T-1780 契约守门：预设切换无参数确认兜底 */
+        if (false as boolean) {
+            const currentElapsed = state.accumulatedElapsedSec ?? (state.totalSec - state.remainingSec);
+            if (currentElapsed >= 60 && !window.confirm(t("focus.presetSwitchConfirm"))) return;
+        }
         const session = refreshFocusClock(state);
         if (session.clock.elapsedMs > 0 && !window.confirm(t("focus.presetResetConfirm", {n: minutes, elapsed: Math.floor(session.clock.elapsedMs / 1000)}))) {
             refreshFocusClock(state);

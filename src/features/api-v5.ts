@@ -2,7 +2,6 @@
    事件范围读与项目统一投影的过滤、限量、截断判定。
    输入校验(TypeError)在 api.ts 完成；本模块只做纯数据投影，不执行 getter 之外的副作用。 */
 import {CHECKIN_EVENTS_READ_LIMITS, CHECKIN_ITEMS_QUERY_LIMITS} from "../api-contract";
-import {isTaskHorizonExternalRef} from "../ecosystem";
 import type {CheckinEvent, CheckinItem, CheckinKind} from "../types";
 
 const CHECKIN_KINDS: readonly CheckinKind[] = ["binary", "count", "duration", "quantity", "custom"];
@@ -69,11 +68,13 @@ export function projectItems(items: readonly CheckinItem[], options: {includeArc
 }
 
 /* ===== v5-2：幂等批量写（events.record.batch, D-240 切分第二批）=====
-   单遍规划,结果与输入严格 1:1。判定顺序固定（与 D-227 内部写入器同源）：
-   duplicate → discarded → blocked → recorded；批内重复 externalRef 的条目
-   不得重复入账。落盘/持久化/广播由宿主在单一受保护单元内完成。 */
+   单遍规划，结果与输入严格 1:1。判定顺序固定（W-03 合作契约）：
+   输入格式 → 墓碑 discarded → 已存/批内 duplicate → 业务校验 blocked → 写入 recorded；
+   批内重复 externalRef 的条目不得重复入账。落盘/持久化/广播由宿主在单一受保护单元内完成。 */
 
-import {dateKey, getItemById, getItemDirectionForDate, getItemRevisionForDate, isItemAvailableOnDate} from "../model";
+import {dateKey, getEventsForDay, getItemById, getItemDirectionForDate, getItemRevisionForDate, isItemAvailableOnDate, isSkipEvent} from "../model";
+import {isValidDateKey} from "../date-keys";
+import {isTaskHorizonExternalRef, parseTaskHorizonExternalRef} from "../ecosystem";
 import type {CheckinStore} from "../types";
 
 export interface BatchRecordInput {
@@ -103,13 +104,19 @@ export interface BatchEntryResult {
     usedFallbackTime?: boolean;
 }
 
-/* Public batch writes use an explicit instant. Date.parse also accepts
-   date-only and timezone-less strings, which silently turns an integration's
-   business day into the host's local day. Keep the documented ISO contract
-   deterministic: date + time + explicit Z/offset, then normalize to UTC. */
+const STRICT_ISO_PATTERN = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d{1,9})?)?(Z|[+-]\d{2}(?::?\d{2})?)$/;
+
+/** W-03：严格带时区 ISO 时间戳校验——杜绝 Date.parse 将 2026-02-30、2026-04-31、24:00 等非法月日/时刻隐式滚日。 */
 function normalizeValidIso(value: unknown): string | undefined {
-    if (typeof value !== "string" || !value || value.length > 40
-        || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?(?:Z|[+-]\d{2}:\d{2})$/.test(value)) return undefined;
+    if (typeof value !== "string" || !value || value.length > 40) return undefined;
+    const match = STRICT_ISO_PATTERN.exec(value);
+    if (!match) return undefined;
+    const datePart = `${match[1]}-${match[2]}-${match[3]}`;
+    if (!isValidDateKey(datePart)) return undefined;
+    const hour = Number(match[4]);
+    const minute = Number(match[5]);
+    const second = match[6] !== undefined ? Number(match[6]) : 0;
+    if (hour > 23 || minute > 59 || second > 59) return undefined;
     const parsed = Date.parse(value);
     return Number.isFinite(parsed) ? new Date(parsed).toISOString() : undefined;
 }
@@ -163,6 +170,16 @@ export function planBatchRecord(store: CheckinStore, inputs: readonly unknown[],
             }
             unit = input.unit.trim();
         }
+        let usedFallbackTime = false;
+        let occurredAt = normalizeValidIso(input.occurredAt);
+        if (!occurredAt) {
+            if (input.occurredAt !== undefined) {
+                pushRejected("invalid-occurred-at");
+                continue;
+            }
+            occurredAt = nowIso;
+            usedFallbackTime = true;
+        }
         let externalRef: string | undefined;
         if (input.externalRef !== undefined) {
             if (typeof input.externalRef !== "string" || !input.externalRef.trim() || input.externalRef.trim().length > 251) {
@@ -183,19 +200,43 @@ export function planBatchRecord(store: CheckinStore, inputs: readonly unknown[],
             }
             note = input.note;
         }
-        let usedFallbackTime = false;
-        let occurredAt = normalizeValidIso(input.occurredAt);
-        if (!occurredAt) {
-            if (input.occurredAt !== undefined) {
+        const entry: Omit<BatchEntryPlan, "unit"> = {itemId, value, externalRef, note, occurredAt, localDate: dateKey(new Date(occurredAt))};
+        const refKey = externalRef ? `${itemId}\u0000api\u0000${externalRef}` : undefined;
+
+        /* W-03：Task Horizon 合作专用格式与一致性校验 */
+        const isTaskHorizon = Boolean(externalRef && externalRef.startsWith("taskhorizon:"));
+        if (isTaskHorizon) {
+            if (!isTaskHorizonExternalRef(externalRef)) {
+                pushRejected("invalid-external-ref");
+                continue;
+            }
+            if (value !== 1) {
+                pushRejected("invalid-value");
+                continue;
+            }
+            if (!unit) {
+                pushRejected("invalid-unit");
+                continue;
+            }
+            if (usedFallbackTime) {
                 pushRejected("invalid-occurred-at");
                 continue;
             }
-            occurredAt = nowIso;
-            usedFallbackTime = true;
+            const parsedRef = parseTaskHorizonExternalRef(externalRef);
+            if (!parsedRef || parsedRef.localDate !== entry.localDate) {
+                pushRejected("ref-date-mismatch");
+                continue;
+            }
         }
-        const entry: Omit<BatchEntryPlan, "unit"> = {itemId, value, externalRef, note, occurredAt, localDate: dateKey(new Date(occurredAt))};
-        /* 批内去重:同 refKey 回显首条结果(recorded 的 eventId 在宿主追加后回填,此处未定)。 */
-        const refKey = externalRef ? `${itemId}\u0000api\u0000${externalRef}` : undefined;
+
+        /* W-03 判序第 2 步：同身份墓碑优先拦截（在重复检查之前，已被删除的身份不得作为 duplicate 重新确认） */
+        if (externalRef && (store.eventTombstones || []).some((tombstone) => tombstone.source === "api" && tombstone.externalRef === externalRef && (!tombstone.itemId || tombstone.itemId === entry.itemId))) {
+            if (refKey) seenRefs.set(refKey, results.length);
+            results.push({kind: "discarded"});
+            continue;
+        }
+
+        /* W-03 判序第 3 步：批内重复与已存事实（duplicate）——规则后来发生变化不得改写已存事实的 duplicate 回执 */
         if (refKey) {
             const firstIndex = seenRefs.get(refKey);
             if (firstIndex !== undefined) {
@@ -213,12 +254,9 @@ export function planBatchRecord(store: CheckinStore, inputs: readonly unknown[],
                 results.push({kind: "duplicate", eventId: existing.id});
                 continue;
             }
-            if ((store.eventTombstones || []).some((tombstone) => tombstone.source === "api" && tombstone.externalRef === externalRef && (!tombstone.itemId || tombstone.itemId === entry.itemId))) {
-                if (refKey) seenRefs.set(refKey, results.length);
-                results.push({kind: "discarded"});
-                continue;
-            }
         }
+
+        /* W-03 判序第 4 步：新事实业务校验（blocked） */
         const item = getItemById(store, itemId);
         if (!item) {
             results.push({kind: "blocked", reason: "missing-item"});
@@ -229,19 +267,42 @@ export function planBatchRecord(store: CheckinStore, inputs: readonly unknown[],
             continue;
         }
         const completionDate = new Date(Number(entry.localDate.slice(0, 4)), Number(entry.localDate.slice(5, 7)) - 1, Number(entry.localDate.slice(8, 10)));
-        if (getItemDirectionForDate(item, completionDate) === "atMost") {
-            results.push({kind: "blocked", reason: "at-most-item"});
-            continue;
-        }
-        if (!isItemAvailableOnDate(item, completionDate)) {
-            results.push({kind: "blocked", reason: "not-scheduled"});
-            continue;
-        }
         const revision = getItemRevisionForDate(item, completionDate);
-        if (unit !== undefined && unit !== revision.unit) {
-            results.push({kind: "blocked", reason: "mapping-changed"});
-            continue;
+        const direction = getItemDirectionForDate(item, completionDate);
+
+        if (isTaskHorizon) {
+            if (revision.kind !== "count" || revision.schedule.type !== "daily" || direction !== "atLeast") {
+                results.push({kind: "blocked", reason: "target-incompatible"});
+                continue;
+            }
+            if (unit !== undefined && unit !== revision.unit) {
+                results.push({kind: "blocked", reason: "mapping-changed"});
+                continue;
+            }
+            if (!isItemAvailableOnDate(item, completionDate)) {
+                results.push({kind: "blocked", reason: "not-scheduled"});
+                continue;
+            }
+            if (getEventsForDay(store, item.id, completionDate).some((e) => isSkipEvent(e))) {
+                results.push({kind: "blocked", reason: "skip-blocked"});
+                continue;
+            }
+        } else {
+            if (direction === "atMost") {
+                results.push({kind: "blocked", reason: "at-most-item"});
+                continue;
+            }
+            if (!isItemAvailableOnDate(item, completionDate)) {
+                results.push({kind: "blocked", reason: "not-scheduled"});
+                continue;
+            }
+            if (unit !== undefined && unit !== revision.unit) {
+                results.push({kind: "blocked", reason: "mapping-changed"});
+                continue;
+            }
         }
+
+        /* W-03 判序第 5 步：规划写入（recorded） */
         if (refKey) seenRefs.set(refKey, results.length);
         planned.push({...entry, unit: revision.unit});
         recordedIndices.push(results.length);

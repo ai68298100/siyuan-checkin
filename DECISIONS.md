@@ -44,6 +44,66 @@
 
 # 决策
 
+## D-373：T-1774 戒除暂守口径与呈现消歧（2026-10-19）
+- 维持底层 D-219 零破戒即守住承诺，`isComplete` 保持真实语义；在呈现层消歧：今日完成区自适应纯戒除（`today.atMostHoldingTitle`）与混合场景（`today.completedHolding`），洞察日格进行中展示为“今日守住中”。
+
+## D-374：T-1793 & T-1811 严格真实日期契约与有界区间扫描（2026-10-19）
+- 日历投影、排期预演与周负荷全量接入 `date-keys.ts` 严格公历校验，淘汰 `eachDayCount` 无界循环，改按 `calendarDayNumber` 跨度计算与 366 天截断。
+
+## D-375：C-01~03 Task Horizon 提供端协议增量就绪（2026-10-19）
+- 锁内合并产生实际变更时广播一次 `analytics-updated`；增设全局事件 `checkin:api-state-changed`；日历投影 point 增补有效修订 `scheduleType`，顶层输出宿主基准日 `asOfDate`。
+
+## D-376：T-1794 配额摘要末日 DST 算术消除物理毫秒漂移（2026-10-19）
+- 消除 `-86400000` 物理毫秒减法（杜绝美东等春令时 23 小时天漂移到前两日），改按 `addDaysKey(endKey, -1)` 纯整数日序号推导上一民历日。
+
+## D-377：T-1800 渲染块日期格键盘可达激活与无障碍按钮化（2026-10-19）
+- 月历与热力图日期格全面升级为原生 `<button type="button">`，增设 Enter/Space 键盘跳转回调与 `:focus-visible` 焦点环。
+
+## D-378：T-1789 & T-1790 根节点与编辑器委托监听生命周期幂等与防漏（2026-10-19）
+- `bind-editor.ts` 导出 `cleanupEditorFor` 并建立自动销毁表，绑定前清理旧监听，卸载联动清理；Today 拖拽与移动端 toggle 捕获增加单例标记。
+
+## D-379：W-03 严格时间戳校验与 Task Horizon 合作写入专用约束（2026-10-19）
+- 升级 `normalizeValidIso` 严格带时区 ISO 校验，彻底拒绝非法月日/时刻隐式滚日及 date-only 输入；固定判序为“格式校验 → 墓碑 discarded → 已存/批内 duplicate → 业务校验 blocked → 写入 recorded”；落地 Task Horizon 合作专用约束。
+
+## D-380：T-1791 & T-1792 快速弹窗外部关闭/重开草稿保护与标题拖拽首开时序（2026-10-19）
+- 引入 `shouldProtectQuickDialogDraft`，直接读取弹窗自身 root 的 `pageOfRoot` 与 `isEditorFormDirty` 状态；外部关闭、重新打开重置以及 `.b3-dialog__close` 按钮统一拦截并确认；标题拖动与双击最大化重构为 `container` 事件委托。
+
+## D-381：T-1808 初始化失败状态可达修复通道（2026-10-19）
+- 渲染失败屏增设可达的“重试加载”与“复制诊断信息”按钮，自动聚焦重试控件保障读屏操作；提供 `retryInitialization` 锁内安全重试通道与结构化诊断导出。
+
+## D-382：T-1809 & T-1810 事项返回、关联编辑与历史/Today 导航统一传递 owning root（2026-10-19）
+- 事项页返回按钮、关联项目编辑以及历史/Today 键盘与菜单导航统一传递当前 `root`，跨表面返回栈严格隔离。
+
+## D-383：T-1812 日历投影数值戒除与修订单位同源（2026-10-19）
+- 数值型 atMost 戒除项日状态改用 `isComplete` 单一模型判定（未超上限为 `at-most-safe`，真实超额才判 `at-most-breach`），单日 value/progress 严格对齐当日生效修订单位。
+
+## D-384：T-1804 & T-1805 多 root Today 搜索/焦点隔离与后台刷新草稿保护（2026-10-19）
+- `focusTodaySearchFor` 显式传递发起 root 限制搜索聚焦；建立 `pendingFocusByRoot` WeakMap 优先归位发起 root 的待聚焦卡片；`renderBackgroundUpdateFor` 逐 root 检查，编辑页跳过重绘以保护 DOM 表单草稿。
+
+## D-385：T-1801 & T-1802 渲染块 today 视图显式截断与时段时区契约（2026-10-19）
+- Today 视图超过 5 项时显式输出截断提示并提供“查看全部”直达入口；引入 `getEventLocalHour` 消除跨时区早/午/晚分组漂移。
+
+## D-386：T-1806 Today 上下文菜单 owning root 几何边界与焦点还原（2026-10-19）
+- 重构定位算法，结合 `rootRect`、`visualViewport` 与 `menu.offsetParent` 实时计算相对偏移与安全边距，解决 dock 窄面板越界与 quick 弹窗 CSS transform 坐标偏移，点外关闭与 Esc 自动还原焦点。
+
+## D-387：T-1785 动态图标与 HTML/SVG 属性转义边界统一（2026-10-19）
+- `renderIconMarkup` 严格限制图片白名单（https:// 或 base64 data:image），未编码 SVG 与脚本转义为安全文本；`normalizeUiIcons` 升级为 DOM 原生 `replaceChildren(this.iconNode(...))`。
+
+## D-388：T-1779 页面级视图偏好持久化一致性与回滚（2026-10-19）
+- 回顾折叠 sections、洞察项目选择、助手报告跳转、快捷锚点跳转、报告区块开关、报告来源筛选 6 处改动全部接入 `applyPreference`，持久化失败自动快照回滚并提示。
+
+## D-389：T-1780 & T-1781 专注计时补偿与同步（2026-10-19）
+- 基于 Date.now() 单调时间戳自动补偿后台节流时间；已用时间 >=60s 时切换预设增加确认；多表面同屏通过 querySelectorAll 保证同步刷新。
+
+## D-390：T-1786 统一写入幂等与破戒（2026-10-19）
+- Agent `checkin-record-item` 增加 `requestId` 幂等键并映射为 `agent:<requestId>`；`recordEvent` 支持 `externalRef` 去重，重复请求直接回显已有事实，杜绝重复增账。
+
+## D-391：T-1783 敏感信息脱敏与安全截断矩阵（2026-10-19）
+- `privacy-scope.ts` 引入 `redactSensitiveText` 与 `sanitizeDiagnosticDetail`，清洗恶意控制字符与双向覆盖字符，自动脱敏 Bearer 令牌、API Key 与用户私有绝对路径，安全截断 UTF-16 代理对。
+
+## D-392：同类产品与开源生态深度调研与规划对账（2026-10-19）
+- 深度对标 Loop Habit Tracker、Table Habit、Habitica、TickTick、Obsidian 插件与 Streaks，吸收科学稳固度算法、热力图多风格色板与心情日志灵感，强化思源知识库深度联动优势，坚决不引入掉血惩罚与社交内疚。
+
 ## D-476：T-1813 顶栏重复规则只做等价删除（2026-10-16）
 
 - 桌面 `@container lc5 (min-width: 720px)` 内的 `.lc-checkin__topnav-actions` 与 `.lc-checkin__topnav-action` 基础声明在文件后段已有完全相同的全局规则，后段还会继续覆盖尺寸、间距和焦点样式；删除容器内重复块不改变最终计算样式，仅减少编译产物。

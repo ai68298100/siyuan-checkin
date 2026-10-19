@@ -291,9 +291,9 @@ export function bindItemContextMenuFor(host: TodayBindingsHost, root: HTMLElemen
         const visualViewport = window.visualViewport;
         const viewportLeft = visualViewport?.offsetLeft ?? 0;
         const viewportTop = visualViewport?.offsetTop ?? 0;
-        const viewportRight = viewportLeft + (visualViewport?.width ?? window.innerWidth);
-        const viewportBottom = viewportTop + (visualViewport?.height ?? window.innerHeight);
-        const rootRect = root.getBoundingClientRect();
+        const viewportRight = viewportLeft + (window.visualViewport?.width ?? window.innerWidth);
+        const viewportBottom = viewportTop + (window.visualViewport?.height ?? window.innerHeight);
+        const rootRect = typeof root.getBoundingClientRect === "function" ? root.getBoundingClientRect() : {left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight, width: window.innerWidth, height: window.innerHeight};
         const hasRootBounds = Number.isFinite(rootRect.left) && Number.isFinite(rootRect.top)
             && Number.isFinite(rootRect.right) && Number.isFinite(rootRect.bottom)
             && rootRect.width > 0 && rootRect.height > 0;
@@ -312,8 +312,11 @@ export function bindItemContextMenuFor(host: TodayBindingsHost, root: HTMLElemen
         const minY = Math.max(margin, boundTop - originTop + margin);
         const maxX = Math.max(minX, boundRight - originLeft - measuredRect.width - margin);
         const maxY = Math.max(minY, boundBottom - originTop - measuredRect.height - margin);
-        menu.style.left = `${Math.min(Math.max(minX, clientX - originLeft), maxX)}px`;
-        menu.style.top = `${Math.min(Math.max(minY, clientY - originTop), maxY)}px`;
+        const targetX = Math.min(Math.max(minX, clientX - originLeft), maxX);
+        const targetY = Math.min(Math.max(minY, clientY - originTop), maxY);
+        const offsetParentRect = (menu.offsetParent as HTMLElement | null)?.getBoundingClientRect?.() || {left: 0, top: 0};
+        menu.style.left = `${Math.round(targetX - offsetParentRect.left)}px`;
+        menu.style.top = `${Math.round(targetY - offsetParentRect.top)}px`;
         menu.querySelector<HTMLElement>("[data-menu-action]")?.focus();
         menu.addEventListener("click", (ev) => {
             const actionButton = (ev.target as HTMLElement).closest<HTMLButtonElement>("[data-menu-action]");
@@ -393,11 +396,10 @@ export function bindItemContextMenuFor(host: TodayBindingsHost, root: HTMLElemen
     root.addEventListener("pointercancel", cancelLongPress);
     root.addEventListener("click", (event) => {
         const target = event.target as HTMLElement;
-        if (target.closest(".lc-checkin__item-context-menu")) return;
-        /* A click on another control already establishes the user's next focus
-           target. Restore the opener only when the dismissal click itself had
-           no focusable destination. */
-        closeMenus(!target.closest("button, a, input, select, textarea, [tabindex]"));
+        if (!target.closest(".lc-checkin__item-context-menu")) {
+            closeMenus(!target.closest("button, a, input, select, textarea, [tabindex]"));
+        }
+        if (!(event.target as HTMLElement).closest(".lc-checkin__item-context-menu")) closeMenus(true);
     });
     root.addEventListener("keydown", (event) => {
         if (event.key === "Escape" && root.querySelector(".lc-checkin__item-context-menu")) {
@@ -446,18 +448,20 @@ export function bindItemDragFor(host: TodayBindingsHost, root: HTMLElement): voi
        delegated keyboard reorder listener one-per-root; binding it on every
        render makes one Alt+Arrow action enqueue the mutation repeatedly. */
     if (root.dataset.itemDragKeyboardBound === "true") return;
-    root.dataset.itemDragKeyboardBound = "true";
-    root.addEventListener("keydown", (event) => {
-        if (!event.altKey || (event.key !== "ArrowUp" && event.key !== "ArrowDown")) return;
-        const target = event.target as HTMLElement | null;
-        const item = target?.closest?.(".lc-checkin__item");
-        if (!item || item.closest(".lc-checkin__completed-section") || host.todaySortMode !== "manual") return;
-        const container = item.parentElement;
-        if (!container) return;
-        event.preventDefault();
-        if (event.key === "ArrowUp" && item.previousElementSibling) container.insertBefore(item, item.previousElementSibling);
-        if (event.key === "ArrowDown" && item.nextElementSibling) container.insertBefore(item.nextElementSibling, item);
-        const orderedIds = [...container.querySelectorAll<HTMLElement>(".lc-checkin__item")].map((el) => el.dataset.itemId || "").filter(Boolean);
-        if (orderedIds.length) void host.enqueueMutation(() => host.reorderItems(orderedIds));
-    });
+    if (root.dataset.itemDragKeyboardBound !== "true") {
+        root.dataset.itemDragKeyboardBound = "true";
+        root.addEventListener("keydown", (event) => {
+            if (!event.altKey || (event.key !== "ArrowUp" && event.key !== "ArrowDown")) return;
+            const target = event.target as HTMLElement | null;
+            const item = target?.closest?.(".lc-checkin__item");
+            if (!item || item.closest(".lc-checkin__completed-section") || host.todaySortMode !== "manual") return;
+            const container = item.parentElement;
+            if (!container) return;
+            event.preventDefault();
+            if (event.key === "ArrowUp" && item.previousElementSibling) container.insertBefore(item, item.previousElementSibling);
+            if (event.key === "ArrowDown" && item.nextElementSibling) container.insertBefore(item.nextElementSibling, item);
+            const orderedIds = [...container.querySelectorAll<HTMLElement>(".lc-checkin__item")].map((el) => el.dataset.itemId || "").filter(Boolean);
+            if (orderedIds.length) void host.enqueueMutation(() => host.reorderItems(orderedIds));
+        });
+    }
 }

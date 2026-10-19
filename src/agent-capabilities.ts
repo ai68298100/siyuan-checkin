@@ -27,7 +27,7 @@ export interface AgentCapabilityDeps {
     cloneItem(item: CheckinItem): CheckinItem;
     revisionFingerprint(item: CheckinItem, date: Date): string;
     enqueueMutation<T>(fn: () => Promise<T>): Promise<T>;
-    recordEvent(item: CheckinItem, value: number, moment: {occurredAt: string; localDate: string}, fingerprint: string | undefined, note?: string): Promise<CheckinEvent | undefined>;
+    recordEvent(item: CheckinItem, value: number, moment: {occurredAt: string; localDate: string}, fingerprint: string | undefined, note?: string, attachment?: string, externalRef?: string): Promise<CheckinEvent | undefined>;
     setOccasionCompleted(id: string, occurrenceDate: string, completed: boolean): Promise<boolean>;
     getSummaryContext(range: SummaryRange): {totalEvents: number; completedItems: number; scheduledItems: number; items: Array<{name: string; completedDays: number; scheduledDays: number; completionRate: number; quota?: QuotaSummary}>};
     getCustomSummaryContext(range: {startDate: string; endDate: string}): {totalEvents: number} | undefined;
@@ -168,6 +168,7 @@ export function registerAgentCapabilities(deps: AgentCapabilityDeps): void {
                 value: {type: "number", minimum: 0, description: "本次记录的数值；省略时使用该类型的默认步长"},
                 unit: {type: "string", description: "单位，必须与项目当前版本一致；省略时自动使用项目单位"},
                 note: {type: "string", maxLength: 500, description: "可选备注"},
+                requestId: {type: "string", maxLength: 128, description: "可选幂等请求 ID，防止网络重试导致重复记账"},
             },
             required: ["itemId"],
             additionalProperties: false,
@@ -197,8 +198,11 @@ export function registerAgentCapabilities(deps: AgentCapabilityDeps): void {
             if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return {error: "记录数值必须是大于或等于 0 的有限数字。"};
             if (args.unit !== undefined && (typeof args.unit !== "string" || args.unit.trim() !== revision.unit)) return {error: `单位不匹配，该项目当前单位为“${revision.unit || "次"}”。`};
             const note = args.note === undefined ? undefined : typeof args.note === "string" ? args.note.slice(0, 500) : "";
+            const externalRef = typeof args.requestId === "string" && args.requestId.trim()
+                ? `agent:${args.requestId.trim().slice(0, 128)}`
+                : undefined;
             const expectedRevisionFingerprint = deps.revisionFingerprint(item, actionDate);
-            const event = await deps.enqueueMutation(() => deps.recordEvent(item, value, moment, expectedRevisionFingerprint, note));
+            const event = await deps.enqueueMutation(() => deps.recordEvent(item, value, moment, expectedRevisionFingerprint, note, undefined, externalRef));
             if (!event) return {error: "记录未执行，项目可能已在其他窗口更新或今日不可记录。"};
             const current = deps.getStore().items.find((candidate) => candidate.id === item.id) || item;
             const target = revision.schedule.type === "quota" ? revision.schedule.quota?.amount || revision.target : revision.target;

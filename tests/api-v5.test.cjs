@@ -223,8 +223,8 @@ const deferred = () => {
     ];
     const taskHorizonPlan = planBatchRecord(store, [
         ...invalidTaskHorizonRefs.map((externalRef) => ({itemId: "read", externalRef})),
-        {itemId: "read", externalRef: "taskhorizon:valid-task:2026-09-20", occurredAt: nowIso},
-        {itemId: "read", externalRef: "taskhorizon:valid-task:2026-09-20", occurredAt: nowIso},
+        {itemId: "read", externalRef: "taskhorizon:valid-task:2026-09-20", unit: "次", occurredAt: nowIso},
+        {itemId: "read", externalRef: "taskhorizon:valid-task:2026-09-20", unit: "次", occurredAt: nowIso},
         {itemId: "read", externalRef: "unregistered:task:part:2026-02-30", occurredAt: nowIso},
     ], nowIso);
     assert.equal(taskHorizonPlan.results.length, invalidTaskHorizonRefs.length + 3, "identity validation preserves per-input receipts");
