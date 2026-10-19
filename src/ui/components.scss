@@ -4871,15 +4871,15 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 }
 .lc-checkin__focus-head { display: flex; align-items: center; gap: 9px; min-width: 0; }
 .lc-checkin__focus-head strong { overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
-.lc-checkin__focus-icon { display: grid; place-items: center; width: 28px; height: 28px; flex: none; border-radius: 9px; background: rgba(255, 255, 255, 0.12); font-size: 14px; }
+.lc-checkin__focus-icon { display: grid; place-items: center; width: 28px; height: 28px; flex: none; border-radius: 9px; background: var(--lc-checkin-deep-overlay-icon); font-size: 14px; }
 .lc-checkin__focus-time { text-align: center; font-size: 34px; font-weight: 740; font-variant-numeric: tabular-nums; letter-spacing: .02em; }
-.lc-checkin__focus-progress { height: 4px; border-radius: 4px; background: rgba(255, 255, 255, 0.14); overflow: hidden; }
+.lc-checkin__focus-progress { height: 4px; border-radius: 4px; background: var(--lc-checkin-deep-overlay-track); overflow: hidden; }
 .lc-checkin__focus-progress span { display: block; height: 100%; border-radius: 4px; background: var(--lc-checkin-gold); transition: width 1s linear; }
 .lc-checkin__focus-presets { display: flex; justify-content: center; gap: 6px; }
 .lc-checkin__focus-presets button {
     min-width: 40px;
     min-height: 28px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid var(--lc-checkin-deep-overlay-border);
     border-radius: 999px;
     color: var(--lc-checkin-deep-text);
     background: transparent;
@@ -4890,7 +4890,7 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__focus-presets button.is-selected { color: #27272E; background: var(--lc-checkin-gold); border-color: transparent; }
 .lc-checkin__focus-actions { display: flex; justify-content: center; gap: 6px; }
 .lc-checkin__focus-actions .lc-checkin__text-button { color: rgba(245, 245, 250, 0.75); }
-.lc-checkin__focus-actions .lc-checkin__text-button:hover { color: var(--lc-checkin-deep-text); background: rgba(255, 255, 255, 0.1); }
+.lc-checkin__focus-actions .lc-checkin__text-button:hover { color: var(--lc-checkin-deep-text); background: var(--lc-checkin-deep-overlay-soft); }
 
 /* ============================================================
    6.0 P1 批量操作

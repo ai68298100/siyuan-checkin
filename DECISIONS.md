@@ -3062,3 +3062,9 @@
 - `tokens.scss` 新增 3 对软化色 token：`success-bg-soft`（10/14%）/ `success-border-soft`（28/32%）/ `accent-soft-strong`（22% accent 混入 transparent）。
 - `__all-done` (today 1684) 切到 `success-bg-soft` + `success-border-soft`；`__all-done` 主类 (1085) 边切到 `accent-soft-strong`。
 - 范围限定：calendar-day 4 档保留 lilac 偏移；week-load-row.is-on 保留单色 accent-soft（二档语义不需 4 档）。剩余 review-compare、focus-timer、quick-dock、mobile-nav 四个高频面。
+
+## D-497：T-1816 卡片 surface 第四切片：focus-timer 主题叠加色收口（2026-10-19）
+
+- `tokens.scss` 新增 4 个 deep-overlay 浅层白色 token：`deep-overlay-soft` 0.10 / `deep-overlay-icon` 0.12 / `deep-overlay-track` 0.14 / `deep-overlay-border` 0.20。
+- `components.scss` 中 `__focus-timer` 4 处 `rgba(255,255,255,...)` 字面量切到 token：`__focus-icon` / `__focus-progress` / focus-presets 按钮边 / `__focus-actions` hover。
+- 范围限定：仅做 focus-timer 主题叠加；review-compare / quick-dock / mobile-nav 三个高频面按 T-1816 第五切片继续。

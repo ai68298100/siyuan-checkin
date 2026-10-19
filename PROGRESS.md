@@ -3070,3 +3070,15 @@ dark 主题下选中态卡片底色（accent 14% 混 `#1A1B22`）与 hover 态�
 
 验证：所有视觉门禁与主链通过；CSS 658 KiB（674275 bytes）仍低于 660 KiB 硬线。
 
+# 2026-10-19 T-1816 卡片 surface 第四切片：focus-timer 主题叠加色收口（D-497）
+
+`tokens.scss` 新增 4 个 deep-overlay 浅层白色 token：`--lc-checkin-deep-overlay-soft` (0.10) / `--lc-checkin-deep-overlay-icon` (0.12) / `--lc-checkin-deep-overlay-track` (0.14) / `--lc-checkin-deep-overlay-border` (0.20)。
+
+`components.scss` 中 `__focus-timer` 4 处硬编码 `rgba(255, 255, 255, 0.N)` 全部切到 token：`__focus-icon` 底色 / `__focus-progress` 底色 / focus-presets 按钮边 / `__focus-actions` hover 底色。
+
+这些值是"暗色 deep 块上的白色透明叠加"，与 `--lc-checkin-deep` (light=#27272E / dark=#101014) 形成内嵌的 on-deep 层级关系，是 focus-timer 这块炭黑卡上的二级 surface。
+
+剩余：review-compare / quick-dock / mobile-nav 三个高频面。
+
+验证：所有视觉门禁与主链通过；CSS 659 KiB（674600 bytes）仍低于 660 KiB 硬线。
+
