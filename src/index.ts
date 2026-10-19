@@ -1319,7 +1319,9 @@ export default class CheckinPlugin extends Plugin {
             rowId: (row) => (typeof row?.id === "string" ? row.id : undefined),
         });
         if (!isCurrent()) return;
-        this.healthScanCursor = scan.cursor;
+        if (!preview) {
+            this.healthScanCursor = scan.cursor;
+        }
         const rows = scan.rows;
         report.scanned = rows.length;
         report.windowFull = scan.advanced;
@@ -1391,7 +1393,9 @@ export default class CheckinPlugin extends Plugin {
         }).catch(() => undefined);
         if (!scan) { report.outcome = "read-failed"; return; }
         if (!isCurrent()) return;
-        this.noteQueryScanCursor = scan.cursor;
+        if (!preview) {
+            this.noteQueryScanCursor = scan.cursor;
+        }
         const scanRows = scan.rows;
         report.scanned = scanRows.length;
         report.windowFull = scan.advanced;
@@ -1705,7 +1709,9 @@ export default class CheckinPlugin extends Plugin {
         }).catch(() => undefined);
         if (!scan) { report.outcome = "read-failed"; return; }
         if (!isCurrent()) return;
-        this.yeguifScanCursor = scan.cursor;
+        if (!preview) {
+            this.yeguifScanCursor = scan.cursor;
+        }
         const rows = scan.rows;
         report.scanned = rows.length;
         report.windowFull = scan.advanced;

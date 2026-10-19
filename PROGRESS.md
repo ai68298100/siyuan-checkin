@@ -3141,3 +3141,10 @@ dark 主题下选中态卡片底色（accent 14% 混 `#1A1B22`）与 hover 态�
 - 产物指标：CSS 657.5 KiB（673,347 bytes），低于 660 KiB（675,840 bytes）硬线 2.43 KiB；0 死类，0 对比度违规。
 - 验证：`pnpm run check`、`pnpm build`、`node tests/css-hygiene.test.cjs`、`node tests/responsive-layout.test.cjs`、`node tests/ui-theme.test.cjs`、`node tests/accessibility-audit.test.cjs`、`pnpm test` 全部零报错通过。
 
+# 2026-10-19 T-1851 预览读取与正式摄取游标隔离（D-505）
+
+- `src/index.ts`：修复健康收件箱 `ingestHealthInbox`、笔记派生 `ingestNoteQuery` 与叶归 `ingestYeguif` 在预览模式（`preview === true`）下错误推进正式游标（`healthScanCursor` / `noteQueryScanCursor` / `yeguifScanCursor`）的重大缺陷。所有游标推进逻辑均添加 `if (!preview)` 守卫，确保预览操作纯只读，预览失败、取消或多次预览绝不污染或移动下一轮正式增量摄取的起点；
+- `tests/scan-cursor.test.cjs`：补齐针对 `!preview` 游标守卫的精确契约断言，确保健康、笔记推导与叶归三处外部文档来源的游标隔离永久受自动化门禁保护；
+- 产物指标：TS 零编译警告，主链 100+ 项测试全绿通过。
+- 验证：`pnpm run check`、`pnpm build`、`node tests/scan-cursor.test.cjs`、`pnpm test` 全部通过。
+

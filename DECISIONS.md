@@ -3117,3 +3117,9 @@
 - `.lc-checkin__occasion-manager-row.is-today` 升级为 `card-border-selected + card-bg-selected + card-shadow-selected`，双主题选中阴影与底色同源。
 - `.lc-checkin__occasion-move-row input` 输入字段统一切到 `button-height-sm`、`field-border`、`field-radius`、`field-bg`。
 - 范围限定：第一切片收口事项管理行与改期内联输入的卡片化与字段 token；移动端返回与设置大标题布局重排留作后续切片。
+
+## D-505：T-1851 预览读取与正式摄取游标隔离（2026-10-19）
+
+- `src/index.ts` 中的 `healthScanCursor`、`noteQueryScanCursor` 与 `yeguifScanCursor` 推进逻辑统一添加 `if (!preview)` 守卫，确保预览操作纯只读，绝不推进正式游标。
+- 杜绝预览操作提前“吞噬”未实际持久化的增量文档，防止后续自动或手动正式扫描漏读数据。
+- `tests/scan-cursor.test.cjs` 增补针对三处来源游标 `!preview` 隔离的自动化断言，保证契约永久不退化。

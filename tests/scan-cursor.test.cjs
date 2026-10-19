@@ -96,6 +96,11 @@ assert.match(pluginSource, /this\.healthScanCursor = scan\.cursor;/, "health per
 assert.match(pluginSource, /this\.noteQueryScanCursor = scan\.cursor;/, "notequery persists the final cursor");
 assert.match(pluginSource, /this\.yeguifScanCursor = scan\.cursor;/, "yeguif persists the final cursor");
 
+/* —— T-1851：预览只读，绝不推进正式游标 —— */
+assert.match(pluginSource, /if \(!preview\)\s*\{\s*this\.healthScanCursor = scan\.cursor;/, "health cursor advance is guarded by !preview");
+assert.match(pluginSource, /if \(!preview\)\s*\{\s*this\.noteQueryScanCursor = scan\.cursor;/, "notequery cursor advance is guarded by !preview");
+assert.match(pluginSource, /if \(!preview\)\s*\{\s*this\.yeguifScanCursor = scan\.cursor;/, "yeguif cursor advance is guarded by !preview");
+
 fs.rmSync(dir, {recursive: true, force: true});
-console.log("Scan cursor checks passed: short-page reset, capped advance, coverage order, cursor whitelist, three-source wiring.");
+console.log("Scan cursor checks passed: short-page reset, capped advance, coverage order, cursor whitelist, three-source wiring, preview-isolation.");
 })().catch((error) => { console.error(error); process.exit(1); });
