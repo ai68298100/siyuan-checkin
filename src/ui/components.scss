@@ -10457,7 +10457,11 @@ details:not([open]) > :not(summary) { display: none !important; }
 .lc-checkin__renderblock-today-streak,
 .lc-checkin__renderblock-today-missed { flex: none; color: var(--lc-checkin-muted); font-size: 10px; }
 .lc-checkin__renderblock-today-done { flex: none; color: var(--lc-checkin-success); font-weight: 600; }
-.lc-checkin__renderblock-today-record { flex: none; min-height: 24px; padding: 2px 8px; }
+.lc-checkin__renderblock-today-record {
+    flex: none; min-height: 24px; padding: 2px 8px;
+    &[data-record-pending] { opacity: 0.6; pointer-events: none; cursor: wait; }
+    &[data-record-error] { border-color: var(--lc-checkin-danger); color: var(--lc-checkin-danger); }
+}
 /* T-1462：数值项目 chips 组——块内紧凑增量按钮（移动宿主 44px 由触控基线统一抬升）。 */
 .lc-checkin__renderblock-today-steps { flex: none; display: inline-flex; gap: 4px; }
 /* R-17.3：today 块时段分组计数（早/午/晚），仅 ≥2 条记录的行出现。 */

@@ -334,6 +334,7 @@ assert.match(read("index.ts"), /const fresh = await resolveAnchorBlock\(/, "anch
 /* —— T-1856：渲染块锚点解析失败重试、超时与代际清理守门 —— */
 const rendererSource = fs.readFileSync(path.join(root, "src", "render", "block-renderer.ts"), "utf8");
 const indexSource = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
+const componentsCss = fs.readFileSync(path.join(root, "src", "ui", "components.scss"), "utf8");
 
 assert.match(rendererSource, /export function clearAnchorResolveCache\(\): void/, "clearAnchorResolveCache exported");
 assert.match(rendererSource, /const ANCHOR_RESOLVE_TIMEOUT_MS = 8000;/, "8s anchor resolve timeout constant");
@@ -343,4 +344,15 @@ assert.match(rendererSource, /data-block-anchor-retry="true"/, "retry placeholde
 assert.match(rendererSource, /closest\("\[data-block-anchor-retry\]"\)/, "click on retry placeholder triggers re-render");
 assert.match(indexSource, /clearAnchorResolveCache\(\);/, "clearAnchorResolveCache invoked on plugin unload");
 
-console.log(`Checkin block checks passed: config parsing, scopes, month/heatmap/summary/groups views, combo cards, minRate, anchor jumps, neutrality, security, anchor resolve retry/timeout and perf tiers 1k=${Math.round(tierResults[0].ms)}ms / 10k=${Math.round(tierResults[1].ms)}ms / 100k=${Math.round(tierResults[2].ms)}ms (+base ${Math.round(perfMs)}ms).`);
+/* —— T-1857：渲染块记录 pending 状态机、防重连点与失败反馈守门 —— */
+assert.match(rendererSource, /if \(recordTarget\.getAttribute\("data-record-pending"\)\) return;/, "pending throttle prevents duplicate click dispatches");
+assert.match(rendererSource, /recordTarget\.setAttribute\("data-record-pending", "true"\);/, "sets pending on click");
+assert.match(rendererSource, /cleanupTimer = setTimeout\(\(\) => release\(true\), 6000\);/, "6s fallback release timer prevents permanent lock");
+assert.match(rendererSource, /recordTarget\.setAttribute\("data-record-error", "true"\);/, "releases with error feedback on rejection");
+assert.match(rendererSource, /if \(ok === false\) release\(true\);/, "rejection signal sets error feedback");
+assert.match(indexSource, /private async recordBlockToday\(itemId: string, amount\?: number\): Promise<boolean>/, "recordBlockToday returns Promise<boolean>");
+assert.match(indexSource, /return Boolean\(recorded\);/, "recordBlockToday returns true on success");
+assert.match(componentsCss, /\.lc-checkin__renderblock-today-record[\s\S]*?&\[data-record-pending\]/, "CSS styles pending state");
+assert.match(componentsCss, /\.lc-checkin__renderblock-today-record[\s\S]*?&\[data-record-error\]/, "CSS styles error state");
+
+console.log(`Checkin block checks passed: config parsing, scopes, month/heatmap/summary/groups views, combo cards, minRate, anchor jumps, neutrality, security, anchor resolve retry/timeout, record pending/error state machine and perf tiers 1k=${Math.round(tierResults[0].ms)}ms / 10k=${Math.round(tierResults[1].ms)}ms / 100k=${Math.round(tierResults[2].ms)}ms (+base ${Math.round(perfMs)}ms).`);

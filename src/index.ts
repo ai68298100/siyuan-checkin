@@ -1905,15 +1905,15 @@ export default class CheckinPlugin extends Plugin {
        openTab 的 doc 锚点滚动定位未在本仓库验证，故不传未证实参数；任何失败回落项目洞察。 */
     /* v18.1.x（T-1375 §八）：打开锚点文档前按 blockId 重新解析——块被移动后跟随新根文档，
        不信任会话缓存；重解析失败时回落缓存，再回落项目洞察并给出可读提示。 */
-    /* T-1412：today 渲染块打卡按钮 → 既有手动打卡通道（修订指纹冲突检查/审计/撤销不变）。 */
-    private async recordBlockToday(itemId: string, amount?: number): Promise<void> {
-        if (this.disposed || this.disposing || !this.acceptingOperations) return;
+    /* T-1412 / T-1857：today 渲染块打卡按钮 → 既有手动打卡通道（修订指纹冲突检查/审计/撤销不变，支持失败状态反馈）。 */
+    private async recordBlockToday(itemId: string, amount?: number): Promise<boolean> {
+        if (this.disposed || this.disposing || !this.acceptingOperations) return false;
         const item = getActiveItemById(this.store, itemId);
-        if (!item) return;
+        if (!item) return false;
         /* T-1465：绑定问卷的项目在渲染块同样走问卷弹窗（语义与今日页一致）。 */
         if (item.journal?.templateId) {
             await this.openJournalEntry(itemId);
-            return;
+            return true;
         }
         const actionDate = currentCalendarDate();
         const revision = getItemRevisionForDate(item, actionDate);
@@ -1922,7 +1922,12 @@ export default class CheckinPlugin extends Plugin {
         const value = revision.kind === "binary" ? 1 : step;
         const fingerprint = this.revisionFingerprint(item, actionDate);
         const moment = captureActionMoment();
-        await this.enqueueMutation(() => this.recordEvent(item, value, moment, fingerprint));
+        try {
+            const recorded = await this.enqueueMutation(() => this.recordEvent(item, value, moment, fingerprint));
+            return Boolean(recorded);
+        } catch {
+            return false;
+        }
     }
 
     private async jumpToItemAnchorDoc(blockId: string, isSourceCurrent: () => boolean = () => true) {
