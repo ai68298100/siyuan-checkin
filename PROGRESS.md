@@ -3092,3 +3092,12 @@ dark 主题下选中态卡片底色（accent 14% 混 `#1A1B22`）与 hover 态�
 
 验证：所有视觉门禁与主链通过；CSS 659 KiB（674656 bytes）仍低于 660 KiB 硬线。
 
+# 2026-10-19 T-1813 CSS 重复规则去重与容器查询收敛（D-499）
+
+- `src/ui/review-detail.scss`：将两段 100% 镜像重复的 `@container lc-dock (max-width: 1199px)` 与 `@container lc5 (max-width: 1199px)`（包含 9 条详细条目/日志栅格规则）统一收敛为单一 `@container (max-width: 1199px)`，让最近祖先容器无歧义匹配；
+- `src/ui/components.scss`：将两段 100% 镜像重复的 `@container lc5 (min-width: 720px)` 与 `@container lc-dock (min-width: 720px)` 下文档目标卡（`.lc-checkin__document-target-id` 等）栅格规则统一收敛为单一 `@container (min-width: 720px)`；
+- `src/ui/components.scss`：提取 `@container lc-dock (min-width: 720px) and (max-width: 900px)` 与 `@container lc-dock (min-width: 901px)` 间的 4 条共有规则（item/item-action/body/name）到全局 `@container lc-dock (min-width: 720px)`，消灭双区间重复声明；
+- `src/ui/components.scss`：清理 4 处响应式断点中与 base 样式声明完全冗余的 `.lc-checkin__mobile-nav button small { font-size: 9px; }`；
+- 收益：`dist/index.css` 重复规则从 39 条骤降至 22 条，重复规则字节从 3,703 bytes 骤降至 1,670 bytes（降幅 55%）；产物总字节从 674,656 bytes 净减少至 672,324 bytes（净减 2,332 字节 / 2.28 KiB），距离 660 KiB（675,840 bytes）硬限的安全缓冲空间从 1.18 KiB 扩充到 3.43 KiB。
+- 验证：`pnpm run check`、`pnpm build`、`node tests/css-hygiene.test.cjs`、`node tests/responsive-layout.test.cjs`、`node tests/ui-theme.test.cjs`、`node tests/accessibility-audit.test.cjs`、`pnpm test` 全部零报错通过。
+

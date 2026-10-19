@@ -1,0 +1,3 @@
+#!/bin/sh
+export CI=true
+exec "F:/Program Files/nodejs/node.exe" "F:/Program Files/nodejs/node_modules/corepack/dist/pnpm.js" "$@"

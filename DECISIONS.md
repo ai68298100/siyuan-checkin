@@ -3074,3 +3074,11 @@
 - `tokens.scss` 新增 `nav-shadow` token（`0 -2px 10px color-mix(text 7%, transparent)`），把 `__mobile-nav` 顶部负向阴影字面量收口为单一来源。
 - 范围限定：`__dock-host` 在不同断点（mobile / dock / dialog-mobile / editor）的 min-height 散落值（46/50/52/54/58px）保留字面量——这些差异是不同 surface 容器的视觉微调意图，不强行合并。
 - 剩余：review-compare 内部组件的 card shadow 收口。
+
+## D-499：T-1813 CSS 重复规则去重与容器查询收敛（2026-10-19）
+
+- `src/ui/review-detail.scss`：将两段 100% 镜像重复的 `@container lc-dock (max-width: 1199px)` 与 `@container lc5 (max-width: 1199px)` 统一收敛为单一 `@container (max-width: 1199px)`。
+- `src/ui/components.scss`：将两段 100% 镜像重复的 `@container lc5 (min-width: 720px)` 与 `@container lc-dock (min-width: 720px)` 下文档目标卡栅格规则统一收敛为单一 `@container (min-width: 720px)`。
+- `src/ui/components.scss`：提取 `@container lc-dock (min-width: 720px) and (max-width: 900px)` 与 `@container lc-dock (min-width: 901px)` 间的 4 条共有规则（item/item-action/body/name）到全局 `@container lc-dock (min-width: 720px)`。
+- `src/ui/components.scss`：清理 4 处断点中与 base 样式完全冗余的 `.lc-checkin__mobile-nav button small { font-size: 9px; }`。
+- 收益：`dist/index.css` 重复规则从 39 降至 22（降幅 44%），重复规则字节从 3,703 降至 1,670（降幅 55%）；产物总字节从 674,656 净减至 672,324（净减 2,332 字节 / 2.28 KiB），为 660 KiB 硬线腾出 3.43 KiB 安全缓冲。

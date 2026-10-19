@@ -1,0 +1,37 @@
+{
+  "scope": "pure planner only; no host storage or user data",
+  "version": "18.17.6",
+  "nodeVersion": "v24.16.0",
+  "timezone": "Asia/Shanghai",
+  "sourceFiles": {
+    "src/features/api-v5.ts": "cacecdc98151c7384d23a0a4e0b5d7a75dd5b28e799916a660842fed5f53dd71",
+    "src/model.ts": "8df1a9e81609bdf82bc7203f4ef52e593e9e3a37ac0977358aab8db4a21162eb",
+    "src/ecosystem.ts": "6bd002d13d63dcb5bff0c042ffe350a369fe21d551446324c4508018fc16cb59"
+  },
+  "results": [
+    {
+      "input": "2026-02-30T10:00:00+08:00",
+      "receipt": {
+        "kind": "recorded"
+      },
+      "plannedTime": "2026-03-02T02:00:00.000Z",
+      "plannedDate": "2026-03-02"
+    },
+    {
+      "input": "2026-04-31T10:00:00+08:00",
+      "receipt": {
+        "kind": "recorded"
+      },
+      "plannedTime": "2026-05-01T02:00:00.000Z",
+      "plannedDate": "2026-05-01"
+    },
+    {
+      "input": "2026-02-28T24:00:00+08:00",
+      "receipt": {
+        "kind": "recorded"
+      },
+      "plannedTime": "2026-02-28T16:00:00.000Z",
+      "plannedDate": "2026-03-01"
+    }
+  ]
+}

@@ -206,20 +206,7 @@
 .lc-checkin-dock-host .lc-checkin--review .lc-checkin__review-project-list {
     grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
 }
-@container lc-dock (max-width: 1199px) {
-    .lc-checkin--review .lc-checkin__log-day-body,
-    .lc-checkin--review .lc-checkin__log-more-body { grid-template-columns: minmax(0, 1fr) !important; }
-    .lc-checkin--review .lc-checkin__review-project-list { grid-template-columns: minmax(0, 1fr); }
-    .lc-checkin--review .lc-checkin__log-row,
-    .lc-checkin--review .lc-checkin__log-row.has-thumb { grid-template-columns: 30px minmax(0, 1fr); }
-    .lc-checkin--review .lc-checkin__log-row > .lc-checkin__log-main { grid-column: 2; grid-row: 1; }
-    .lc-checkin--review .lc-checkin__log-row > .lc-checkin__log-value { grid-column: 2; grid-row: 2; justify-self: start; }
-    .lc-checkin--review .lc-checkin__log-group > summary { grid-template-columns: 30px minmax(0, 1fr) 16px; }
-    .lc-checkin--review .lc-checkin__log-group > summary > .lc-checkin__log-main { grid-column: 2; grid-row: 1; }
-    .lc-checkin--review .lc-checkin__log-group > summary > .lc-checkin__log-value { grid-column: 2; grid-row: 2; justify-self: start; }
-    .lc-checkin--review .lc-checkin__log-group > summary > i { grid-column: 3; grid-row: 1 / span 2; }
-}
-@container lc5 (max-width: 1199px) {
+@container (max-width: 1199px) {
     .lc-checkin--review .lc-checkin__log-day-body,
     .lc-checkin--review .lc-checkin__log-more-body { grid-template-columns: minmax(0, 1fr) !important; }
     .lc-checkin--review .lc-checkin__review-project-list { grid-template-columns: minmax(0, 1fr); }

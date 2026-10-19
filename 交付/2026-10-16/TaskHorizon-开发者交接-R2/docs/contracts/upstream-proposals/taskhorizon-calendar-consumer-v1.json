@@ -1,0 +1,45 @@
+{
+  "status": "draft",
+  "proposal": "taskhorizon-calendar-consumer",
+  "version": 1,
+  "updatedAt": "2026-10-16",
+  "direction": "base calendar.read API is shipped; C-01/C-02/C-03 cooperation additions and the Task Horizon consumer remain pending acceptance",
+  "providerEvidenceBaseline": "siyuan-checkin tag v18.17.6; this draft does not declare new runtime descriptor fields or production cooperation readiness",
+  "providerReadiness": {
+    "taskHorizonCalendar": "not-declared",
+    "taskHorizonCompletion": "not-declared",
+    "pendingCalendarAcceptance": ["C-01 remote merge notification", "C-02 API lifecycle", "C-03 per-point scheduleType and asOfDate"],
+    "proposedGate": "after agreement and provider delivery, describe().integrationContracts.taskHorizonCalendar === 1 / taskHorizonCompletion === 1, or an equivalent frozen readiness marker; neither marker exists in v18.17.6"
+  },
+  "targetPlugin": "Task Horizon",
+  "consumes": {
+    "provider": "siyuan-checkin",
+    "protocol": "siyuan-checkin",
+    "minApiVersion": 5,
+    "capabilities": ["calendar.read"],
+    "method": "getCalendarProjection",
+    "input": {"startDate": "YYYY-MM-DD", "endDateExclusive": "YYYY-MM-DD"},
+    "bounds": {"maxDays": 366, "maxItems": 200, "truncatedFlag": true},
+    "statuses": ["complete", "pending", "logged", "skipped", "at-most-safe", "at-most-breach"],
+    "serverSideFilter": ["items with taskHorizonCalendarVisible === false", "archived items"],
+    "projectionPrivacy": "pure data snapshot: no notes, no attachments, no externalRef"
+  },
+  "consumerRules": [
+    "protocol/version>=5/calendar.read negotiation proves only the base API, not cooperation readiness; do not enable production cooperation until the proposed readiness gate, dual-side fixtures, and real-host acceptance are complete",
+    "capture the current window.siyuanCheckin; after await capturedApi.whenReady(), require ready === true, window.siyuanCheckin === capturedApi, and capturedApi.isReady() === true before reads or subscriptions; isReady only reflects its own host and does not prove that the reference is still current; repeat the current-reference check after any later await",
+    "getCalendarProjection is synchronous and bounded: validate the half-open range, debounce/coalesce refresh events, and do not claim timeout or AbortSignal can interrupt the provider call",
+    "coalesce and re-read on checkin:item-created, checkin:item-updated, checkin:item-deleted, checkin:item-archived, checkin:event-recorded, checkin:event-deleted, or checkin:analytics-updated; ignore only suggestion-workflow-updated for this projection",
+    "degrade to hidden layer on missing plugin, missing capability, unload, or error; clear stale cached projection and refresh on recovery",
+    "legacy v4-only consumers must not surface hidden items from stale caches: keep legacy aggregate or hide the fine-grained layer",
+    "display-only: never writes task state back from the projection; new task completion cooperation MUST use v5 recordEventsBatch even for one entry, never fallback to recordEvent, with taskhorizon:<blockId>:<localDate> and the original explicit occurredAt/unit/value retained in a consumer-owned durable queue; the write setting is independent of the visibility switch; W-03 dedicated validation and W-06 consumer queue/reload acceptance remain pending",
+    "host-level batch Promise rejection means no reliable success receipt and may occur after facts are durable: keep original identities for confirmation/retry; do not turn it into per-entry kind=rejected, which means that entry failed structural validation and is not written",
+    "current batch reason not-scheduled refers only to the item's creation/archive availability period, not every non-scheduled weekday/interval; W-03 still needs the Task Horizon count+daily+atLeast and SKIP rules plus strict occurredAt calendar validation, since Date.parse may normalize impossible month-days or 24:00"
+  ],
+  "acceptance": [
+    "dual-side contract fixtures",
+    "desktop tab/dock, separate window, Android",
+    "visibility toggle hides/restores immediately",
+    "hidden items absent from every legacy consumption path",
+    "Task Horizon missing/reload/upgrade leaves siyuan-checkin unaffected"
+  ]
+}
