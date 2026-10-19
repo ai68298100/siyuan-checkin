@@ -3182,5 +3182,14 @@
 - 零存储侵入与自愈：不破坏 Store v3 结构，不新增辅助存储桶，不增加多窗口读写冲突风险。换绑文档/笔记本时指纹变动即刻自动复位游标，崩溃或异常重载后天然自愈。
 - 自动化契约守门：建立 `tests/cursor-persistence-assessment.test.cjs`，持续验证会话态不变量、前插块不漏读对比及 50k 事件内存对账性能基线。
 
+## D-514：辅助存储桶跨窗口审计、合并分类与拆除生命周期（T-1860，2026-10-20）
+
+- **辅助存储桶三分类架构（明确语义边界，杜绝盲目套用并集）**：
+  1. 追加型（Append-only）：AI 分析历史（`AGENT_ANALYSIS_CACHE_KEY`）与操作审计日志（`AUDIT_STORAGE_NAME`）。多窗口并发生成时采用确定性并集合并（`mergeAnalysisSnapshots`、`mergeStoreAudits`），跨窗口互不丢失；在 `onDataChanged` 中重读远端并集合并；保存失败时严格执行内存状态回滚（`this.analysisHistory = previousHistory`），防止脏快照滞留；卸载期纳入 `onunload` 有界预算排空（`waitWithinDeadline`）。
+  2. 覆盖型 / LWW（Overwrite）：视图偏好（`VIEW_PREFERENCES_NAME`）与会话草稿（`journalDrafts`、`settingsDrafts`）。严禁套用并集合并逻辑，并集会使得偏好重置操作失效（被旧磁盘快照复活）；采用最后写入者胜（LWW）或规范化全量覆盖。
+  3. 显式删除与增删改型（Explicit Delete & Mutation）：用户模板（`USER_TEMPLATES_NAME`）、自定义图标库（`CUSTOM_ICON_LIBRARY_NAME`）、问卷日记独立桶（`JOURNAL_DATA_NAME`）与建议工作流。纯粹并集会导致用户主动删除的项被远端脏文件复活；`persistUserTemplates` 与 `persistCustomIconLibrary` 统一计算差集（`deletedIds` / `deletedIcons`），先剥离远端待删除项后再合并；问卷独立桶基于 `lastPersisted` 脏检查，无本地编辑时跟随远端，有本地编辑时保持本地状态。
+- **守门与测试**：新增 `tests/auxiliary-buckets-lifecycle.test.cjs` 并纳入 `test:v18`，对三类桶的静态代码断言、删除防复活模拟、AI 历史回滚及覆盖型偏好隔离进行全量验证。
+
+
 
 

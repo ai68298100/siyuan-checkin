@@ -2300,7 +2300,9 @@ private reviewCompatibilitySnapshot?: {
     private async persistUserTemplates(next: UserTemplate[]): Promise<void> {
         await this.withStorageLock(async () => {
             const stored = await this.loadData(USER_TEMPLATES_NAME);
-            const remote = Array.isArray(stored) ? stored : [];
+            const remoteRaw = Array.isArray(stored) ? stored : [];
+            const deletedIds = new Set(this.userTemplates.filter((item) => !next.some((n) => n.id === item.id)).map((item) => item.id));
+            const remote = deletedIds.size > 0 ? remoteRaw.filter((item) => !deletedIds.has((item as {id?: string})?.id || "")) : remoteRaw;
             const merged = mergeUserTemplates(next, remote);
             await this.saveData(USER_TEMPLATES_NAME, merged);
             this.userTemplates = merged;
@@ -2311,7 +2313,9 @@ private reviewCompatibilitySnapshot?: {
         await this.withStorageLock(async () => {
             const stored = await this.loadData(CUSTOM_ICON_LIBRARY_NAME);
             const remote = normalizeCustomIconLibrary(stored);
-            const merged = normalizeCustomIconLibrary([...next, ...remote]);
+            const deletedIcons = new Set(this.customIconLibrary.filter((icon) => !next.includes(icon)));
+            const filteredRemote = deletedIcons.size > 0 ? remote.filter((icon) => !deletedIcons.has(icon)) : remote;
+            const merged = normalizeCustomIconLibrary([...next, ...filteredRemote]);
             await this.saveData(CUSTOM_ICON_LIBRARY_NAME, merged);
             this.customIconLibrary = merged;
         });
@@ -2735,6 +2739,30 @@ this.scheduleMidnightRefresh();
                         shouldRepairSuggestionWorkflow = true;
                     }
                 }
+                /* T-1860：追加型辅助桶（AI 分析历史与审计日志）跨窗口并集 */
+                const remoteHistory = typeof this.loadData === "function"
+                    ? await loadAnalysisSnapshots((key) => this.loadData(key), AGENT_ANALYSIS_CACHE_KEY)
+                    : [];
+                if (remoteHistory.length > 0) {
+                    this.analysisHistory = mergeAnalysisSnapshots(this.analysisHistory, remoteHistory);
+                }
+                const storedAudit = await this.loadData(AUDIT_STORAGE_NAME);
+                if (storedAudit !== undefined) {
+                    this.auditEntries = mergeStoreAudits(this.auditEntries, normalizeStoreAudit(storedAudit));
+                }
+                /* T-1860：问卷日记独立桶跨窗口同步（无本地脏数据时跟随远端） */
+                const storedJournal = await this.loadData(JOURNAL_DATA_NAME);
+                const journalPayload = (storedJournal && typeof storedJournal === "object" ? storedJournal : {}) as {templates?: unknown; integration?: unknown};
+                const remoteJournalTemplates = normalizeCustomJournalTemplates(journalPayload.templates);
+                const remoteJournalIntegration = normalizeJournalIntegration(journalPayload.integration);
+                if (JSON.stringify(this.journalCustomTemplates) === JSON.stringify(this.lastPersistedJournalTemplates)) {
+                    this.journalCustomTemplates = remoteJournalTemplates;
+                    this.lastPersistedJournalTemplates = remoteJournalTemplates.map((entry) => ({...entry, questions: entry.questions.map((question) => ({...question}))}));
+                }
+                if (JSON.stringify(this.journalIntegrationPref) === JSON.stringify(this.lastPersistedJournalIntegration)) {
+                    this.journalIntegrationPref = remoteJournalIntegration;
+                    this.lastPersistedJournalIntegration = {...remoteJournalIntegration};
+                }
                 this.applyViewPreferences(preferences);
                 await refreshReminderDeliveryStateFor(this as unknown as ReminderDeliveryHost);
                 this.renderBackgroundUpdate();
@@ -2878,6 +2906,7 @@ this.scheduleMidnightRefresh();
             this.mutationQueue.catch(() => undefined),
             this.saveQueue.catch(() => undefined),
             this.auxiliarySaveQueue.catch(() => undefined),
+            this.analysisHistorySaveQueue.catch(() => undefined),
             this.focusOperation.catch(() => undefined),
             this.flushPendingAuditPersist(),
         ]), deadline);
@@ -8027,6 +8056,8 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
                 if (typeof lock === "function") await lock.call(this, persist);
                 else await persist();
             }).catch(() => {
+                /* T-1860：保存失败回滚内存状态，防止未持久化快照残留 */
+                this.analysisHistory = previousHistory;
                 if (!stillCurrent()) return;
                 updateSession({error: t("review.assistantCacheSaveFailed"), errorScope: scope});
                 this.render(root);

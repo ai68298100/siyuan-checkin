@@ -1,3 +1,13 @@
+# 2026-10-20 辅助存储桶三分类架构与拆除生命周期（T-1860，D-514）
+
+**v18.18.0 持续增强——辅助存储桶跨窗口审计、合并分类与生命周期治理**：
+1. **三分类辅助存储桶体系落地（D-514）**：
+   - 追加型（Append-only）：AI 分析历史（`AGENT_ANALYSIS_CACHE_KEY`）与操作审计日志（`AUDIT_STORAGE_NAME`）。`onDataChanged` 重读远端快照并执行 `mergeAnalysisSnapshots` / `mergeStoreAudits` 并集合并；`analysisHistorySaveQueue` 持久化失败时显式回滚 `this.analysisHistory = previousHistory` 防止脏快照滞留；`onunload` 的 `waitWithinDeadline` 有界预算中新增 `analysisHistorySaveQueue.catch(() => undefined)` 排空。
+   - 覆盖型 / LWW（Overwrite）：视图偏好与会话草稿。严禁盲目套用并集逻辑，LWW 覆盖杜绝偏好重置被旧磁盘快照复活。
+   - 显式删除与增删改型（Explicit Delete & Mutation）：用户模板（`USER_TEMPLATES_NAME`）、自定义图标库（`CUSTOM_ICON_LIBRARY_NAME`）、问卷日记独立桶（`JOURNAL_DATA_NAME`）。`persistUserTemplates` 计算 `deletedIds`（对比上一次内存态与本次待存列表），先剥离远端快照中的被删除模板后再 `mergeUserTemplates`；`persistCustomIconLibrary` 同样计算 `deletedIcons` 过滤远端图标数组；问卷独立桶基于 `lastPersistedJournalTemplates` / `lastPersistedJournalIntegration` 做脏检查，无本地修改时跟随远端，有本地修改时保持本地。
+2. **守门测试**：新增 `tests/auxiliary-buckets-lifecycle.test.cjs`，覆盖三类桶的静态代码断言、删除防复活模拟、AI 历史回滚与覆盖型偏好隔离；已纳入 `test:v18`。
+3. **验证证据**：`pnpm run check`（TypeScript 零错误）、`pnpm run test:v18` 全 24 项通过、`pnpm test` 全链通过、`pnpm run build:check` 生产打包成功（3 warnings 与本轮无关）。
+
 # 2026-10-19 可信行动事实层与生态连接里程碑（v18.18.0 交付）
 
 **v18.18.0 核心能力与自动化质量门禁全量通过**：
