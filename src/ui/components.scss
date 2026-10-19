@@ -2427,6 +2427,24 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     .lc-checkin { --lc-checkin-accent: Highlight; --lc-checkin-accent-soft: transparent; --lc-checkin-border: CanvasText; --lc-checkin-bg: Canvas; --lc-checkin-surface: Canvas; --lc-checkin-surface-raised: Canvas; --lc-checkin-text: CanvasText; --lc-checkin-muted: CanvasText; }
     .lc-checkin__progress > i, .lc-checkin__item-progress > i, .lc-checkin__preview-progress > i { forced-color-adjust: none; background: Highlight; }
 }
+@media (prefers-contrast: more) {
+    .lc-checkin :is(.lc-checkin__primary-button, .lc-checkin__record-button, .lc-checkin__save-button) {
+        outline: 2px solid currentColor;
+        outline-offset: 2px;
+    }
+    .lc-checkin .lc-checkin__secondary-button {
+        border: 2px solid currentColor;
+    }
+    .lc-checkin :is(.lc-checkin__text-button, .lc-checkin__quiet-button, .lc-checkin__onboard-skip) {
+        border: 1px solid currentColor;
+    }
+    .lc-checkin :is(.lc-checkin__destructive-button, .lc-checkin__delete-button) {
+        border: 2px solid currentColor;
+    }
+    .lc-checkin .lc-checkin__icon-button {
+        border: 1px solid currentColor;
+    }
+}
 @media (prefers-reduced-motion: reduce) {
     .lc-checkin *, .lc-checkin *::before, .lc-checkin *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
 }
@@ -2827,18 +2845,86 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 }
 .lc-checkin :is(.lc-checkin__primary-button, .lc-checkin__record-button, .lc-checkin__save-button):hover { color: var(--lc-checkin-accent-contrast); filter: brightness(.94); }
 .lc-checkin :is(.lc-checkin__primary-button, .lc-checkin__record-button, .lc-checkin__save-button):active { transform: translateY(1px); }
-.lc-checkin .lc-checkin__text-button {
-    min-height: 30px;
+.lc-checkin .lc-checkin__secondary-button {
+    min-height: var(--lc-checkin-button-height);
+    padding: 0 16px;
+    border: 1px solid var(--lc-checkin-border);
+    border-radius: var(--lc-checkin-button-radius-pill);
+    color: var(--lc-checkin-text);
+    background: var(--lc-checkin-surface);
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    transition: color var(--lc-checkin-motion-fast), border-color var(--lc-checkin-motion-fast), background-color var(--lc-checkin-motion-fast), transform var(--lc-checkin-motion-fast);
+}
+.lc-checkin .lc-checkin__secondary-button:hover {
+    color: var(--lc-checkin-accent-text);
+    border-color: color-mix(in srgb, var(--lc-checkin-accent) 40%, var(--lc-checkin-border));
+    background: var(--lc-checkin-accent-soft);
+}
+.lc-checkin .lc-checkin__secondary-button:active { transform: translateY(1px); }
+
+.lc-checkin :is(.lc-checkin__text-button, .lc-checkin__quiet-button) {
+    min-height: var(--lc-checkin-button-height-sm);
     padding: 4px 10px;
     border: 1px solid transparent;
-    border-radius: 999px;
+    border-radius: var(--lc-checkin-button-radius-pill);
     color: var(--lc-checkin-muted);
     background: transparent;
     font-weight: 600;
     cursor: pointer;
     transition: color var(--lc-checkin-motion-fast), background-color var(--lc-checkin-motion-fast);
 }
-.lc-checkin .lc-checkin__text-button:hover { color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); }
+.lc-checkin :is(.lc-checkin__text-button, .lc-checkin__quiet-button):hover { color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); }
+
+.lc-checkin :is(.lc-checkin__destructive-button, .lc-checkin__delete-button) {
+    min-height: var(--lc-checkin-button-height-sm);
+    padding: 4px 10px;
+    border: 1px solid transparent;
+    border-radius: var(--lc-checkin-button-radius-pill);
+    color: var(--lc-checkin-muted);
+    background: transparent;
+    font-weight: 600;
+    cursor: pointer;
+    transition: color var(--lc-checkin-motion-fast), background-color var(--lc-checkin-motion-fast), border-color var(--lc-checkin-motion-fast);
+}
+.lc-checkin :is(.lc-checkin__destructive-button, .lc-checkin__delete-button):hover {
+    color: var(--lc-checkin-danger-text);
+    border-color: color-mix(in srgb, var(--lc-checkin-danger) 30%, transparent);
+    background: color-mix(in srgb, var(--lc-checkin-danger) 10%, transparent);
+}
+
+.lc-checkin :is(
+    .lc-checkin__primary-button,
+    .lc-checkin__record-button,
+    .lc-checkin__save-button
+):focus-visible {
+    box-shadow: 0 0 0 3px var(--lc-checkin-accent-soft);
+    outline: 2px solid var(--lc-checkin-accent);
+    outline-offset: 2px;
+}
+
+.lc-checkin :is(
+    .lc-checkin__secondary-button,
+    .lc-checkin__text-button,
+    .lc-checkin__quiet-button,
+    .lc-checkin__icon-button,
+    .lc-checkin__back-button,
+    .lc-checkin__small-button
+):focus-visible {
+    box-shadow: 0 0 0 2px var(--lc-checkin-accent-soft);
+    outline: 2px solid var(--lc-checkin-accent);
+    outline-offset: 2px;
+}
+
+.lc-checkin :is(
+    .lc-checkin__destructive-button,
+    .lc-checkin__delete-button
+):focus-visible {
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--lc-checkin-danger) 25%, transparent);
+    outline: 2px solid var(--lc-checkin-danger);
+    outline-offset: 2px;
+}
 .lc-checkin :is(.lc-checkin__icon-button, .lc-checkin__back-button) {
     display: grid;
     place-items: center;
@@ -8456,10 +8542,10 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 
 /* Empty states and the fixed editor action rail should not reserve a second
    hidden viewport.  The layout itself already owns the safe-area inset. */
-.lc-checkin__empty { min-height: 140px; }
+.lc-checkin__empty { min-height: var(--lc-checkin-state-min-height); }
 .lc-checkin--today .lc-checkin__item-body { background: transparent; }
 @container lc5 (max-width: 600px) {
-    .lc-checkin__empty { min-height: 88px; }
+    .lc-checkin__empty { min-height: var(--lc-checkin-state-error-min-height); }
     .lc-checkin--editor .lc-checkin__form-scroll { padding-bottom: 8px !important; }
 }
 

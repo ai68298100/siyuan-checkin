@@ -3198,6 +3198,25 @@
 - **默认导入决策**：`defaultResolutionForCategory` 复用 D-514 分类语义——追加型默认 `merge`（并集），覆盖/增删改/主档默认 `overwrite`（后写者胜）。`skip` 由用户显式选择。
 - **守门文件**：`src/backup-envelope.ts` + `tests/backup-envelope.test.cjs`（纳入 `test:v18`）。
 
+## D-516：空态/引导与 4 级动作按钮语义系统收口（T-1817 / T-1820，2026-10-20）
+
+- **4 级动作语义收口（T-1817）**：
+  1. Primary (`.lc-checkin__primary-button, .lc-checkin__record-button, .lc-checkin__save-button`)：紫罗兰渐变胶囊、白字、微阴影、悬浮微按压动效。
+  2. Secondary (`.lc-checkin__secondary-button`)：浅底/深底背景、边框胶囊、深色字、悬浮平滑变色。
+  3. Quiet / Text (`.lc-checkin__text-button, .lc-checkin__quiet-button`)：透明底、弱化字色，hover 转紫罗兰弱底。
+  4. Destructive (`.lc-checkin__destructive-button, .lc-checkin__delete-button`)：低频弱化，hover 转红底红字危险色，安全不突兀。
+  5. Icon (`.lc-checkin__icon-button`)：圆形 44px/hit 触达，图标居中。
+  - 键盘无障碍焦点：为全级别按钮统一定制高可见度的 `:focus-visible` 环与 2px `outline-offset`，消除浏览器原生焦点框错位。
+  - 高对比度自适应：在 `@media (prefers-contrast: more)` 下为全部 5 级按钮统一注入显式边框与 outline。
+- **空态/引导/错误状态视觉统一（T-1820）**：
+  - `tokens.scss` 补充 `--lc-checkin-state-min-height: 140px`、`--lc-checkin-state-error-min-height: 88px`、`--lc-checkin-state-icon-size: 28px`。
+  - `.lc-checkin__empty` 与 `.lc-checkin__error` 全面收口为 state token 继承。
+  - `.lc-checkin__onboard-skip` 告别下划线超链外观，接入 pill radius、统一字号与 quiet button 交互规范。
+- **i18n 与测试基线加固**：
+  - 补齐 `block.scopeLoadFailed` 与 `common.retry` 中英文词条，消除 `i18n-hygiene.test.cjs` 报告的丢失键。
+  - 修复 `tests/yeguif-ingest.cjs` 模拟宿主缺少生命周期标记（`acceptingOperations` / `storageReady` / `noteQueryIntegration`）导致的误测漏洞，恢复 100% 绿灯。
+
+
 
 
 

@@ -1,3 +1,22 @@
+# 2026-10-20 空态/引导与 4 级动作按钮语义系统收口（T-1817/T-1820，D-516）
+
+**v18.18.0 持续增强——🎨 UI/UX 精细化打磨与无障碍收敛**：
+1. **五级动作按钮语义体系落地（T-1817）**：
+   - Primary：紫罗兰渐变胶囊、白字、微阴影、悬浮微按压动效。
+   - Secondary：`.lc-checkin__secondary-button` 定义统一，浅深底面自适应，边框胶囊，深色字。
+   - Quiet / Text：`.lc-checkin :is(.lc-checkin__text-button, .lc-checkin__quiet-button)` 统一透明底、弱化字色，hover 转紫罗兰软底。
+   - Destructive：`.lc-checkin :is(.lc-checkin__destructive-button, .lc-checkin__delete-button)` 低频弱化，hover 转红底红字危险色。
+   - Icon：`.lc-checkin__icon-button` 统一圆形 44px/hit 触达。
+   - 无障碍与高对比度：为全级别按钮统一定制高可见度的 `:focus-visible` 环与 2px `outline-offset`；在 `@media (prefers-contrast: more)` 下自动注入显式边框与 outline。
+2. **空态、引导、错误状态视觉统一（T-1820）**：
+   - `tokens.scss` 补充 `--lc-checkin-state-min-height: 140px`、`--lc-checkin-state-error-min-height: 88px`、`--lc-checkin-state-icon-size: 28px`。
+   - `.lc-checkin__empty` 与 `.lc-checkin__error` 全面收口为 state token 继承。
+   - `.lc-checkin__onboard-skip` 告别下划线超链外观，接入 pill radius、统一字号与 quiet button 交互规范。
+3. **i18n 与生命周期测试加固**：
+   - 补齐 `block.scopeLoadFailed` 与 `common.retry` 中英文词条，`i18n-hygiene.test.cjs` 31 模块 100% 通过。
+   - 修复 `tests/yeguif-ingest.cjs` 模拟宿主缺少生命周期标记导致误阻断漏洞，恢复全绿。
+4. **验证证据**：`pnpm run check`（TypeScript 零错误）、`pnpm run test:v18`（25 项全通）、`pnpm test`（150+ 测试全绿）、`pnpm run test:ui`（80+ UI 测试全绿）、`pnpm run build`（生产构建成功）。
+
 # 2026-10-20 版本化多桶备份 envelope、单桶事务回滚与 any 清零（T-1861/T-1862，D-515）
 
 **v18.18.0 持续增强——🛡️ 工程基建与规范合规**：

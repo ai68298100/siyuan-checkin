@@ -42,6 +42,7 @@ function createHost(mappings = []) {
     Object.assign(host, {
         yeguifIntegration: {enabled: true, itemId: "", notebookId: "notebook-0001", mappings},
         storageReady: true, acceptingOperations: true, disposed: false, disposing: false, sourceIngestReports: {}, yeguifScanCursor: "",
+        yeguifGeneration: 0, noteQueryIntegration: {enabled: false},
         store: model.normalizeStore({version: 3, items: [{id: "run", name: "跑步"}, {id: "stretch", name: "拉伸"}].map(item => ({...item,
             kind: "duration", target: 30, unit: "分钟", schedule: {type: "daily"}, createdAt: new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1).toISOString()})), events: []}),
         kernelPost: async () => { if (host.readFails) throw new Error("read failed"); return {code: 0, data: sourceRows}; },
