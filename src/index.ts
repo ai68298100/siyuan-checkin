@@ -656,7 +656,7 @@ export default class CheckinPlugin extends Plugin {
             /* T-1351：汇总行 → 项目洞察；锚点行 → 打开锚点文档（内核 rootID，经 openTab）。 */
             onJumpItem: (itemId: string) => this.jumpToItemInsights(itemId),
             onJumpItemAnchor: (blockId: string, isSourceCurrent?: () => boolean) => void this.jumpToItemAnchorDoc(blockId, isSourceCurrent),
-            onBlockTodayRecord: (itemId: string, amount?: number) => void this.recordBlockToday(itemId, amount),
+            onBlockTodayRecord: (itemId: string, amount?: number) => this.recordBlockToday(itemId, amount),
             isActive: () => !this.disposed && !this.disposing && this.acceptingOperations,
             getAnchorIndex: () => new Map(this.anchorDocCache),
             resolveAnchorDocs: (blockIds: string[]) => this.resolveAnchorDocsForRender(blockIds),

@@ -132,7 +132,7 @@ assert.match(glueSource, /event\.key !== "Enter" && event\.key !== " "/, "render
 assert.match(glueSource, /event\.preventDefault\(\);\s*\(target as HTMLElement\)\.click\(\);/, "render-block keyboard jumps reuse click behavior and prevent Space scrolling");
 assert.match(glueSource, /\[role='button'\]\[tabindex='0'\]\[data-jump-date\], \[role='listitem'\]\[tabindex='0'\]\[data-jump-item\]/, "keyboard delegation excludes native record buttons");
 assert.match(read("ui", "components.scss"), /\[tabindex="0"\]:focus-visible/, "render-block semantic targets inherit the shared visible keyboard focus ring");
-assert.match(read("index.ts"), /onBlockTodayRecord: \(itemId: string, amount\?: number\) => void this\.recordBlockToday\(itemId, amount\)/, "host must wire the block record callback (T-1462: optional chip amount)");
+assert.match(read("index.ts"), /onBlockTodayRecord: \(itemId: string, amount\?: number\) => this\.recordBlockToday\(itemId, amount\)/, "host must wire the block record callback (T-1462: optional chip amount)");
 assert.match(read("index.ts"), /private async recordBlockToday/, "host implements the block record path via recordEvent");
 for (const key of ["block.todayDone", "block.todayStreak", "block.todayLastMissed", "block.todayCongrats", "block.todayRecord", "block.todayTruncated"]) {
     assert.equal(read("i18n.ts").split(`"${key}"`).length - 1, 2, `${key} must exist in both zh and en`);

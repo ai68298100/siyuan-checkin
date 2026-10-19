@@ -31,8 +31,9 @@ export interface BlockRendererDeps {
     /** T-1292：锚点→文档归属索引的同步缓存读；未命中条目不在返回值中。 */
     getAnchorIndex?(): AnchorDocIndex;
     /** T-1412：today 视图打卡按钮 → 宿主经既有 recordEvent 通道写入（幂等/审计不变）。
-        T-1462：amount 为 chips 的增量值；缺省=宿主取项目默认步长（单按钮行为不变）。 */
-    onBlockTodayRecord?(itemId: string, amount?: number): void;
+        T-1462：amount 为 chips 的增量值；缺省=宿主取项目默认步长（单按钮行为不变）。
+        T-1857：允许返回 Promise 驱动 pending 解除与失败重试状态。 */
+    onBlockTodayRecord?(itemId: string, amount?: number): void | Promise<boolean | void>;
     /** T-1292：索引未命中的锚点异步解析（内核 /api/block/getBlockInfo，宿主缓存）；
         完成后由本函数的实现方触发一次强制重渲染。 */
     resolveAnchorDocs?(blockIds: string[]): Promise<void>;
@@ -187,15 +188,41 @@ export function renderCheckinBlocksIn(protyleElement: HTMLElement, deps: BlockRe
                 renderCheckinBlocksIn(protyleElement, deps, {force: true, isActive: options.isActive});
                 return;
             }
-            /* T-1412：today 视图打卡按钮——节流防连点（写入后由宿主广播触发整块重渲染解除）。 */
+            /* T-1412 / T-1857：today 视图打卡按钮——节流防连点与失败解除 pending 状态机。 */
             const recordTarget = (event.target as HTMLElement).closest("[data-block-record]");
             if (recordTarget) {
                 if (recordTarget.getAttribute("data-record-pending")) return;
                 recordTarget.setAttribute("data-record-pending", "true");
+                recordTarget.removeAttribute("data-record-error");
                 /* T-1462：chips 携带 data-block-record-amount，缺省（单按钮）仍由宿主取默认步长。 */
                 const amountValue = Number(recordTarget.getAttribute("data-block-record-amount"));
                 const amount = Number.isFinite(amountValue) && amountValue > 0 ? amountValue : undefined;
-                deps.onBlockTodayRecord?.(recordTarget.getAttribute("data-block-record") || "", amount);
+                const itemId = recordTarget.getAttribute("data-block-record") || "";
+                let cleanupTimer: ReturnType<typeof setTimeout> | undefined;
+                const release = (error = false) => {
+                    if (cleanupTimer) clearTimeout(cleanupTimer);
+                    if (!recordTarget.isConnected) return;
+                    recordTarget.removeAttribute("data-record-pending");
+                    if (error) {
+                        recordTarget.setAttribute("data-record-error", "true");
+                        setTimeout(() => {
+                            if (recordTarget.isConnected) recordTarget.removeAttribute("data-record-error");
+                        }, 2500);
+                    }
+                };
+                /* 6s 兜底释放，杜绝宿主卡死或网络挂起导致按钮永久不可用。 */
+                cleanupTimer = setTimeout(() => release(true), 6000);
+                const result = deps.onBlockTodayRecord?.(itemId, amount);
+                if (result && typeof (result as Promise<unknown>).then === "function") {
+                    (result as Promise<unknown>)
+                        .then((ok) => {
+                            if (ok === false) release(true);
+                            else release(false);
+                        })
+                        .catch(() => release(true));
+                } else {
+                    setTimeout(() => release(false), 2000);
+                }
                 return;
             }
             /* T-1351：锚点行优先打开所在文档（依赖已解析的缓存索引），否则回落项目洞察。 */
