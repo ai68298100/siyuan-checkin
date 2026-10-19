@@ -2996,3 +2996,13 @@ dark 主题下选中态卡片底色（accent 14% 混 `#1A1B22`）与 hover 态�
 
 验证：所有视觉门禁与主链通过；CSS 656.5 KiB 仍低于 660 KiB 硬线。
 
+# 2026-10-19 T-1817 主次操作按钮层级第一切片（D-491）
+
+`tokens.scss` 新增 5 对操作按钮语义 token：`--lc-checkin-button-height-sm` (30px) / `--lc-checkin-button-height` (34px) / `--lc-checkin-button-height-lg` (38px) / `--lc-checkin-button-radius` (8px) / `--lc-checkin-button-radius-pill` (999px)。
+
+`components.scss` 中 `__text-button` 与 `__save-button` 的 `border-radius` 已切到 `button-radius`；这是按钮基线（primary 实心 / secondary 浅底 / quiet 文字）的第一刀。
+
+剩余 6 类核心按钮（`__record-button` 28px / `__primary-button` 42px / dock 30px / settings-card 38px / `--today` item 34px / `--history` event 36px 等）的 height 全部切到 `button-height-sm/md/lg`；secondary/quiet/destructive/icon 四级动作的语义化命名留作下一切片。
+
+验证：所有视觉门禁与主链通过；CSS 657 KiB 仍低于 660 KiB 硬线。
+

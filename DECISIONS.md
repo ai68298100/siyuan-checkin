@@ -3021,3 +3021,10 @@
 - 6 个高重复字段定义（custom-range / journal-notebook / icon-panel / search-field / insight-custom-range / insight-picker）切到上述 token。
 - 不动 30/36/40/42/44px 等高变体字段、72/84/88/100px 文本域、移动端/设置层覆盖；这些与"分类化"标签、帮助、必填、错误原因、成功、dirty、busy、disabled 状态合并一并留作下一切片。
 - 范围限定：error / success / busy / disabled 状态规则合并与 T-1788 错误态视觉矩阵按 T-1813 治理节奏逐个收口。
+
+## D-491：T-1817 主次操作按钮层级第一切片（2026-10-19）
+
+- 新增 5 对操作按钮语义 token：`button-height-sm` (30px) / `button-height` (34px) / `button-height-lg` (38px) / `button-radius` (8px) / `button-radius-pill` (999px)。
+- `__text-button` 与 `__save-button` 的 `border-radius` 已切到 `button-radius`，基线按钮 primary/secondary/quiet 的 radius 收口。
+- 不动 6 类核心按钮的 height（28/30/34/36/38/42px 实际变体），更不动 secondary/quiet/destructive/icon 四级动作的语义化命名（每张卡一个主动作、长文案可换行、桌面与移动共用语义）。
+- 范围限定：先收口 token 基线（radius），再下一切片按 `button-height-sm/md/lg` 收口 height 变体，最后用 4 级动作复合类做语义化。
