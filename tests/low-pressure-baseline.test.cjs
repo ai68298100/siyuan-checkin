@@ -41,7 +41,7 @@ const charts = read("src/charts.ts");
 assert.match(charts, /<title>\$\{escapeChartText\(title\)\}<\/title>/, "heatmap cells keep escaped hover titles as redundant encoding");
 const scss = read("src/ui/components.scss");
 for (const line of scss.split("\n").filter((entry) => /\.lc-yearheatmap \.is-level-\d/.test(entry))) {
-    assert.match(line, /var\(--lc-checkin-accent\)/, `heatmap level color stays on the accent ladder: ${line.trim()}`);
+    assert.match(line, /var\(--lc-checkin-(accent|heat-step-)\d?\d?\)/, `heatmap level color stays on the accent ladder (or heat-step token): ${line.trim()}`);
     assert.ok(!/#[0-9a-fA-F]{3,8}\b/.test(line), `heatmap level color must not use raw hex (red/green risk): ${line.trim()}`);
 }
 

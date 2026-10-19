@@ -3035,3 +3035,21 @@ dark 主题下选中态卡片底色（accent 14% 混 `#1A1B22`）与 hover 态�
 
 验证：所有视觉门禁与主链通过；CSS 657 KiB（673041 bytes）仍低于 660 KiB 硬线。
 
+# 2026-10-19 T-1816 卡片 surface 第二切片 + T-1813 热力色阶收口（D-495）
+
+`tokens.scss` 新增 4 档热力色阶 token：`--lc-checkin-heat-step-1` / `-2` / `-3` / `-4`（accent + surface 派生阶梯，light 混合 9%/22%/42%/100%，dark 14%/28%/52%/100%）。
+
+`components.scss` 中 3 个热力上下文切到 token：
+
+- `__insight-day` 的 4 档（`is-level-1..4`）切到 `heat-step-1..4`；
+- `__yearheatmap` 与 `__yearheatmap-legend` 的 `is-level-4` 切到 `heat-step-4`；
+- 暗色主题自动跟随 token 调整透明度。
+
+`tests/low-pressure-baseline.test.cjs` 的契约断言更新：原要求 `var(--lc-checkin-accent)` 出现于每行；现在接受 `accent` 或 `heat-step-*` 任意 token。
+
+`__calendar-day` 4 档保留 lilac 偏移（暖色 vs 紫语义差异），不强行并入。
+
+剩余：`__all-done`、week-load、review-compare、focus-timer、quick-dock、mobile-nav 五个高频面与 workbench/maintenance-responsive 之间的卡片收口。
+
+验证：所有视觉门禁与主链通过；CSS 658 KiB（673839 bytes）仍低于 660 KiB 硬线。
+

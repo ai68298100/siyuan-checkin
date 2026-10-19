@@ -1515,9 +1515,9 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__calendar-empty,
 .lc-checkin__calendar-day { aspect-ratio: 1; min-width: 0; }
 .lc-checkin__calendar-day { position: relative; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 1px solid transparent; border-radius: 7px; color: var(--lc-checkin-muted); background: var(--lc-checkin-surface); font-size: 11px; cursor: pointer;
-    &.is-level-1 { background: color-mix(in srgb, var(--lc-checkin-accent) 9%, var(--lc-checkin-surface)); }
-    &.is-level-2 { color: var(--lc-checkin-text); background: color-mix(in srgb, var(--lc-checkin-accent) 22%, var(--lc-checkin-surface)); }
-    &.is-level-3 { color: var(--lc-checkin-text); background: color-mix(in srgb, var(--lc-checkin-accent) 42%, var(--lc-checkin-surface)); }
+    &.is-level-1 { background: var(--lc-checkin-heat-step-1); }
+    &.is-level-2 { color: var(--lc-checkin-text); background: var(--lc-checkin-heat-step-2); }
+    &.is-level-3 { color: var(--lc-checkin-text); background: var(--lc-checkin-heat-step-3); }
     &.is-level-4 { color: var(--lc-checkin-accent-contrast); background: var(--lc-checkin-accent); }
     &.is-selected { border-color: var(--lc-checkin-accent-text); box-shadow: 0 0 0 1px var(--lc-checkin-accent); }
     &.is-today span { font-weight: 700; text-decoration: underline; text-underline-offset: 2px; }
@@ -5089,7 +5089,7 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-yearheatmap .is-level-1 { fill: color-mix(in srgb, var(--lc-checkin-accent) 18%, var(--lc-checkin-surface)); }
 .lc-yearheatmap .is-level-2 { fill: color-mix(in srgb, var(--lc-checkin-accent) 38%, var(--lc-checkin-surface)); }
 .lc-yearheatmap .is-level-3 { fill: color-mix(in srgb, var(--lc-checkin-accent) 65%, var(--lc-checkin-surface)); }
-.lc-yearheatmap .is-level-4 { fill: var(--lc-checkin-accent); }
+.lc-yearheatmap .is-level-4 { fill: var(--lc-checkin-heat-step-4); }
 .lc-yearheatmap__label { fill: var(--lc-checkin-muted); font-size: 8px; }
 .lc-checkin__yearheatmap-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; margin-top: 8px; color: var(--lc-checkin-muted); }
 .lc-checkin__yearheatmap-meta > small:last-child { margin-left: auto; }
@@ -5099,7 +5099,7 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__yearheatmap-legend .is-level-1 { background: color-mix(in srgb, var(--lc-checkin-accent) 18%, var(--lc-checkin-surface)); }
 .lc-checkin__yearheatmap-legend .is-level-2 { background: color-mix(in srgb, var(--lc-checkin-accent) 38%, var(--lc-checkin-surface)); }
 .lc-checkin__yearheatmap-legend .is-level-3 { background: color-mix(in srgb, var(--lc-checkin-accent) 65%, var(--lc-checkin-surface)); }
-.lc-checkin__yearheatmap-legend .is-level-4 { background: var(--lc-checkin-accent); }
+.lc-checkin__yearheatmap-legend .is-level-4 { background: var(--lc-checkin-heat-step-4); }
 /* ============================================================
    8.2b 回顾页折叠区块（趋势/日志/近期事项/成就）
    ============================================================ */

@@ -69,6 +69,10 @@
     --lc-checkin-card-shadow-raised: 0 2px 4px rgba(35, 38, 89, 0.04), 0 14px 32px -6px rgba(35, 38, 89, 0.10);
     --lc-checkin-card-shadow-selected: 0 2px 4px rgba(35, 38, 89, 0.05), 0 10px 24px -6px rgba(91, 101, 232, 0.16);
     --lc-checkin-card-bg-selected: color-mix(in srgb, var(--lc-checkin-accent) 8%, var(--lc-checkin-card-bg));
+    --lc-checkin-heat-step-1: color-mix(in srgb, var(--lc-checkin-accent) 9%, var(--lc-checkin-surface));
+    --lc-checkin-heat-step-2: color-mix(in srgb, var(--lc-checkin-accent) 22%, var(--lc-checkin-surface));
+    --lc-checkin-heat-step-3: color-mix(in srgb, var(--lc-checkin-accent) 42%, var(--lc-checkin-surface));
+    --lc-checkin-heat-step-4: var(--lc-checkin-accent);
     --lc-checkin-card-elevated: var(--lc-checkin-card-highlight), var(--lc-checkin-card-shadow);
     --lc-checkin-card-elevated-hover: var(--lc-checkin-card-highlight), var(--lc-checkin-card-shadow-hover);
     --lc-checkin-primary-gradient: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%);
@@ -216,6 +220,10 @@
     --lc-checkin-card-shadow-raised: 0 2px 6px rgba(0, 0, 0, 0.45), 0 16px 36px -6px rgba(0, 0, 0, 0.65);
     --lc-checkin-card-shadow-selected: 0 2px 6px rgba(0, 0, 0, 0.45), 0 12px 28px -6px rgba(91, 101, 232, 0.30);
     --lc-checkin-card-bg-selected: color-mix(in srgb, var(--lc-checkin-accent) 14%, var(--lc-checkin-card-bg));
+    --lc-checkin-heat-step-1: color-mix(in srgb, var(--lc-checkin-accent) 14%, var(--lc-checkin-surface));
+    --lc-checkin-heat-step-2: color-mix(in srgb, var(--lc-checkin-accent) 28%, var(--lc-checkin-surface));
+    --lc-checkin-heat-step-3: color-mix(in srgb, var(--lc-checkin-accent) 52%, var(--lc-checkin-surface));
+    --lc-checkin-heat-step-4: var(--lc-checkin-accent);
     --lc-checkin-card-elevated: var(--lc-checkin-card-highlight), var(--lc-checkin-card-shadow);
     --lc-checkin-card-elevated-hover: var(--lc-checkin-card-highlight), var(--lc-checkin-card-shadow-hover);
     --lc-checkin-primary-gradient: linear-gradient(135deg, #7C83FD 0%, #6366F1 100%);

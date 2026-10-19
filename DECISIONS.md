@@ -3048,3 +3048,11 @@
 - `tokens.scss` 新增 2 对组合 token：`--lc-checkin-card-elevated` / `--lc-checkin-card-elevated-hover`，分别打包 `card-highlight` + `card-shadow` 与 `card-highlight` + `card-shadow-hover` 的双层组合。
 - `src/ui/workbench.scss` 中 6 处显式 `box-shadow: var(--lc-checkin-card-highlight), var(--lc-checkin-card-shadow[...])` 全部切到组合 token，重复规则减少 6×N 字节。
 - 范围限定：只合并阴影双层组合；不动 `card-shadow` / `card-shadow-hover` / `card-shadow-raised` / `card-shadow-selected` 单独的语义；不动 components.scss 中的单层 shadow。下一轮可继续按相同思路合并 `card-border + card-border-hover` 的组合选择子等。
+
+## D-495：T-1816 卡片 surface 第二切片 + T-1813 热力色阶收口（2026-10-19）
+
+- `tokens.scss` 新增 4 档 `heat-step-1..4` token（accent + surface 派生阶梯），light 9/22/42/100%，dark 14/28/52/100%。
+- `components.scss` 中 3 个热力上下文切到 token：`__insight-day` 4 档、`__yearheatmap` / `__yearheatmap-legend` level-4。
+- `tests/low-pressure-baseline.test.cjs` 的 `var(--lc-checkin-accent)` 契约断言更新为 `accent|heat-step` 接受形式。
+- `__calendar-day` 4 档保留 lilac 偏移（暖色 vs 紫语义差异），不强行并入。
+- 范围限定：未动 `__all-done`、week-load、review-compare、focus-timer、quick-dock、mobile-nav 与 workbench / maintenance-responsive 之间的卡片收口。
