@@ -3144,3 +3144,10 @@
 - 预览操作（`preview === true`）若遇在行写入任务，主动排队等待前序写入平稳落定再读取，杜绝读取半落盘脏状态。
 - 摄取状态与报告回填（`sourceIngestReports` / `wereadLastPull`）绑定递增代际，旧请求的慢回执绝不覆盖最新发起的手动或定时摄取报告。
 - 新增 `tests/source-inflight.test.cjs` 守门测试，纳入 `pnpm test` 与 `pnpm run test:v18` 全流程门禁。
+
+## D-509：T-1854 内核读取与网关调用的有界超时、卸载取消与游标保持（2026-10-19）
+
+- 底层通信 `kernelPost` 接入 10s 客户端有界超时（`DEFAULT_KERNEL_POST_TIMEOUT_MS = 10000;`）与卸载阻断（`this.disposed || this.disposing` 立即拒绝 `plugin-disposed`），超时使用 `Promise.race` 竞态兜底并在 `finally` 块中严格清理 `setTimeout` 定时器。
+- 微信读书出站网关 `wereadGateway` 引入 18s 客户端兜底超时竞态（`WEREAD_CLIENT_TIMEOUT_MS = 18000;`）配合 15s 内核转发代理超时与卸载阻断，杜绝前端永久挂起。
+- 游标与事实保持：健康收件箱、笔记推导与叶归三处分页扫描读取遇超时或拒绝错误时，严格保持游标不推进、不退化已有持久化事实，如实输出 `read-failed` 可诊断状态。
+- 新增 `tests/bounded-timeout.test.cjs` 自动化契约断言，纳入全流程门禁。

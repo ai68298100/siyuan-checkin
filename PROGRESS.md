@@ -3175,3 +3175,12 @@ dark 主题下选中态卡片底色（accent 14% 混 `#1A1B22`）与 hover 态�
 - 产物指标：TS 零警告，主链全量测试 100% 绿灯。
 - 验证：`pnpm run check`、`pnpm build`、`node tests/source-inflight.test.cjs`、`pnpm test` 全部通过。
 
+# 2026-10-19 T-1854 内核读取与网关调用的有界超时/取消（D-509）
+
+- `src/index.ts`：为底层 `kernelPost` 接入 10s 客户端有界超时（`DEFAULT_KERNEL_POST_TIMEOUT_MS = 10000;`）与卸载阻断（`this.disposed || this.disposing` 立即拒绝 `plugin-disposed`），超时使用 `Promise.race` 竞态兜底并在 `finally` 块中严格清理 `setTimeout` 定时器，杜绝内核 SQL 挂起或通信死锁导致前端调用永久挂起；
+- `src/index.ts`：为微信读书出站网关 `wereadGateway` 引入 18s 客户端兜底超时竞态（`WEREAD_CLIENT_TIMEOUT_MS = 18000;`）配合 15s 内核转发超时与卸载阻断；
+- 游标与事实保持：健康收件箱、笔记推导与叶归三处分页扫描读取遇超时或拒绝错误时，严格保持游标不推进、不退化已有持久化事实，如实输出 `read-failed` 可诊断状态；
+- `tests/bounded-timeout.test.cjs`：补齐针对 `kernelPost` 10s 超时、`wereadGateway` 18s 超时、卸载拒绝与读取失败游标保护的自动化门禁断言，并已纳入 `pnpm test` 与 `pnpm run test:v18`；
+- 产物指标：TS 零编译警告，主链全量测试通过。
+- 验证：`pnpm run check`、`pnpm build`、`node tests/bounded-timeout.test.cjs`、`pnpm test` 全部通过。
+

@@ -138,6 +138,9 @@ const CUSTOM_ICON_LIBRARY_NAME = "checkin-custom-icon-library";
 const REMINDER_ACTIONS_NAME = "checkin-reminder-actions";
 /* R-18.5（D-263 收尾）：连击里程碑阶梯——命中即触发里程碑级庆祝（其余完成保持日常轻反馈）。 */
 const STREAK_MILESTONES = [7, 14, 30, 60, 100, 180, 365, 500, 1000];
+/* T-1854：内核读取与网关调用的有界超时常数（客户端兜底超时，防止内核挂起或网络死锁）。 */
+const DEFAULT_KERNEL_POST_TIMEOUT_MS = 10000;
+const WEREAD_CLIENT_TIMEOUT_MS = 18000;
 const SUGGESTION_WORKFLOW_STORAGE_NAME = "checkin-suggestion-workflow";
 const FOCUS_DIAGNOSTICS_STORAGE_NAME = "checkin-focus-diagnostics";
 const DOCKTOMATO_INBOX_STORAGE_NAME = "checkin-docktomato-inbox";
@@ -1513,9 +1516,17 @@ export default class CheckinPlugin extends Plugin {
        对象、timeout 毫秒——kernel/api/network.go 官方契约）；断网/失败静默降级（结果记内存态供设置
        页显示），Key 只进本次转发的鉴权头，不落日志、不入导出、不进任何文档。 */
     /* 微信读书网关出站（经内核转发代理 /api/network/forwardProxy，官方契约 network.go）：
-       统一鉴权头与超时；返回解析后的网关信封与 HTTP 状态（Key 只进本次鉴权头）。 */
+       统一鉴权头与超时；返回解析后的网关信封与 HTTP 状态（Key 只进本次鉴权头）。
+       T-1854：18s 客户端超时竞态守卫 + 卸载阻断，杜绝内核转发挂起或无响应导致调用方永久等待。 */
     private async wereadGateway(body: Record<string, unknown>): Promise<{payload?: unknown; status?: number}> {
-        const response = await fetchSyncPost("/api/network/forwardProxy", {
+        if (this.disposed || this.disposing) {
+            return {status: 0};
+        }
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        const timeoutPromise = new Promise<undefined>((resolve) => {
+            timer = setTimeout(() => resolve(undefined), WEREAD_CLIENT_TIMEOUT_MS);
+        });
+        const forwardPromise = fetchSyncPost("/api/network/forwardProxy", {
             url: WEREAD_GATEWAY_URL,
             method: "POST",
             headers: [{"Content-Type": "application/json"}, {Authorization: `Bearer ${this.wereadIntegration.apiKey}`}],
@@ -1523,6 +1534,12 @@ export default class CheckinPlugin extends Plugin {
             timeout: 15000,
             redirect: true,
         }).catch(() => undefined);
+        const response = await Promise.race([
+            forwardPromise,
+            timeoutPromise,
+        ]).finally(() => {
+            if (timer) clearTimeout(timer);
+        });
         const data = (response as {data?: {status?: number; body?: unknown}} | undefined)?.data;
         if (typeof data?.body !== "string") return {status: data?.status};
         try {
@@ -8851,10 +8868,22 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
         return downloadLoopExportFor(this.cloneStore());
     }
 
-    /* T-1231 笔记锚点回写：尽力而为的旁路——不阻断、不回滚打卡主路径；
-       失败有界重试一次（1.5s），仍失败则挂起该锚点并写入审计。 */
-    private kernelPost(url: string, payload: unknown): Promise<{code?: number; msg?: string}> {
-        return fetchSyncPost(url, payload);
+    /* T-1231 / T-1854：内核调用有界超时与卸载阻断——
+       卸载期间立即拒绝；超时 10s 竞态兜底，清理定时器；尽力而为旁路，不阻断打卡主路径。 */
+    private kernelPost<T = {code?: number; msg?: string}>(url: string, payload: unknown, timeoutMs = DEFAULT_KERNEL_POST_TIMEOUT_MS): Promise<T> {
+        if (this.disposed || this.disposing) {
+            return Promise.reject(new Error("plugin-disposed"));
+        }
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        const timeoutPromise = new Promise<never>((_, reject) => {
+            timer = setTimeout(() => reject(new Error("kernel-post-timeout")), timeoutMs);
+        });
+        return Promise.race([
+            fetchSyncPost(url, payload) as Promise<T>,
+            timeoutPromise,
+        ]).finally(() => {
+            if (timer) clearTimeout(timer);
+        });
     }
 
     private async writebackNoteAnchor(item: CheckinItem, info: {state: "done" | "skip" | "unskip"; value?: number; unit?: string}): Promise<void> {
