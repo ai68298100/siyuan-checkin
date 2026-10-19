@@ -3184,3 +3184,13 @@ dark 主题下选中态卡片底色（accent 14% 混 `#1A1B22`）与 hover 态�
 - 产物指标：TS 零编译警告，主链全量测试通过。
 - 验证：`pnpm run check`、`pnpm build`、`node tests/bounded-timeout.test.cjs`、`pnpm test` 全部通过。
 
+# 2026-10-19 T-1856 渲染块锚点解析失败重试、超时与代际清理（D-510）
+
+- `src/render/block-renderer.ts`：为渲染块锚点范围解析 `resolveAnchorDocs` 引入 8s 有界超时竞态（`ANCHOR_RESOLVE_TIMEOUT_MS = 8000;`），并在 `finally` 块中清理定时器，防止内核 SQL 解析无响应导致渲染块永久处于“加载中”占位；
+- 失败重试与状态恢复：当解析超时或网络/内核拒绝时，在 `.catch()` 异常捕获中将本次请求的待解析块 ID 从 `anchorResolveRequested` 模块集合中彻底清除，并渲染带 `data-block-anchor-retry="true"` 的交互式重试占位（“锚点范围解析超时或失败，点击重试”），用户点击即可重新触发解析渲染，不再需要强制刷新文档；
+- 陈旧代际隔离：解析完成回调验证 `lastRenderedConfig.get(block) === configText`，若用户在解析期间已修改代码块配置或换绑目标，直接丢弃陈旧结果，杜绝过期目标覆盖新渲染块；
+- 卸载清理：导出 `clearAnchorResolveCache()` 并由 `src/index.ts` 的 `onunload()` 在插件卸载时统一调用，清理残留的登记 ID；
+- `tests/checkin-block.test.cjs`：补齐针对 `clearAnchorResolveCache` 导出与调用、8s 超时竞态、失败清除、重试属性与点击处理的完整自动化断言；
+- 产物指标：TS 零编译警告，主链全量测试通过。
+- 验证：`pnpm run check`、`pnpm build`、`node tests/checkin-block.test.cjs`、`pnpm test` 全部通过。
+

@@ -422,7 +422,7 @@
 - [x] T-1853 同来源定时/启动/手动摄取的 in-flight 合并（P1，调度治理，D-508 2026-10-19）——在 `src/index.ts` 为健康、笔记推导、微信读书和叶归四类来源建立统一在行 Promise 并发门，快速连点与定时冲突时复用在行任务，杜绝重复并发 SQL 查询；预览操作排队等待写入落定；摄取报告采用请求代际保护防慢回执顶替；新增 `tests/source-inflight.test.cjs` 门禁。
 - [x] T-1854 内核读取与网关调用的有界超时/取消（P1，可靠性，D-509 2026-10-19）——在 `src/index.ts` 为 `kernelPost` 接入 10s 客户端有界超时（`DEFAULT_KERNEL_POST_TIMEOUT_MS`）与卸载立即拒绝（`plugin-disposed`），超时自动清理定时器；为 `wereadGateway` 接入 18s 客户端超时竞态守卫；三源分页扫描遇到超时或拒绝时保持游标不推进、不退化已有事实，如实输出 `read-failed` 诊断状态；新增 `tests/bounded-timeout.test.cjs` 守门测试。
 - [ ] T-1855 扫描游标跨重载续读方案评估（P2，条件批次）——T-1629 当前明确游标为会话态，大型文档每次重载从头有界重扫；评估是否持久化游标、源内容版本或仅保留幂等重扫，必须处理删块、换绑、墓碑、长期停用和旧版本迁移。输出采用/延后/不做决策与可重复基线，不直接改变存储形状。
-- [ ] T-1856 渲染块锚点解析失败可重试与代际清理（P1，渲染块）——`src/render/block-renderer.ts` 的 `anchorResolveRequested` 及异步解析需覆盖 reject、超时、宿主销毁和重新绑定；失败不能永久卡在加载态，下一次用户动作应能重试，过期结果不能覆盖新目标。补纯函数/接线守门和真实渲染块失败态说明。
+- [x] T-1856 渲染块锚点解析失败可重试与代际清理（P1，渲染块，D-510 2026-10-19）——`src/render/block-renderer.ts` 接入 8s 有界超时竞态（`ANCHOR_RESOLVE_TIMEOUT_MS`）；解析超时或失败从 requested 集合清除 blockId 允许重试，渲染重试提示按钮（`data-block-anchor-retry`）；点击/Enter 触发重渲染重试；陈旧代际配置不覆盖新目标；导出 `clearAnchorResolveCache` 并由 `src/index.ts` `onunload` 调用清理；新增 `tests/checkin-block.test.cjs` 守门断言。
 - [ ] T-1857 渲染块记录 pending 的失败/拒绝/销毁反馈（P1，渲染块）——记录按钮先置 pending，当前测试主要覆盖委托接线；补齐 `recordEvent` 拒绝、持久化失败、宿主卸载和重复点击后的解除 pending、可重试提示与不重复入账。与 T-1582 的表面一致性联动，但单独锁定渲染块状态机和事实证据。
 - [ ] T-1858 特殊项目 ID 的焦点选择器安全回归（P2，回归守门）——`src/index.ts` 有将 itemId 置入 CSS 属性选择器的路径，其他路径已使用 `CSS.escape`；以引号、反斜杠、括号、CJK、长 ID 夹具复核焦点恢复、滚动和多 root，确认旧 T-256 类修复没有回流。只补守门和最小修复，不扩展选择器语义。
 - [ ] T-1859 渲染块模板多 root DOM/ARIA 复核（P2，条件后续 T-1865）——仅在 T-1865 决定正式接线时继续；遗留 `template-manager` 模板卡仍带固定标题/条目 id，接线前核对多 root 唯一化、`aria-labelledby`/`aria-controls` 和销毁清理。若 T-1865 选择退役，则并入退役验收，不重复做接线审计。

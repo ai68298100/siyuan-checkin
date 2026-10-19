@@ -3151,3 +3151,11 @@
 - 微信读书出站网关 `wereadGateway` 引入 18s 客户端兜底超时竞态（`WEREAD_CLIENT_TIMEOUT_MS = 18000;`）配合 15s 内核转发代理超时与卸载阻断，杜绝前端永久挂起。
 - 游标与事实保持：健康收件箱、笔记推导与叶归三处分页扫描读取遇超时或拒绝错误时，严格保持游标不推进、不退化已有持久化事实，如实输出 `read-failed` 可诊断状态。
 - 新增 `tests/bounded-timeout.test.cjs` 自动化契约断言，纳入全流程门禁。
+
+## D-510：T-1856 渲染块锚点解析失败重试、超时与代际清理（2026-10-19）
+
+- `src/render/block-renderer.ts` 为锚点异步解析引入 8s 有界超时竞态（`ANCHOR_RESOLVE_TIMEOUT_MS = 8000;`），并在 `finally` 中严格回收定时器。
+- 解析超时或失败时，在 `.catch()` 块中从 `anchorResolveRequested` 模块级集合清除当前待解析 blockId，并渲染带 `data-block-anchor-retry="true"` 的失败重试占位。
+- 预览点击监听器拦截 `[data-block-anchor-retry]` 点击，无需重载页面即可就地重触发解析渲染。
+- 解析落定回调校验 `lastRenderedConfig.get(block) === configText`，用户修改代码块配置或换绑时自动丢弃陈旧结果。
+- 导出 `clearAnchorResolveCache()` 并由 `src/index.ts` 的 `onunload()` 在插件卸载时统一清理；`tests/checkin-block.test.cjs` 补齐自动化守门断言。

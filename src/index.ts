@@ -87,7 +87,7 @@ import {bindBulkModeFor, bindItemContextMenuFor, bindItemDragFor, bindPageKeyboa
 import {bindFocusTimerPanelFor, finishFocusTimerFor, openFocusTimerFor, paintFocusTimer, renderFocusMiniStripFor, renderFocusTimerPanelFor, stopFocusTimerFor, tickFocusTimerFor, type FocusTimerHost} from "./render/focus-timer";
 import {canStartWithAdapter, findFocusAdapterFor, releaseFocusAdapterFor, startFocusFor, stopAdapterSilently, stopFocusFor, type FocusAdapterHost} from "./render/focus-adapter";
 import {renderReviewView} from "./render/review";
-import {renderCheckinBlocksIn, observeCheckinBlocks} from "./render/block-renderer";
+import {renderCheckinBlocksIn, observeCheckinBlocks, clearAnchorResolveCache} from "./render/block-renderer";
 import {buildArchivedItemDetails, buildArchivedItemSummaries, renderArchivedView} from "./render/archived";
 import {deserializeReminderUserActions, mergeReminderUserActions, normalizeReminderUserActions, projectReminderCenter, serializeReminderUserActions, type ReminderFilter, type ReminderUserAction} from "./reminders";
 import {ensureReminderNoticePlacementFor, maybeSendDailyReminderFor, refreshReminderDeliveryStateFor, stopReminderDeliveryFor, syncPriorityReminderAnnouncementFor, type ReminderDeliveryHost} from "./render/reminder-delivery";
@@ -2782,6 +2782,7 @@ this.scheduleMidnightRefresh();
         this.renderBlocksUnsubscribers.splice(0).forEach((dispose) => dispose());
         this.renderBlockObservers.forEach((disconnect) => disconnect());
         this.renderBlockObservers.clear();
+        clearAnchorResolveCache();
         this.stopHostThemeWatcher();
         this.stopHostMessageOffsetWatcher();
         [this.dockElement, this.tabElement, this.quickDialogElement].forEach((root) => {

@@ -331,4 +331,16 @@ assert.match(read("index.ts"), /const fresh = await resolveAnchorBlock\(/, "anch
     if (combo.ok) assert.equal(block.buildComboViewHtml(store, combo.config, asOf), block.buildComboViewHtml(store, combo.config, asOf));
 }
 
-console.log(`Checkin block checks passed: config parsing, scopes, month/heatmap/summary/groups views, combo cards, minRate, anchor jumps, neutrality, security and perf tiers 1k=${Math.round(tierResults[0].ms)}ms / 10k=${Math.round(tierResults[1].ms)}ms / 100k=${Math.round(tierResults[2].ms)}ms (+base ${Math.round(perfMs)}ms).`);
+/* —— T-1856：渲染块锚点解析失败重试、超时与代际清理守门 —— */
+const rendererSource = fs.readFileSync(path.join(root, "src", "render", "block-renderer.ts"), "utf8");
+const indexSource = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
+
+assert.match(rendererSource, /export function clearAnchorResolveCache\(\): void/, "clearAnchorResolveCache exported");
+assert.match(rendererSource, /const ANCHOR_RESOLVE_TIMEOUT_MS = 8000;/, "8s anchor resolve timeout constant");
+assert.match(rendererSource, /Promise\.race\(\[deps\.resolveAnchorDocs\(\[\.\.\.pending\]\), timeoutPromise\]\)/, "anchor resolution bounded by timeout race");
+assert.match(rendererSource, /pending\.forEach\(\(blockId\) => anchorResolveRequested\.delete\(blockId\)\);/, "failed/timed-out anchor block IDs removed from requested set to allow retry");
+assert.match(rendererSource, /data-block-anchor-retry="true"/, "retry placeholder rendered on failure");
+assert.match(rendererSource, /closest\("\[data-block-anchor-retry\]"\)/, "click on retry placeholder triggers re-render");
+assert.match(indexSource, /clearAnchorResolveCache\(\);/, "clearAnchorResolveCache invoked on plugin unload");
+
+console.log(`Checkin block checks passed: config parsing, scopes, month/heatmap/summary/groups views, combo cards, minRate, anchor jumps, neutrality, security, anchor resolve retry/timeout and perf tiers 1k=${Math.round(tierResults[0].ms)}ms / 10k=${Math.round(tierResults[1].ms)}ms / 100k=${Math.round(tierResults[2].ms)}ms (+base ${Math.round(perfMs)}ms).`);

@@ -91,9 +91,15 @@ function buildPreviewHtml(config: CheckinBlockConfig, deps: BlockRendererDeps, a
 
 /* 记录每个代码块上次渲染的配置文本：观察回调里仅在配置变化时重渲染，
    避免预览自身 DOM 改动触发观察风暴。 */
-/* T-1292:已发起过解析的锚点登记——不可解析锚点(如块被删除)不得反复触发解析+重渲染循环。 */
+/* T-1292 / T-1856: 已发起过解析的锚点登记——不可解析锚点(如块被删除)不得反复触发解析+重渲染循环；
+   失败或超时从 requested 集合移出，允许后续重试，卸载时支持代际清理。 */
 const anchorResolveRequested = new Set<string>();
 const lastRenderedConfig = new WeakMap<HTMLElement, string>();
+const ANCHOR_RESOLVE_TIMEOUT_MS = 8000;
+
+export function clearAnchorResolveCache(): void {
+    anchorResolveRequested.clear();
+}
 
 interface RenderCheckinBlocksOptions {
     force?: boolean;
@@ -145,11 +151,29 @@ export function renderCheckinBlocksIn(protyleElement: HTMLElement, deps: BlockRe
                     preview.innerHTML = `<div class="lc-checkin__renderblock-empty">${escapeHtml(t("block.scopeLoading"))}</div>`;
                     lastRenderedConfig.set(block, configText);
                     block.insertAdjacentElement("afterend", preview);
-                    void deps.resolveAnchorDocs([...pending]).then(() => {
-                        /* 解析完成时 root 可能已被宿主移除，或所属观察器已经 dispose。 */
-                        if (!isActive()) return;
-                        renderCheckinBlocksIn(protyleElement, deps, {force: true, isActive: options.isActive});
+                    /* T-1856：解析超时竞态与失败可重试——失败或超时从 requested 集合中移除，允许后续动作重试。 */
+                    let timer: ReturnType<typeof setTimeout> | undefined;
+                    const timeoutPromise = new Promise<void>((_, reject) => {
+                        timer = setTimeout(() => reject(new Error("anchor-resolve-timeout")), ANCHOR_RESOLVE_TIMEOUT_MS);
                     });
+                    void Promise.race([deps.resolveAnchorDocs([...pending]), timeoutPromise])
+                        .finally(() => {
+                            if (timer) clearTimeout(timer);
+                        })
+                        .then(() => {
+                            /* 解析完成时 root 可能已被宿主移除，或所属观察器已经 dispose。 */
+                            if (!isActive()) return;
+                            /* 若块配置在解析期间已改变，丢弃陈旧结果。 */
+                            if (lastRenderedConfig.get(block) !== configText) return;
+                            renderCheckinBlocksIn(protyleElement, deps, {force: true, isActive: options.isActive});
+                        })
+                        .catch(() => {
+                            /* T-1856：失败/超时从 requested 集合移除，避免永久被判为“已请求过”而卡死。 */
+                            pending.forEach((blockId) => anchorResolveRequested.delete(blockId));
+                            if (!isActive() || !preview.isConnected) return;
+                            if (lastRenderedConfig.get(block) !== configText) return;
+                            preview.innerHTML = `<div class="lc-checkin__renderblock-empty lc-checkin__renderblock-retry" data-block-anchor-retry="true" role="button" tabindex="0" title="${escapeHtml(t("common.retry") || "点击重试")}">${escapeHtml(t("block.scopeLoadFailed") || "锚点范围解析超时或失败，点击重试")}</div>`;
+                        });
                     continue;
                 }
             }
@@ -157,6 +181,12 @@ export function renderCheckinBlocksIn(protyleElement: HTMLElement, deps: BlockRe
         }
         preview.addEventListener("click", (event) => {
             if (!isActive() || !preview.isConnected) return;
+            /* T-1856：渲染块锚点解析失败重试。 */
+            const retryTarget = (event.target as HTMLElement).closest("[data-block-anchor-retry]");
+            if (retryTarget) {
+                renderCheckinBlocksIn(protyleElement, deps, {force: true, isActive: options.isActive});
+                return;
+            }
             /* T-1412：today 视图打卡按钮——节流防连点（写入后由宿主广播触发整块重渲染解除）。 */
             const recordTarget = (event.target as HTMLElement).closest("[data-block-record]");
             if (recordTarget) {
