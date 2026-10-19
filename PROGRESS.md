@@ -3133,3 +3133,11 @@ dark 主题下选中态卡片底色（accent 14% 混 `#1A1B22`）与 hover 态�
 - 产物指标：CSS 657.4 KiB（673,159 bytes），低于 660 KiB（675,840 bytes）硬线 2.61 KiB；0 死类，0 对比度违规。
 - 验证：`pnpm run check`、`pnpm build`、`node tests/css-hygiene.test.cjs`、`node tests/responsive-layout.test.cjs`、`node tests/ui-theme.test.cjs`、`node tests/accessibility-audit.test.cjs`、`pnpm test` 全部零报错通过。
 
+# 2026-10-19 T-1822 事项管理行卡片化与改期输入规范第一切片（D-504）
+
+- `src/ui/components.scss`：事项管理行 `.lc-checkin__occasion-manager-row` 彻底告别粗糙的 `surface + border`，统一切换到 v3 卡片核心规范（`border: 1px solid var(--lc-checkin-card-border); background: var(--lc-checkin-card-bg); box-shadow: var(--lc-checkin-card-shadow);`），悬停浮起切换到 `card-border-hover + card-shadow-hover`，实现事项行与打卡 item、历史 event 之间的卡片材质完全同源；
+- `src/ui/components.scss`：今日事项高亮 `.lc-checkin__occasion-manager-row.is-today` 升级为 `card-border-selected + card-bg-selected + card-shadow-selected`，在暗色与亮色主题下均呈现统一的紫罗兰微光底色与选中阴影；
+- `src/ui/maintenance-responsive.scss`：改期单次内联输入 `.lc-checkin__occasion-move-row input` 从裸字面量属性收敛到标准字段 token（`min-height: var(--lc-checkin-button-height-sm); border: var(--lc-checkin-field-border); border-radius: var(--lc-checkin-field-radius); background: var(--lc-checkin-field-bg);`）；
+- 产物指标：CSS 657.5 KiB（673,347 bytes），低于 660 KiB（675,840 bytes）硬线 2.43 KiB；0 死类，0 对比度违规。
+- 验证：`pnpm run check`、`pnpm build`、`node tests/css-hygiene.test.cjs`、`node tests/responsive-layout.test.cjs`、`node tests/ui-theme.test.cjs`、`node tests/accessibility-audit.test.cjs`、`pnpm test` 全部零报错通过。
+

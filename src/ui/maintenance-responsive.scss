@@ -84,7 +84,7 @@
     .lc-checkin__occasion-move { margin-top: 4px; }
     .lc-checkin__occasion-move-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
     .lc-checkin__occasion-move-row[hidden] { display: none !important; }
-    .lc-checkin__occasion-move-row input { min-height: 30px; border: 1px solid var(--lc-checkin-border); border-radius: var(--lc-checkin-radius-sm); background: var(--lc-checkin-surface); color: var(--lc-checkin-text); font: inherit; font-size: 12px; padding: 2px 6px; }
+    .lc-checkin__occasion-move-row input { min-height: var(--lc-checkin-button-height-sm); border: var(--lc-checkin-field-border); border-radius: var(--lc-checkin-field-radius); background: var(--lc-checkin-field-bg); color: var(--lc-checkin-text); font: inherit; font-size: 12px; padding: 2px 6px; }
     .lc-checkin__occasion-manager-row.is-disabled .lc-checkin__occasion-late,
     .lc-checkin__occasion-manager-row.is-disabled .lc-checkin__occasion-move { display: none; }
     .lc-checkin__occasion-row-date strong { font-size: 12px; font-weight: 600; color: var(--lc-checkin-accent-text); }

@@ -3110,3 +3110,10 @@
 - `.lc-checkin__form-scroll` 底部安全区内边距扩展至 `calc(58px + env(safe-area-inset-bottom))`，杜绝长表单末尾字段或模板预览被 sticky footer 遮挡。
 - `.lc-checkin__editor-actions` 粘性操作栏背景升级为 `color-mix(in srgb, var(--lc-checkin-bg) 92%, transparent)` + `backdrop-filter: blur(8px)`，阴影收敛至 `var(--lc-checkin-nav-shadow)`，消除明暗双主题下硬编码半透黑阴影。
 - 范围限定：第一切片解决滚动遮挡与操作栏半透阴影；后续切片梳理基础字段→排期→高级的分组视觉隔离与折叠动效。
+
+## D-504：T-1822 事项管理行卡片化与改期输入规范第一切片（2026-10-19）
+
+- `.lc-checkin__occasion-manager-row` 彻底切换到 v3 卡片语义 token（`card-border` / `radius-sm` / `card-bg` / `card-shadow`，悬停 `card-border-hover + card-shadow-hover`），彻底抹平事项列表与历史列表、打卡项目之间的卡片质感差异。
+- `.lc-checkin__occasion-manager-row.is-today` 升级为 `card-border-selected + card-bg-selected + card-shadow-selected`，双主题选中阴影与底色同源。
+- `.lc-checkin__occasion-move-row input` 输入字段统一切到 `button-height-sm`、`field-border`、`field-radius`、`field-bg`。
+- 范围限定：第一切片收口事项管理行与改期内联输入的卡片化与字段 token；移动端返回与设置大标题布局重排留作后续切片。

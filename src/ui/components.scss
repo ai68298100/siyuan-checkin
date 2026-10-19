@@ -591,8 +591,8 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__occasion-form-panel form { min-width:0; }
 .lc-checkin__occasion-list-panel { border-radius:var(--lc-checkin-radius); }
 .lc-checkin__occasion-form-panel,.lc-checkin__occasion-list-panel { border:1px solid var(--lc-checkin-border); background:var(--lc-checkin-surface); box-shadow:var(--lc-checkin-shadow-sm); }
-.lc-checkin__occasion-manager-row { border-color:var(--lc-checkin-border); border-radius:var(--lc-checkin-radius-sm); background:var(--lc-checkin-surface); transition:border-color var(--lc-checkin-motion),background-color var(--lc-checkin-motion),transform var(--lc-checkin-motion); }
-.lc-checkin__occasion-manager-row:hover { border-color:color-mix(in srgb,var(--lc-checkin-accent) 36%,var(--lc-checkin-border)); transform:translateY(-1px); }
+.lc-checkin__occasion-manager-row { border:1px solid var(--lc-checkin-card-border); border-radius:var(--lc-checkin-radius-sm); background:var(--lc-checkin-card-bg); box-shadow:var(--lc-checkin-card-shadow); transition:border-color var(--lc-checkin-motion),background-color var(--lc-checkin-motion),box-shadow var(--lc-checkin-motion),transform var(--lc-checkin-motion); }
+.lc-checkin__occasion-manager-row:hover { border-color:var(--lc-checkin-card-border-hover); box-shadow:var(--lc-checkin-card-shadow-hover); transform:translateY(-1px); }
 .lc-checkin__occasion-icon { border-radius:var(--lc-checkin-radius-sm); background:var(--lc-checkin-accent-soft); }
 .lc-checkin__occasion-form-panel form { gap:var(--lc-checkin-space-4); }
 .lc-checkin--occasions .lc-checkin__field textarea { min-height:88px; }
@@ -704,7 +704,7 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__calendar-day[aria-selected="true"] { box-shadow: inset 0 0 0 2px var(--lc-checkin-accent); }
 .lc-checkin__calendar-day[aria-disabled="true"] { cursor: not-allowed; opacity: .45; }
 .lc-checkin__calendar-day:not([aria-disabled="true"]):hover { background: var(--lc-checkin-accent-soft); }
-.lc-checkin__occasion-manager-row.is-today { border-color: color-mix(in srgb, var(--lc-checkin-accent) 42%, var(--lc-checkin-border)); }
+.lc-checkin__occasion-manager-row.is-today { border-color: var(--lc-checkin-card-border-selected); background: var(--lc-checkin-card-bg-selected); box-shadow: var(--lc-checkin-card-shadow-selected); }
 .lc-checkin__occasion-manager-row.is-overdue { border-color: color-mix(in srgb, var(--lc-checkin-danger) 42%, var(--lc-checkin-border)); }
 .lc-checkin__occasion-manager-row.is-upcoming { border-color: color-mix(in srgb, var(--lc-checkin-warning) 34%, var(--lc-checkin-border)); }
 .lc-checkin__occasion-row-actions button[disabled] { opacity: .5; cursor: not-allowed; }
