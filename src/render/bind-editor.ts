@@ -162,7 +162,11 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         if (editorRootBindingCleanups.get(root) === cleanup) editorRootBindingCleanups.delete(root);
     };
     editorRootBindingCleanups.set(root, cleanup);
-    const addRootListener = (type: string, listener: any, options?: boolean | AddEventListenerOptions) => {
+    const addRootListener = (
+        type: string,
+        listener: EventListenerOrEventListenerObject,
+        options?: boolean | AddEventListenerOptions,
+    ) => {
         root.addEventListener(type, listener, options);
         cleanups.push(() => {
             if (type === "click") {

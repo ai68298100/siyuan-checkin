@@ -2299,25 +2299,37 @@ private reviewCompatibilitySnapshot?: {
 
     private async persistUserTemplates(next: UserTemplate[]): Promise<void> {
         await this.withStorageLock(async () => {
+            const previous = this.userTemplates;
             const stored = await this.loadData(USER_TEMPLATES_NAME);
             const remoteRaw = Array.isArray(stored) ? stored : [];
             const deletedIds = new Set(this.userTemplates.filter((item) => !next.some((n) => n.id === item.id)).map((item) => item.id));
             const remote = deletedIds.size > 0 ? remoteRaw.filter((item) => !deletedIds.has((item as {id?: string})?.id || "")) : remoteRaw;
             const merged = mergeUserTemplates(next, remote);
-            await this.saveData(USER_TEMPLATES_NAME, merged);
-            this.userTemplates = merged;
+            try {
+                await this.saveData(USER_TEMPLATES_NAME, merged);
+                this.userTemplates = merged;
+            } catch {
+                this.userTemplates = previous;
+                throw t("msg.saveDataFail", {error: "user-templates"});
+            }
         });
     }
 
     private async persistCustomIconLibrary(next: string[]): Promise<void> {
         await this.withStorageLock(async () => {
+            const previous = this.customIconLibrary;
             const stored = await this.loadData(CUSTOM_ICON_LIBRARY_NAME);
             const remote = normalizeCustomIconLibrary(stored);
             const deletedIcons = new Set(this.customIconLibrary.filter((icon) => !next.includes(icon)));
             const filteredRemote = deletedIcons.size > 0 ? remote.filter((icon) => !deletedIcons.has(icon)) : remote;
             const merged = normalizeCustomIconLibrary([...next, ...filteredRemote]);
-            await this.saveData(CUSTOM_ICON_LIBRARY_NAME, merged);
-            this.customIconLibrary = merged;
+            try {
+                await this.saveData(CUSTOM_ICON_LIBRARY_NAME, merged);
+                this.customIconLibrary = merged;
+            } catch {
+                this.customIconLibrary = previous;
+                throw t("msg.saveDataFail", {error: "custom-icon-library"});
+            }
         });
     }
 
