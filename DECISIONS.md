@@ -3082,3 +3082,12 @@
 - `src/ui/components.scss`：提取 `@container lc-dock (min-width: 720px) and (max-width: 900px)` 与 `@container lc-dock (min-width: 901px)` 间的 4 条共有规则（item/item-action/body/name）到全局 `@container lc-dock (min-width: 720px)`。
 - `src/ui/components.scss`：清理 4 处断点中与 base 样式完全冗余的 `.lc-checkin__mobile-nav button small { font-size: 9px; }`。
 - 收益：`dist/index.css` 重复规则从 39 降至 22（降幅 44%），重复规则字节从 3,703 降至 1,670（降幅 55%）；产物总字节从 674,656 净减至 672,324（净减 2,332 字节 / 2.28 KiB），为 660 KiB 硬线腾出 3.43 KiB 安全缓冲。
+
+## D-500：T-1828 长文本截断与换行策略第一切片（2026-10-19）
+
+- 在 `tokens.scss` 增加 `--lc-checkin-line-height-tight` (1.25) / `--lc-checkin-line-height-base` (1.45) / `--lc-checkin-line-height-relaxed` (1.6) 统一排版行高语义。
+- 在 `components.scss` 引入 `@mixin lc-text-truncate`、`@mixin lc-text-clamp-2`、`@mixin lc-text-break`，利用 mixin 避免无消费方的 standalone class 触发 `css-hygiene` 死类门禁。
+- 表单标签 `.lc-checkin__field > span` 移除单行 `nowrap` 限制，改为 `overflow-wrap: anywhere; word-break: break-word`。
+- 事项小标题与说明 `.lc-checkin__occasion-row-body small` 从单行 ellipsis 改为 2 行 clamp，保证信息完整度。
+- 历史记录备注 `.lc-checkin__history-event-note` 移除窄屏强制单行截断，统一走自适应换行，确保横向无溢出。
+- 范围限定：第一切片聚焦排版基础设施与高频卡片；独立展开/复制组件交互留作下一阶段。

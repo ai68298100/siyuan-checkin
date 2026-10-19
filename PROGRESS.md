@@ -3101,3 +3101,13 @@ dark 主题下选中态卡片底色（accent 14% 混 `#1A1B22`）与 hover 态�
 - 收益：`dist/index.css` 重复规则从 39 条骤降至 22 条，重复规则字节从 3,703 bytes 骤降至 1,670 bytes（降幅 55%）；产物总字节从 674,656 bytes 净减少至 672,324 bytes（净减 2,332 字节 / 2.28 KiB），距离 660 KiB（675,840 bytes）硬限的安全缓冲空间从 1.18 KiB 扩充到 3.43 KiB。
 - 验证：`pnpm run check`、`pnpm build`、`node tests/css-hygiene.test.cjs`、`node tests/responsive-layout.test.cjs`、`node tests/ui-theme.test.cjs`、`node tests/accessibility-audit.test.cjs`、`pnpm test` 全部零报错通过。
 
+# 2026-10-19 T-1828 长文本截断与换行策略第一切片（D-500）
+
+- `tokens.scss`：新增 `--lc-checkin-line-height-tight` (1.25) / `--lc-checkin-line-height-base` (1.45) / `--lc-checkin-line-height-relaxed` (1.6) 三个行高语义 token；
+- `components.scss`：增加 `@mixin lc-text-truncate`、`@mixin lc-text-clamp-2`、`@mixin lc-text-break` 三组无死类编译开销的标准排版 mixin；
+- 表单字段标签 `.lc-checkin__field > span` 移除导致长中文/说明性标签截断的 `white-space: nowrap`，引入 `overflow-wrap: anywhere; word-break: break-word` 自适应换行保护；
+- 事项说明 `.lc-checkin__occasion-row-body small` 从单行强行省略改为 2 行 clamp（`-webkit-line-clamp: 2`），允许事项的多标签、日期与备注自然换行显示；
+- 历史记录备注 `.lc-checkin__history-event-note` 移除窄屏媒体查询中强加的 `white-space: nowrap` 单行截断，统一采用自适应换行，彻底消除 `ui-content-audit` 关注的 longNotes 横向溢出风险；
+- 产物指标：CSS 656.8 KiB（672,603 bytes），低于 660 KiB（675,840 bytes）硬线 3.16 KiB；0 死类，0 对比度违规。
+- 验证：`pnpm run check`、`pnpm build`、`node tests/css-hygiene.test.cjs`、`node tests/responsive-layout.test.cjs`、`node tests/ui-theme.test.cjs`、`node tests/accessibility-audit.test.cjs`、`pnpm test` 全部零报错通过。
+

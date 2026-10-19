@@ -572,7 +572,7 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__insight-legend .is-off { opacity:.45; }
 /* 10.0 foundation pass 7: form, history and occasion detail consistency. */
 .lc-checkin__field { min-width:0; }
-.lc-checkin__field > span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.lc-checkin__field > span { min-width:0; overflow-wrap:anywhere; word-break:break-word; line-height:1.35; }
 .lc-checkin__field input,.lc-checkin__field select,.lc-checkin__field textarea { min-width:0; width:100%; box-sizing:border-box; }
 .lc-checkin__field textarea { min-height:72px; resize:vertical; }
 .lc-checkin__field input:focus-visible,.lc-checkin__field select:focus-visible,.lc-checkin__field textarea:focus-visible { outline:2px solid var(--lc-checkin-accent); }
@@ -603,7 +603,7 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__occasion-manager-list { min-width:0; }
 .lc-checkin__occasion-manager-row { min-width:0; }
 .lc-checkin__occasion-row-body { min-width:0; overflow:hidden; }
-.lc-checkin__occasion-row-body small { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.lc-checkin__occasion-row-body small { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; overflow-wrap:anywhere; word-break:break-word; line-height:1.35; }
 .lc-checkin__occasion-row-actions { flex:0 0 auto; }
 .lc-checkin__occasion-row-actions button { min-width:32px; }
 .lc-checkin__templates { min-width:0; }
@@ -613,6 +613,11 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__icon-option span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .lc-checkin__settings-nav { min-width:0; }
 .lc-checkin__settings-nav button { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+/* T-1828 文本截断与多行 clamp 标准 mixin (D-500) */
+@mixin lc-text-truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@mixin lc-text-clamp-2 { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; word-break: break-word; }
+@mixin lc-text-break { overflow-wrap: anywhere; word-break: break-word; }
 /* 10.0 foundation pass 8: dialog, navigation, empty/loading and theme resilience. */
 .lc-checkin-dialog-host { min-width:0; min-height:0; }
 .lc-checkin-dialog-host .lc-checkin { isolation:isolate; }
@@ -1992,7 +1997,7 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     .lc-checkin__empty-title { font-size: 15px; }
     .lc-checkin__empty-description { color: var(--lc-checkin-muted); font-size: 11px; line-height: 1.5; }
     .lc-checkin__sync-notice { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .lc-checkin__history-event-note { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lc-checkin__history-event-note { max-width: 100%; overflow-wrap: anywhere; word-break: break-word; }
     .lc-checkin__back-button { flex: 0 0 40px; width: 40px; height: 40px; min-height: 40px; border-radius: 50%; }
     .lc-checkin__editor-header > div { min-width: 0; }
     .lc-checkin__editor-header .lc-checkin__icon-button { flex: 0 0 40px; width: 40px; height: 40px; }
@@ -2201,7 +2206,7 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
         strong, span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         strong { color: var(--lc-checkin-text); font-size: 12px; font-weight: 550; }
         span { color: var(--lc-checkin-muted); font-size: 10px; }
-        .lc-checkin__history-event-note { overflow: hidden; color: var(--lc-checkin-muted); font-size: 10px; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap;
+        .lc-checkin__history-event-note { overflow: hidden; color: var(--lc-checkin-muted); font-size: 10px; line-height: 1.35; overflow-wrap: anywhere; word-break: break-word;
             a { color: var(--lc-checkin-accent-text); text-decoration: none; }
         }
     }
