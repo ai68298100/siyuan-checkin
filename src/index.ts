@@ -485,6 +485,17 @@ export default class CheckinPlugin extends Plugin {
     private noteQueryScanFingerprint = "";
     private yeguifScanCursor = "";
     private yeguifScanFingerprint = "";
+    /* T-1853：四类外部来源的在行请求（in-flight promise）与请求代际计数器。
+       定时、启动与设置手动触发并发时复用在行 promise，防止重复发起 SQL 查询与并发写事实竞争；
+       代际守卫确保旧请求的慢回执绝不覆盖更新的手动或定时报告。 */
+    private healthInFlight?: Promise<void>;
+    private healthGeneration = 0;
+    private noteQueryInFlight?: Promise<void>;
+    private noteQueryGeneration = 0;
+    private wereadInFlight?: Promise<number>;
+    private wereadGeneration = 0;
+    private yeguifInFlight?: Promise<void>;
+    private yeguifGeneration = 0;
     /** 最近一次拉取结果（内存态，供设置页状态行；Key 永不出现在消息/导出里）。 */
     private wereadLastPull?: {ok: boolean; days: number; written: number; pendingRetryable?: number; error?: string; upgrade?: string; finished?: {written: number; pending: number}; notes?: {status: "settled" | "empty" | "incomplete" | "skipped"; tally: number}};
     /** T-1455：今日页输入聚焦期间被挂起的后台渲染标记。 */
@@ -1305,78 +1316,102 @@ export default class CheckinPlugin extends Plugin {
         if ((!governance.enabled && !preview) || !governance.docId || this.disposed || this.disposing || !this.acceptingOperations || !this.storageReady) return;
         /* 文档不可见时跳过本轮，回前台由焦点补拉（与 T-1402 微信读书同一省电策略）。 */
         if (!preview && typeof document !== "undefined" && document.hidden) return;
-        const report = createSourceIngestReport(preview ? "preview" : "ingest");
-        this.sourceIngestReports.health = report;
-        const isCurrent = () => this.healthInbox === governance && !this.disposed && !this.disposing && this.acceptingOperations;
-        if (!governance.metricBindings.length) { report.outcome = "not-configured"; return; }
-        const currentFingerprint = getHealthInboxFingerprint(governance);
-        if (this.healthScanFingerprint !== currentFingerprint) {
+        /* T-1853：在行请求并发门——同源进行中摄取直接复用，预览等待前序完成。 */
+        if (this.healthInFlight) {
+            if (!preview) return this.healthInFlight;
+            await this.healthInFlight.catch(() => undefined);
+            if (this.disposed || this.disposing || !this.acceptingOperations) return;
+        }
+        const generation = ++this.healthGeneration;
+        const task = (async () => {
+            const report = createSourceIngestReport(preview ? "preview" : "ingest");
+            if (this.healthGeneration === generation) {
+                this.sourceIngestReports.health = report;
+            }
+            const isCurrent = () => this.healthInbox === governance && !this.disposed && !this.disposing && this.acceptingOperations && this.healthGeneration === generation;
+            if (!governance.metricBindings.length) { report.outcome = "not-configured"; return; }
+            const currentFingerprint = getHealthInboxFingerprint(governance);
+            if (this.healthScanFingerprint !== currentFingerprint) {
+                if (!preview) {
+                    this.healthScanFingerprint = currentFingerprint;
+                }
+                this.healthScanCursor = "";
+            }
+            try {
+            /* T-1629 / T-1852：有界分页扫描——代际指纹变更复位游标，整页读满推进游标续读，短页收尾复位。 */
+            const scan = await scanBoundedPages({
+                cursor: this.healthScanCursor,
+                windowSize: HEALTH_INBOX_MAX_ROWS,
+                maxPages: SOURCE_SCAN_MAX_PAGES,
+                fetchPage: (cursor) => this.kernelPost("/api/query/sql", {stmt: `SELECT id, content FROM blocks WHERE root_id = '${governance.docId}' AND content LIKE 'health:%'${blockIdCursorClause(cursor)} ORDER BY id ASC LIMIT ${HEALTH_INBOX_MAX_ROWS}`}).then((response) => {
+                    if ((response as {code?: number})?.code !== 0 || !Array.isArray((response as {data?: unknown}).data)) throw new Error("health-scan-read-failed");
+                    return (response as {data: Array<{id?: string; content?: string}>}).data;
+                }),
+                rowId: (row) => (typeof row?.id === "string" ? row.id : undefined),
+            });
+            if (!isCurrent()) return;
             if (!preview) {
+                this.healthScanCursor = scan.cursor;
                 this.healthScanFingerprint = currentFingerprint;
             }
-            this.healthScanCursor = "";
+            const rows = scan.rows;
+            report.scanned = rows.length;
+            report.windowFull = scan.advanced;
+            const validRows = rows.filter((row) => Boolean(parseHealthInboxLine(row?.content))).length;
+            const entries = parseHealthInboxRows(rows);
+            report.matched = entries.length;
+            report.invalid = rows.length - validRows;
+            report.duplicate = validRows - entries.length;
+            const todayKey = dateKey(currentCalendarDate());
+            for (const entry of entries) {
+                /* Health lines may backfill history, but a future date is never a
+                   valid completed day and must not be written into the store. */
+                if (entry.localDate > todayKey) { report.blocked += 1; continue; }
+                /* T-1486 按项目映射：同指标投递全部挂载项目（身份含 itemId，各自幂等互不顶账）。 */
+                for (const target of governance.metricBindings.filter((binding) => binding.metric === entry.metric)) {
+                    const itemId = target.itemId;
+                    if (!itemId) { report.blocked += 1; continue; }
+                    if (!this.hasHealthTarget(itemId, entry.metric)) { report.blocked += 1; continue; }
+                    if (!this.hasHealthTargetOnDate(itemId, entry.metric, entry.localDate)) { report.blocked += 1; continue; }
+                    const item = getActiveItemById(this.store, itemId);
+                    if (!item) { report.blocked += 1; continue; }
+                    /* 身份含 itemId：同日换绑项目不互相顶账；同项目同日重复行幂等跳过。 */
+                    const externalRef = `health:${itemId}:${entry.metric}:${entry.localDate}`;
+                    if (this.store.events.some((event) => event.source === "api" && event.itemId === itemId && event.externalRef === externalRef)) { report.duplicate += 1; continue; }
+                    if (this.store.eventTombstones.some((tombstone) => tombstone.source === "api" && tombstone.itemId === itemId && tombstone.externalRef === externalRef)) { report.tombstoned += 1; continue; }
+                    report.planned += 1;
+                    if (preview) continue;
+                    const fingerprint = this.revisionFingerprint(item, calendarDateFromKey(entry.localDate));
+                    const moment = {occurredAt: new Date().toISOString(), localDate: entry.localDate};
+                    const writeOutcome: ExternalWriteOutcome = {};
+                    const recorded = await this.enqueueMutation(() => {
+                        if (!isCurrent()) return Promise.resolve(undefined);
+                        return this.recordExternalEvent({itemId, value: entry.value, source: "api", externalRef}, moment, fingerprint, writeOutcome);
+                    });
+                    if (!isCurrent()) return;
+                    if (recorded) {
+                        report.written += 1;
+                        this.invalidateSummary();
+                        this.renderBackgroundUpdate();
+                    } else if (writeOutcome.reason === "storage-failed") report.storageRetryable += 1;
+                    else report.blocked += 1;
+                }
+            }
+            } catch { report.outcome = report.scanned ? "write-failed" : "read-failed"; }
+            if (this.healthGeneration === generation) {
+                this.sourceIngestReports.health = report;
+            }
+        })();
+        if (!preview) {
+            this.healthInFlight = task;
         }
         try {
-        /* T-1629 / T-1852：有界分页扫描——代际指纹变更复位游标，整页读满推进游标续读，短页收尾复位。 */
-        const scan = await scanBoundedPages({
-            cursor: this.healthScanCursor,
-            windowSize: HEALTH_INBOX_MAX_ROWS,
-            maxPages: SOURCE_SCAN_MAX_PAGES,
-            fetchPage: (cursor) => this.kernelPost("/api/query/sql", {stmt: `SELECT id, content FROM blocks WHERE root_id = '${governance.docId}' AND content LIKE 'health:%'${blockIdCursorClause(cursor)} ORDER BY id ASC LIMIT ${HEALTH_INBOX_MAX_ROWS}`}).then((response) => {
-                if ((response as {code?: number})?.code !== 0 || !Array.isArray((response as {data?: unknown}).data)) throw new Error("health-scan-read-failed");
-                return (response as {data: Array<{id?: string; content?: string}>}).data;
-            }),
-            rowId: (row) => (typeof row?.id === "string" ? row.id : undefined),
-        });
-        if (!isCurrent()) return;
-        if (!preview) {
-            this.healthScanCursor = scan.cursor;
-            this.healthScanFingerprint = currentFingerprint;
-        }
-        const rows = scan.rows;
-        report.scanned = rows.length;
-        report.windowFull = scan.advanced;
-        const validRows = rows.filter((row) => Boolean(parseHealthInboxLine(row?.content))).length;
-        const entries = parseHealthInboxRows(rows);
-        report.matched = entries.length;
-        report.invalid = rows.length - validRows;
-        report.duplicate = validRows - entries.length;
-        const todayKey = dateKey(currentCalendarDate());
-        for (const entry of entries) {
-            /* Health lines may backfill history, but a future date is never a
-               valid completed day and must not be written into the store. */
-            if (entry.localDate > todayKey) { report.blocked += 1; continue; }
-            /* T-1486 按项目映射：同指标投递全部挂载项目（身份含 itemId，各自幂等互不顶账）。 */
-            for (const target of governance.metricBindings.filter((binding) => binding.metric === entry.metric)) {
-                const itemId = target.itemId;
-                if (!itemId) { report.blocked += 1; continue; }
-                if (!this.hasHealthTarget(itemId, entry.metric)) { report.blocked += 1; continue; }
-                if (!this.hasHealthTargetOnDate(itemId, entry.metric, entry.localDate)) { report.blocked += 1; continue; }
-                const item = getActiveItemById(this.store, itemId);
-                if (!item) { report.blocked += 1; continue; }
-                /* 身份含 itemId：同日换绑项目不互相顶账；同项目同日重复行幂等跳过。 */
-                const externalRef = `health:${itemId}:${entry.metric}:${entry.localDate}`;
-                if (this.store.events.some((event) => event.source === "api" && event.itemId === itemId && event.externalRef === externalRef)) { report.duplicate += 1; continue; }
-                if (this.store.eventTombstones.some((tombstone) => tombstone.source === "api" && tombstone.itemId === itemId && tombstone.externalRef === externalRef)) { report.tombstoned += 1; continue; }
-                report.planned += 1;
-                if (preview) continue;
-                const fingerprint = this.revisionFingerprint(item, calendarDateFromKey(entry.localDate));
-                const moment = {occurredAt: new Date().toISOString(), localDate: entry.localDate};
-                const writeOutcome: ExternalWriteOutcome = {};
-                const recorded = await this.enqueueMutation(() => {
-                    if (!isCurrent()) return Promise.resolve(undefined);
-                    return this.recordExternalEvent({itemId, value: entry.value, source: "api", externalRef}, moment, fingerprint, writeOutcome);
-                });
-                if (!isCurrent()) return;
-                if (recorded) {
-                    report.written += 1;
-                    this.invalidateSummary();
-                    this.renderBackgroundUpdate();
-                } else if (writeOutcome.reason === "storage-failed") report.storageRetryable += 1;
-                else report.blocked += 1;
+            await task;
+        } finally {
+            if (this.healthInFlight === task) {
+                this.healthInFlight = undefined;
             }
         }
-        } catch { report.outcome = report.scanned ? "write-failed" : "read-failed"; }
     }
 
     /* T-1500 笔记推导打卡：只执行内置 SELECT，解析显式 frontmatter/tag 完成信号。
@@ -1386,66 +1421,90 @@ export default class CheckinPlugin extends Plugin {
         const governance = normalizeNoteQueryPreference(governanceRef);
         if ((!governance.enabled && !preview) || this.disposed || this.disposing || !this.acceptingOperations || !this.storageReady) return;
         if (!preview && typeof document !== "undefined" && document.hidden) return;
-        const report = createSourceIngestReport(preview ? "preview" : "ingest");
-        this.sourceIngestReports.notequery = report;
-        const isCurrent = () => this.noteQuery === governanceRef && !this.disposed && !this.disposing && this.acceptingOperations;
-        const statement = buildNoteQuerySql(governance);
-        if (!statement) { report.outcome = "not-configured"; return; }
-        const currentFingerprint = getNoteQueryFingerprint(governance);
-        if (this.noteQueryScanFingerprint !== currentFingerprint) {
+        /* T-1853：在行请求并发门——同源进行中摄取直接复用，预览等待前序完成。 */
+        if (this.noteQueryInFlight) {
+            if (!preview) return this.noteQueryInFlight;
+            await this.noteQueryInFlight.catch(() => undefined);
+            if (this.disposed || this.disposing || !this.acceptingOperations) return;
+        }
+        const generation = ++this.noteQueryGeneration;
+        const task = (async () => {
+            const report = createSourceIngestReport(preview ? "preview" : "ingest");
+            if (this.noteQueryGeneration === generation) {
+                this.sourceIngestReports.notequery = report;
+            }
+            const isCurrent = () => this.noteQuery === governanceRef && !this.disposed && !this.disposing && this.acceptingOperations && this.noteQueryGeneration === generation;
+            const statement = buildNoteQuerySql(governance);
+            if (!statement) { report.outcome = "not-configured"; return; }
+            const currentFingerprint = getNoteQueryFingerprint(governance);
+            if (this.noteQueryScanFingerprint !== currentFingerprint) {
+                if (!preview) {
+                    this.noteQueryScanFingerprint = currentFingerprint;
+                }
+                this.noteQueryScanCursor = "";
+            }
+            /* T-1629 / T-1852：有界分页扫描——buildNoteQuerySql 原生游标参数（afterBlockId）代际复位接线。 */
+            const scan = await scanBoundedPages({
+                cursor: this.noteQueryScanCursor,
+                windowSize: NOTE_QUERY_MAX_ROWS,
+                maxPages: SOURCE_SCAN_MAX_PAGES,
+                fetchPage: (cursor) => this.kernelPost("/api/query/sql", {stmt: buildNoteQuerySql(governance, cursor)}).then((response) => {
+                    if (!response || (response as {code?: number}).code !== 0 || !Array.isArray((response as {data?: unknown}).data)) throw new Error("notequery-scan-read-failed");
+                    return (response as {data: NoteQueryRow[]}).data;
+                }),
+                rowId: (row) => (typeof row?.id === "string" ? row.id : undefined),
+            }).catch(() => undefined);
+            if (!scan) { report.outcome = "read-failed"; return; }
+            if (!isCurrent()) return;
             if (!preview) {
+                this.noteQueryScanCursor = scan.cursor;
                 this.noteQueryScanFingerprint = currentFingerprint;
             }
-            this.noteQueryScanCursor = "";
-        }
-        /* T-1629 / T-1852：有界分页扫描——buildNoteQuerySql 原生游标参数（afterBlockId）代际复位接线。 */
-        const scan = await scanBoundedPages({
-            cursor: this.noteQueryScanCursor,
-            windowSize: NOTE_QUERY_MAX_ROWS,
-            maxPages: SOURCE_SCAN_MAX_PAGES,
-            fetchPage: (cursor) => this.kernelPost("/api/query/sql", {stmt: buildNoteQuerySql(governance, cursor)}).then((response) => {
-                if (!response || (response as {code?: number}).code !== 0 || !Array.isArray((response as {data?: unknown}).data)) throw new Error("notequery-scan-read-failed");
-                return (response as {data: NoteQueryRow[]}).data;
-            }),
-            rowId: (row) => (typeof row?.id === "string" ? row.id : undefined),
-        }).catch(() => undefined);
-        if (!scan) { report.outcome = "read-failed"; return; }
-        if (!isCurrent()) return;
+            const scanRows = scan.rows;
+            report.scanned = scanRows.length;
+            report.windowFull = scan.advanced;
+            const entries = parseNoteQueryRows(scanRows, governance);
+            report.matched = entries.length;
+            report.unmatched = Math.max(0, report.scanned - entries.length);
+            const todayKey = dateKey(currentCalendarDate());
+            for (const entry of entries) {
+                if (entry.localDate > todayKey) { report.blocked += 1; continue; }
+                const item = getActiveItemById(this.store, governance.itemId);
+                if (!item) { report.blocked += 1; continue; }
+                const decision = noteQueryIngestDecision(this.store.events, this.store.eventTombstones, entry, governance.itemId);
+                if (decision === "duplicate") { report.duplicate += 1; continue; }
+                if (decision === "tombstoned") { report.tombstoned += 1; continue; }
+                if (decision === "manual-conflict") { report.manualConflict += 1; continue; }
+                report.planned += 1;
+                if (preview) continue;
+                const fingerprint = this.revisionFingerprint(item, calendarDateFromKey(entry.localDate));
+                const moment = {occurredAt: new Date().toISOString(), localDate: entry.localDate};
+                const writeOutcome: ExternalWriteOutcome = {};
+                const recorded = await this.enqueueMutation(() => {
+                    if (!isCurrent()) return Promise.resolve(undefined);
+                    return this.recordExternalEvent({itemId: governance.itemId, value: entry.value, source: "api", externalRef: entry.externalRef, note: entry.note}, moment, fingerprint, writeOutcome);
+                }).catch(() => { report.outcome = "write-failed"; return undefined; });
+                if (!isCurrent()) return;
+                if (recorded) {
+                    report.written += 1;
+                    this.invalidateSummary();
+                    this.renderBackgroundUpdate();
+                } else if (writeOutcome.reason === "storage-failed") report.storageRetryable += 1;
+                else report.blocked += 1;
+            }
+            if (this.noteQueryGeneration === generation) {
+                this.sourceIngestReports.notequery = report;
+            }
+        })();
         if (!preview) {
-            this.noteQueryScanCursor = scan.cursor;
-            this.noteQueryScanFingerprint = currentFingerprint;
+            this.noteQueryInFlight = task;
         }
-        const scanRows = scan.rows;
-        report.scanned = scanRows.length;
-        report.windowFull = scan.advanced;
-        const entries = parseNoteQueryRows(scanRows, governance);
-        report.matched = entries.length;
-        report.unmatched = Math.max(0, report.scanned - entries.length);
-        const todayKey = dateKey(currentCalendarDate());
-        for (const entry of entries) {
-            if (entry.localDate > todayKey) { report.blocked += 1; continue; }
-            const item = getActiveItemById(this.store, governance.itemId);
-            if (!item) { report.blocked += 1; continue; }
-            const decision = noteQueryIngestDecision(this.store.events, this.store.eventTombstones, entry, governance.itemId);
-            if (decision === "duplicate") { report.duplicate += 1; continue; }
-            if (decision === "tombstoned") { report.tombstoned += 1; continue; }
-            if (decision === "manual-conflict") { report.manualConflict += 1; continue; }
-            report.planned += 1;
-            if (preview) continue;
-            const fingerprint = this.revisionFingerprint(item, calendarDateFromKey(entry.localDate));
-            const moment = {occurredAt: new Date().toISOString(), localDate: entry.localDate};
-            const writeOutcome: ExternalWriteOutcome = {};
-            const recorded = await this.enqueueMutation(() => {
-                if (!isCurrent()) return Promise.resolve(undefined);
-                return this.recordExternalEvent({itemId: governance.itemId, value: entry.value, source: "api", externalRef: entry.externalRef, note: entry.note}, moment, fingerprint, writeOutcome);
-            }).catch(() => { report.outcome = "write-failed"; return undefined; });
-            if (!isCurrent()) return;
-            if (recorded) {
-                report.written += 1;
-                this.invalidateSummary();
-                this.renderBackgroundUpdate();
-            } else if (writeOutcome.reason === "storage-failed") report.storageRetryable += 1;
-            else report.blocked += 1;
+        try {
+            await task;
+        } finally {
+            if (this.noteQueryInFlight === task) {
+                this.noteQueryInFlight = undefined;
+            }
         }
     }
 
@@ -1476,78 +1535,93 @@ export default class CheckinPlugin extends Plugin {
     private async ingestWeread(): Promise<number> {
         const governance = this.wereadIntegration;
         if (!governance.enabled || !governance.itemId || !isWereadApiKey(governance.apiKey) || this.disposed || this.disposing || !this.acceptingOperations || !this.storageReady) return 0;
-        const isCurrent = () => this.wereadIntegration === governance && !this.disposed && !this.disposing && this.acceptingOperations;
         /* 文档不可见（后台页签/锁屏）时跳过本轮，回前台由焦点补拉——省移动端电量与流量。 */
         if (typeof document !== "undefined" && document.hidden) return 0;
-        /* 时长目标失效时仍继续拉取完读/笔记目标；三条链路绑定相互独立。 */
-        const item = getActiveItemById(this.store, governance.itemId);
-        const durationItem = item && this.hasMinuteTarget(governance.itemId) ? item : undefined;
-        const gateway = await this.wereadGateway(buildWereadReadDetailRequest());
-        if (!isCurrent()) return 0;
-        const outcome = ingestWereadReadDetail(gateway.payload, {
-            today: dateKey(currentCalendarDate()),
-            /* 官方 readdata.md：readTimes/dailyReadTimes 的 key 均为分桶起始 unix 秒。 */
-            toLocalDateFromUnix: (seconds) => dateKey(new Date(seconds * 1000)),
-        });
-        let written = 0;
-        let storageRetryable = 0;
-        if (!outcome.ok) {
-            const status = typeof gateway.status === "number" && gateway.status !== 200 ? ` (HTTP ${gateway.status})` : "";
-            this.wereadLastPull = {ok: false, days: 0, written: 0, error: `${outcome.message || "pull failed"}${status}`, upgrade: outcome.upgrade};
-        } else if (durationItem) {
-            const refFor = (localDate: string) => buildWereadExternalRef(governance.itemId, localDate);
-            const alreadyWritten = (ref: string) => Boolean(ref) && this.store.events.some((event) => event.source === "weread" && event.externalRef === ref);
-            const tombstoned = (ref: string) => Boolean(ref) && this.store.eventTombstones.some((tombstone) => tombstone.itemId === governance.itemId && tombstone.source === "weread" && tombstone.externalRef === ref);
-            /* 结算按「当日累计分钟」过阈值才算资格日（与思阅/思播同一结算层，D-261 口径）。 */
-            const settlement = settleSegmentsToDays(
-                outcome.days.map((day) => ({externalRef: refFor(day.localDate), localDate: day.localDate, value: day.minutes})),
-                normalizeSourceGovernance({enabled: true, thresholdValue: governance.thresholdMinutes, itemIds: [governance.itemId]}),
-                outcome.days.map((day) => refFor(day.localDate)).filter((ref) => alreadyWritten(ref)),
-            );
-            for (const day of settlement.days) {
-                if (!day.qualifies) continue;
-                if (!this.hasMinuteTargetOnDate(governance.itemId, day.localDate)) continue;
-                const externalRef = refFor(day.localDate);
-                if (!externalRef || alreadyWritten(externalRef) || tombstoned(externalRef)) continue;
-                const fingerprint = this.revisionFingerprint(durationItem, calendarDateFromKey(day.localDate));
-                const moment = {occurredAt: new Date().toISOString(), localDate: day.localDate};
-                const writeOutcome: ExternalWriteOutcome = {};
-                const recorded = await this.enqueueMutation(() => {
-                    if (!isCurrent() || !governance.enabled) return Promise.resolve(undefined);
-                    return this.recordExternalEvent({itemId: governance.itemId, value: day.countedValue, source: "weread", externalRef}, moment, fingerprint, writeOutcome);
-                });
-                if (!isCurrent()) return written;
-                if (recorded) {
-                    written += 1;
-                    this.invalidateSummary();
-                    this.renderBackgroundUpdate();
-                } else if (writeOutcome.reason === "storage-failed") storageRetryable += 1;
+        /* T-1853：在行请求并发门——进行中的微信读书摄取直接复用 */
+        if (this.wereadInFlight) {
+            return this.wereadInFlight;
+        }
+        const generation = ++this.wereadGeneration;
+        const task = (async () => {
+            const isCurrent = () => this.wereadIntegration === governance && !this.disposed && !this.disposing && this.acceptingOperations && this.wereadGeneration === generation;
+            /* 时长目标失效时仍继续拉取完读/笔记目标；三条链路绑定相互独立。 */
+            const item = getActiveItemById(this.store, governance.itemId);
+            const durationItem = item && this.hasMinuteTarget(governance.itemId) ? item : undefined;
+            const gateway = await this.wereadGateway(buildWereadReadDetailRequest());
+            if (!isCurrent()) return 0;
+            const outcome = ingestWereadReadDetail(gateway.payload, {
+                today: dateKey(currentCalendarDate()),
+                /* 官方 readdata.md：readTimes/dailyReadTimes 的 key 均为分桶起始 unix 秒。 */
+                toLocalDateFromUnix: (seconds) => dateKey(new Date(seconds * 1000)),
+            });
+            let written = 0;
+            let storageRetryable = 0;
+            if (!outcome.ok) {
+                const status = typeof gateway.status === "number" && gateway.status !== 200 ? ` (HTTP ${gateway.status})` : "";
+                this.wereadLastPull = {ok: false, days: 0, written: 0, error: `${outcome.message || "pull failed"}${status}`, upgrade: outcome.upgrade};
+            } else if (durationItem) {
+                const refFor = (localDate: string) => buildWereadExternalRef(governance.itemId, localDate);
+                const alreadyWritten = (ref: string) => Boolean(ref) && this.store.events.some((event) => event.source === "weread" && event.externalRef === ref);
+                const tombstoned = (ref: string) => Boolean(ref) && this.store.eventTombstones.some((tombstone) => tombstone.itemId === governance.itemId && tombstone.source === "weread" && tombstone.externalRef === ref);
+                /* 结算按「当日累计分钟」过阈值才算资格日（与思阅/思播同一结算层，D-261 口径）。 */
+                const settlement = settleSegmentsToDays(
+                    outcome.days.map((day) => ({externalRef: refFor(day.localDate), localDate: day.localDate, value: day.minutes})),
+                    normalizeSourceGovernance({enabled: true, thresholdValue: governance.thresholdMinutes, itemIds: [governance.itemId]}),
+                    outcome.days.map((day) => refFor(day.localDate)).filter((ref) => alreadyWritten(ref)),
+                );
+                for (const day of settlement.days) {
+                    if (!day.qualifies) continue;
+                    if (!this.hasMinuteTargetOnDate(governance.itemId, day.localDate)) continue;
+                    const externalRef = refFor(day.localDate);
+                    if (!externalRef || alreadyWritten(externalRef) || tombstoned(externalRef)) continue;
+                    const fingerprint = this.revisionFingerprint(durationItem, calendarDateFromKey(day.localDate));
+                    const moment = {occurredAt: new Date().toISOString(), localDate: day.localDate};
+                    const writeOutcome: ExternalWriteOutcome = {};
+                    const recorded = await this.enqueueMutation(() => {
+                        if (!isCurrent() || !governance.enabled) return Promise.resolve(undefined);
+                        return this.recordExternalEvent({itemId: governance.itemId, value: day.countedValue, source: "weread", externalRef}, moment, fingerprint, writeOutcome);
+                    });
+                    if (!isCurrent()) return written;
+                    if (recorded) {
+                        written += 1;
+                        this.invalidateSummary();
+                        this.renderBackgroundUpdate();
+                    } else if (writeOutcome.reason === "storage-failed") storageRetryable += 1;
+                }
+            }
+            if (outcome.ok) this.wereadLastPull = {ok: true, days: outcome.days.length, written, ...(storageRetryable ? {pendingRetryable: storageRetryable} : {})};
+            /* T-1630：官方升级停用口径——upgrade 出现即阻断本轮全部链路（含完读/笔记），
+               无论时长读取成功与否；lastPull 如实记录升级信息。 */
+            if (wereadUpgradeBlocked(outcome.upgrade)) {
+                this.wereadLastPull = outcome.ok
+                    ? {ok: true, days: outcome.days.length, written, upgrade: outcome.upgrade}
+                    : {ok: false, days: 0, written: 0, error: outcome.message || "pull failed", upgrade: outcome.upgrade};
+                return written;
+            }
+            const todayKey = dateKey(currentCalendarDate());
+            let finished: {written: number; pending: number} = {written: 0, pending: 0};
+            let notes: {status: "settled" | "empty" | "incomplete" | "skipped"; tally: number} | undefined;
+            if (governance.finishItemId) finished = await this.ingestWereadFinished();
+            const yesterday = addDays(todayKey, -1);
+            if (governance.notesItemId && yesterday) notes = await this.ingestWereadNotes(yesterday);
+            /* 配置在完读/笔记链路期间可能被换绑；不得把旧配置的摘要写回设置状态。 */
+            if (!isCurrent()) return written;
+            /* 三链路聚合（additive）：整体 ok 仍仅反映时长链路（来源卡状态行契约不变），
+               完读/笔记各自状态随结果携带，不再把局部成功说成全成功。 */
+            if (outcome.ok && this.wereadGeneration === generation) {
+                const base = this.wereadLastPull && this.wereadLastPull.ok ? this.wereadLastPull : {ok: true as const, days: outcome.days.length, written};
+                this.wereadLastPull = {...base, finished, ...(notes ? {notes} : {})};
+            }
+            return written;
+        })();
+        this.wereadInFlight = task;
+        try {
+            return await task;
+        } finally {
+            if (this.wereadInFlight === task) {
+                this.wereadInFlight = undefined;
             }
         }
-        if (outcome.ok) this.wereadLastPull = {ok: true, days: outcome.days.length, written, ...(storageRetryable ? {pendingRetryable: storageRetryable} : {})};
-        /* T-1630：官方升级停用口径——upgrade 出现即阻断本轮全部链路（含完读/笔记），
-           无论时长读取成功与否；lastPull 如实记录升级信息。 */
-        if (wereadUpgradeBlocked(outcome.upgrade)) {
-            this.wereadLastPull = outcome.ok
-                ? {ok: true, days: outcome.days.length, written, upgrade: outcome.upgrade}
-                : {ok: false, days: 0, written: 0, error: outcome.message || "pull failed", upgrade: outcome.upgrade};
-            return written;
-        }
-        const todayKey = dateKey(currentCalendarDate());
-        let finished: {written: number; pending: number} = {written: 0, pending: 0};
-        let notes: {status: "settled" | "empty" | "incomplete" | "skipped"; tally: number} | undefined;
-        if (governance.finishItemId) finished = await this.ingestWereadFinished();
-        const yesterday = addDays(todayKey, -1);
-        if (governance.notesItemId && yesterday) notes = await this.ingestWereadNotes(yesterday);
-        /* 配置在完读/笔记链路期间可能被换绑；不得把旧配置的摘要写回设置状态。 */
-        if (!isCurrent()) return written;
-        /* 三链路聚合（additive）：整体 ok 仍仅反映时长链路（来源卡状态行契约不变），
-           完读/笔记各自状态随结果携带，不再把局部成功说成全成功。 */
-        if (outcome.ok) {
-            const base = this.wereadLastPull && this.wereadLastPull.ok ? this.wereadLastPull : {ok: true as const, days: outcome.days.length, written};
-            this.wereadLastPull = {...base, finished, ...(notes ? {notes} : {})};
-        }
-        return written;
     }
 
     /* T-1402 第二批次：完读事件——书架 finishReading 旗标 → /book/getprogress 核实
@@ -1705,9 +1779,19 @@ export default class CheckinPlugin extends Plugin {
         const governance = this.yeguifIntegration;
         if ((!governance.enabled && !preview) || this.disposed || this.disposing || !this.acceptingOperations || !this.storageReady) return;
         if (!preview && typeof document !== "undefined" && document.hidden) return;
-        const report = createSourceIngestReport(preview ? "preview" : "ingest");
-        this.sourceIngestReports.yeguif = report;
-        const isCurrent = () => this.yeguifIntegration === governance && !this.disposed && !this.disposing && this.acceptingOperations;
+        /* T-1853：在行请求并发门——同源进行中摄取直接复用，预览等待前序完成。 */
+        if (this.yeguifInFlight) {
+            if (!preview) return this.yeguifInFlight;
+            await this.yeguifInFlight.catch(() => undefined);
+            if (this.disposed || this.disposing || !this.acceptingOperations) return;
+        }
+        const generation = ++this.yeguifGeneration;
+        const task = (async () => {
+            const report = createSourceIngestReport(preview ? "preview" : "ingest");
+            if (this.yeguifGeneration === generation) {
+                this.sourceIngestReports.yeguif = report;
+            }
+            const isCurrent = () => this.yeguifIntegration === governance && !this.disposed && !this.disposing && this.acceptingOperations && this.yeguifGeneration === generation;
         const today = dateKey(currentCalendarDate());
         const hasTargets = governance.mappings?.length
             ? governance.mappings.some(mapping => getActiveItemById(this.store, mapping.itemId) && this.hasMinuteTargetOnDate(mapping.itemId, today))
@@ -1784,7 +1868,21 @@ export default class CheckinPlugin extends Plugin {
             }
         }
         report.unmatched = Math.max(0, report.scanned - report.invalid - report.matched);
+        if (this.yeguifGeneration === generation) {
+            this.sourceIngestReports.yeguif = report;
+        }
+    })();
+    if (!preview) {
+        this.yeguifInFlight = task;
     }
+    try {
+        await task;
+    } finally {
+        if (this.yeguifInFlight === task) {
+            this.yeguifInFlight = undefined;
+        }
+    }
+}
 
     /* T-1351：打开锚点块所在文档（rootID 来自已验证的内核 getBlockInfo）。
        openTab 的 doc 锚点滚动定位未在本仓库验证，故不传未证实参数；任何失败回落项目洞察。 */

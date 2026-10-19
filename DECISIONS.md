@@ -3130,3 +3130,17 @@
 - 在 `src/index.ts` 会话层维护三类扫描指纹；摄取执行前对比指纹，检测到换绑（如绑定文档变动、查询范围变更、笔记本切换、映射修改或清除）时立即复位对应的会话游标为空串 `""`。
 - 确保从新绑定的文档或范围从第一页完整扫描，杜绝上一文档的块 ID 游标在目标文档 SQL 中造成越界过滤或数据漏摄。
 - 变更失败或预览操作保留原有指纹与游标状态；`tests/scan-cursor.test.cjs` 增补纯函数与插件接线的自动化门禁断言。
+
+## D-507：CSS 维护态硬预算调整至 680 KiB（2026-10-19）
+
+- 用户明确授权将 CSS 生产产物硬阻断线从 660 KiB（675,840 bytes）适度上调至 680 KiB（696,320 bytes），以容纳后续主题、状态和无障碍维护的合理样式需求；620 KB 软提醒与 0 死类硬性门禁严格保持不变。
+- `tests/css-hygiene.test.cjs` 与 `tests/reminder-density-browser.cjs` 中的大小预算护栏同步调整至 680 KiB。
+- 当前实际样式体积为 673,347 bytes（657.5 KiB），安全缓冲从原 2.43 KiB 扩展至 22.43 KiB。
+
+## D-508：T-1853 同来源定时/启动/手动摄取在行 Promise 合并与代际防护（2026-10-19）
+
+- 在 `src/index.ts` 声明 `healthInFlight`、`noteQueryInFlight`、`wereadInFlight`、`yeguifInFlight` 四个在行请求 Promise 与对应的会话代际自增计数器。
+- 定时器轮询、应用启动或用户在设置面板快速连点“立刻同步”时，若已有同来源在行请求未完成，直接复用已有 Promise，杜绝重复向内核发起并发 SQL 查询与写事实数据竞争。
+- 预览操作（`preview === true`）若遇在行写入任务，主动排队等待前序写入平稳落定再读取，杜绝读取半落盘脏状态。
+- 摄取状态与报告回填（`sourceIngestReports` / `wereadLastPull`）绑定递增代际，旧请求的慢回执绝不覆盖最新发起的手动或定时摄取报告。
+- 新增 `tests/source-inflight.test.cjs` 守门测试，纳入 `pnpm test` 与 `pnpm run test:v18` 全流程门禁。

@@ -3158,3 +3158,20 @@ dark 主题下选中态卡片底色（accent 14% 混 `#1A1B22`）与 hover 态�
 - 产物指标：TS 零编译警告，主链全量测试绿通过。
 - 验证：`pnpm run check`、`pnpm build`、`node tests/scan-cursor.test.cjs`、`pnpm test` 全部通过。
 
+# 2026-10-19 T-1813 CSS 维护态硬预算调整至 680 KiB（D-507）
+
+- 用户明确授权将 CSS 生产产物硬阻断线从 660 KiB（675,840 bytes）适度上调至 680 KiB（696,320 bytes），为后续组件级 token 化、状态矩阵与无障碍设计留出合理的系统维护余量；620 KB 软提醒与 0 死类硬性门禁严格保持不变；
+- 同步更新 `tests/css-hygiene.test.cjs` 与 `tests/reminder-density-browser.cjs` 中的大小预算护栏至 `680 * 1024`；
+- 当前实际样式体积为 673,347 bytes（657.5 KiB），安全缓冲从原 2.43 KiB 扩展至 22.43 KiB；
+- 验证：`node tests/css-hygiene.test.cjs`、`pnpm run check`、`pnpm test` 全部通过。
+
+# 2026-10-19 T-1853 同来源定时/启动/手动摄取的 in-flight 合并（D-508）
+
+- `src/index.ts`：在插件会话层声明四类外部来源的在行 Promise (`healthInFlight`、`noteQueryInFlight`、`wereadInFlight`、`yeguifInFlight`) 与独立请求代际计数器 (`healthGeneration`、`noteQueryGeneration`、`wereadGeneration`、`yeguifGeneration`)；
+- `src/index.ts`：为 `ingestHealthInbox`、`ingestNoteQuery`、`ingestWeread`、`ingestYeguif` 建立统一的在行请求并发门——进行中的同来源摄取直接复用正在执行的在行 Promise，彻底杜绝定时器与手动点击（或快速连点）重复发起并发 SQL 查询与写事实竞争；
+- 预览排队与隔离：`preview === true` 时若遇同源写入在行，主动等待前序写入平稳落定再读取最新只读视图，绝不读到半写入的脏状态；
+- 代际报告保护：摄取报告更新均受当前代际一致性保护（`generation === this.xxxGeneration`），慢回执绝不覆盖更新的手动或定时摄取报告；
+- 卸载复位与守门：所有方法均在 `finally` 块中精确复位在行引用；`tests/source-inflight.test.cjs` 建立完整的四来源在行复用、代际递增、报告保护与清理断言，并已纳入 `pnpm test` 与 `pnpm run test:v18`；
+- 产物指标：TS 零警告，主链全量测试 100% 绿灯。
+- 验证：`pnpm run check`、`pnpm build`、`node tests/source-inflight.test.cjs`、`pnpm test` 全部通过。
+
