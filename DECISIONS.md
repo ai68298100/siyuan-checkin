@@ -3168,3 +3168,10 @@
 - 视觉样式与样式预算：`src/ui/components.scss` 通过属性选择器 `&[data-record-pending]`（`opacity: 0.6; pointer-events: none; cursor: wait`）与 `&[data-record-error]`（红色边框与文字）提供清晰无障碍视觉反馈，零新增类名，严格控制 CSS 体积在预算以内。
 - 自动化契约守门：在 `tests/checkin-block.test.cjs` 建立状态机流转、防重丢弃、看门狗兜底、错误释放与样式定义的完整自动化断言。
 
+## D-512：T-1858 特殊项目 ID 的焦点选择器安全回归（2026-10-20）
+
+- 根因消除：核对发现 `src/index.ts` 中打卡后焦点还原处 `root.querySelector(\`.lc-checkin__item[data-item-id='${focusItemId}']\`)` 采用原生单引号插值，当项目 ID 包含单双引号、反斜杠、方括号等字符时会触发 `DOMException` 语法崩溃；将其统一升级为 `CSS.escape(focusItemId)` 双引号属性选择器。
+- 选择器规范统一：`src/index.ts`、`src/render/bind-today.ts`（`targetButton` 与 `currentElement`）及 `src/render/bind-page-navigation.ts` 全部保持一致的 `CSS.escape` 严格转义规范，杜绝特殊字符引发的选择器解析失效。
+- 16 种极端 ID 夹具守门：新增 `tests/special-id-selector.test.cjs` 并在真实 Chromium 容器中跑通包含单双引号、反斜杠、括号、冒号、点号、井号、空白、组合符、CJK 中日韩、Emoji、320+ 超长字符在内的全量夹具矩阵，验证 querySelector 零抛错、卡片精准命中、子打卡按钮成功获焦，以及多 root 作用域隔离与滚动位置保留。
+
+

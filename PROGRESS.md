@@ -3204,4 +3204,13 @@ dark 主题下选中态卡片底色（accent 14% 混 `#1A1B22`）与 hover 态�
 - 产物指标：TS 零编译警告，主链全量测试通过，CSS 673,575 字节（低于 680 KiB 预算）。
 - 验证：`pnpm run check`、`pnpm build`、`node tests/checkin-block.test.cjs`、`node tests/css-hygiene.test.cjs`、`pnpm test` 全部通过。
 
+# 2026-10-20 T-1858 特殊项目 ID 的焦点选择器安全回归（D-512）
+
+- `src/index.ts`：修复打卡后焦点复位逻辑中选择器属性插值漏洞，将 `root.querySelector(\`.lc-checkin__item[data-item-id='${focusItemId}']\`)` 统一改造为 `root.querySelector(\`.lc-checkin__item[data-item-id="${CSS.escape(focusItemId)}"]\`)`，消灭极端字符导致的 `DOMException` 语法崩溃；
+- 契约统一：确保 `src/index.ts`、`src/render/bind-today.ts`、`src/render/bind-page-navigation.ts` 全面遵循统一的 `CSS.escape` 严格转义规范；
+- `tests/special-id-selector.test.cjs`：新增包含源码静态断言与真实 Chromium 容器无头测试的自动化守门套件，覆盖 16 类极端 ID 夹具（单双引号、反斜杠、方括号、圆括号、冒号、点号、井号、空格与制表符、组合符、CJK 中日韩汉字假名谚文、Emoji 表情、320+ 超长字符），验证选择器解析零崩溃、元素精准命中、子打卡按钮成功获得焦点、多 root 隔离与滚动位保持；
+- 产物指标：`package.json` 纳入 `test:v18`，全量测试套件零警告通过。
+- 验证：`pnpm run check`、`pnpm build`、`node tests/special-id-selector.test.cjs`、`pnpm run test:v18`、`pnpm test` 全部通过。
+
+
 

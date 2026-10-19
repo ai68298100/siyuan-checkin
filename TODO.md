@@ -424,7 +424,7 @@
 - [ ] T-1855 扫描游标跨重载续读方案评估（P2，条件批次）——T-1629 当前明确游标为会话态，大型文档每次重载从头有界重扫；评估是否持久化游标、源内容版本或仅保留幂等重扫，必须处理删块、换绑、墓碑、长期停用和旧版本迁移。输出采用/延后/不做决策与可重复基线，不直接改变存储形状。
 - [x] T-1856 渲染块锚点解析失败可重试与代际清理（P1，渲染块，D-510 2026-10-19）——`src/render/block-renderer.ts` 接入 8s 有界超时竞态（`ANCHOR_RESOLVE_TIMEOUT_MS`）；解析超时或失败从 requested 集合清除 blockId 允许重试，渲染重试提示按钮（`data-block-anchor-retry`）；点击/Enter 触发重渲染重试；陈旧代际配置不覆盖新目标；导出 `clearAnchorResolveCache` 并由 `src/index.ts` `onunload` 调用清理；新增 `tests/checkin-block.test.cjs` 守门断言。
 - [x] T-1857 渲染块记录 pending 的失败/拒绝/销毁反馈（P1，渲染块，D-511 2026-10-20）——`src/render/block-renderer.ts` 记录按钮在点击后立即打上 `data-record-pending="true"` 并拦截重复快点防重入；增加 6 秒自动超时看门狗定时器防止状态永久锁定；宿主 `src/index.ts` 中 `recordBlockToday` 返回 `Promise<boolean>` 反映真实落账结果；渲染块落定失败或拒绝时打上 `data-record-error="true"` 并在 2.5 秒后自动清除允许重试；`src/ui/components.scss` 补充 pending（禁点/半透明/等待光标）与 error（红色警告提示）样式，零新增类名控制 CSS 预算；`tests/checkin-block.test.cjs` 建立完整状态机与样式守门断言。
-- [ ] T-1858 特殊项目 ID 的焦点选择器安全回归（P2，回归守门）——`src/index.ts` 有将 itemId 置入 CSS 属性选择器的路径，其他路径已使用 `CSS.escape`；以引号、反斜杠、括号、CJK、长 ID 夹具复核焦点恢复、滚动和多 root，确认旧 T-256 类修复没有回流。只补守门和最小修复，不扩展选择器语义。
+- [x] T-1858 特殊项目 ID 的焦点选择器安全回归（P2，回归守门，D-512 2026-10-20）——`src/index.ts` 渲染后今日打卡焦点还原处的 raw 字符串插值选择器统一修改为 `CSS.escape(focusItemId)`，与 `bind-today.ts` 等既有路径严格统一；新增 `tests/special-id-selector.test.cjs` 并在真实 Chromium 容器中覆盖 16 类极端 ID 夹具（单双引号、反斜杠、方括号、圆括号、冒号、点号、井号、空格制表符、组合符、CJK 中日韩、Emoji、320+ 超长字符），确保 querySelector 零语法崩溃、精准唯一命中对应卡片、子打卡按钮成功获得焦点，并验证多 root 隔离与滚动位保持。
 - [ ] T-1859 渲染块模板多 root DOM/ARIA 复核（P2，条件后续 T-1865）——仅在 T-1865 决定正式接线时继续；遗留 `template-manager` 模板卡仍带固定标题/条目 id，接线前核对多 root 唯一化、`aria-labelledby`/`aria-controls` 和销毁清理。若 T-1865 选择退役，则并入退役验收，不重复做接线审计。
 
 ### 存储一致性、迁移、导入导出与安全

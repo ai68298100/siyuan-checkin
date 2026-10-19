@@ -4912,7 +4912,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
         context.pendingFocusItemId = undefined;
         if (this.activeRoot === root) this.pendingFocusItemId = undefined;
         if (focusItemId && page === "today") {
-            const card = root.querySelector<HTMLElement>(`.lc-checkin__item[data-item-id='${focusItemId}']`);
+            const card = root.querySelector<HTMLElement>(`.lc-checkin__item[data-item-id="${CSS.escape(focusItemId)}"]`);
             const focusTarget = card?.querySelector<HTMLElement>(".lc-checkin__item-action > :is([data-action='focus'], [data-action='record'], [data-action='quick-record'])");
             if (focusTarget) focusTarget.focus();
         }
