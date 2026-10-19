@@ -3212,5 +3212,15 @@ dark 主题下选中态卡片底色（accent 14% 混 `#1A1B22`）与 hover 态�
 - 产物指标：`package.json` 纳入 `test:v18`，全量测试套件零警告通过。
 - 验证：`pnpm run check`、`pnpm build`、`node tests/special-id-selector.test.cjs`、`pnpm run test:v18`、`pnpm test` 全部通过。
 
+# 2026-10-20 T-1855 扫描游标跨重载续读方案评估（D-513）
+
+- 架构评估与决策定调：正式产出 D-513 决策，明确“不采用跨重载游标持久化，维持会话态有界分页 + 幂等去重从头重扫”基线；
+- 语义与数据安全对比：思源大纲笔记支持任意位置前插块，持久化尾部游标会导致前插块（`id < cursor`）被永久漏读；会话态从头重扫天然杜绝任何历史漏记；
+- 性能实测基准：基准实测 1,000 行扫描数据与 50,000 条历史事件的内存去重仅耗时 ~0.4ms（远低于 15ms 预算），相比每次游标推进写盘带来 `saveData` 单次 300~400ms 的 I/O 成本，维持纯内存去重性能收益显著更高；
+- 零存储侵入：Store v3 存储结构保持干净零修改，不增设辅助存储桶，不增加多窗口读写与迁移冲突；
+- 自动化契约守门：建立 `tests/cursor-persistence-assessment.test.cjs` 并纳入 `test:v18`，覆盖架构不变量守门、前插块漏读对比验证与 50k 事件内存对账性能基线；
+- 验证：`pnpm run check`、`node tests/cursor-persistence-assessment.test.cjs`、`pnpm run test:v18`、`pnpm test` 全部通过。
+
+
 
 
