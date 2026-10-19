@@ -213,3 +213,9 @@ export function noteQueryIngestDecision(events: readonly Pick<CheckinEvent, "ite
     if (tombstones.some((tombstone) => tombstone.itemId === itemId && tombstone.source === "api" && tombstone.externalRef === entry.externalRef)) return "tombstoned";
     return "write";
 }
+
+/** T-1852 配置代际指纹：查询范围、目标文档、模板或项目变更时生成不同指纹，用于自动复位游标。 */
+export function getNoteQueryFingerprint(source: unknown): string {
+    const pref = normalizeNoteQueryPreference(source);
+    return `${pref.enabled ? "1" : "0"}|${pref.template}|${pref.scope}|${pref.targetId}|${pref.itemId}|${pref.field}|${pref.value}|${pref.tag}`;
+}

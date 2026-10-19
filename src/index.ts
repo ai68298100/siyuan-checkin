@@ -69,14 +69,14 @@ import {SireaderFocusTracker, buildSireaderExternalRef, type SireaderLifecycleTy
 import {CHECKIN_TEMPLATES, TEMPLATE_PACKS, templateName, templateNameAliases} from "./catalog";
 import {buildTemplatePackApplicationPlan} from "./features/template-packs";
 import {SiplayerPlaybackTracker, buildSiplayerExternalRef, detectSiplayerController} from "./features/siplayer-adapter";
-import {HEALTH_INGEST_INTERVAL_MS, HEALTH_INBOX_MAX_ROWS, parseHealthInboxLine, parseHealthInboxRows, addHealthMetricBinding, normalizeHealthInboxPreference, type HealthInboxMetric} from "./features/health-inbox";
+import {HEALTH_INGEST_INTERVAL_MS, HEALTH_INBOX_MAX_ROWS, parseHealthInboxLine, parseHealthInboxRows, addHealthMetricBinding, normalizeHealthInboxPreference, getHealthInboxFingerprint, type HealthInboxMetric} from "./features/health-inbox";
 import {isTemplateLinkagePlan, type LinkageBindingState} from "./features/template-linkage";
 import {WEREAD_GATEWAY_URL, WEREAD_INGEST_INTERVAL_MS, buildWereadBookmarkListRequest, buildWereadBookProgressRequest, buildWereadExternalRef, buildWereadFinishRef, buildWereadNotesRef, buildWereadNotebooksRequest, buildWereadReadDetailRequest, buildWereadReviewListRequest, buildWereadShelfRequest, ingestWereadReadDetail, isWereadApiKey, parseWereadBookProgress, parseWereadFinishedBooks, parseWereadHighlightTally, parseWereadNotebookPage, parseWereadReviewTally, settleWereadNotes, wereadFinishRefPrefix, wereadUpgradeBlocked} from "./features/weread-adapter";
-import {YEGUIF_INGEST_INTERVAL_MS, YEGUIF_MAX_BLOCKS, buildYeguifActionMoment, buildYeguifEventNote, buildYeguifExternalRef, parseYeguifMarker, resolveYeguifItemId, settleYeguifEntries} from "./features/yeguif-adapter";
+import {YEGUIF_INGEST_INTERVAL_MS, YEGUIF_MAX_BLOCKS, buildYeguifActionMoment, buildYeguifEventNote, buildYeguifExternalRef, parseYeguifMarker, resolveYeguifItemId, settleYeguifEntries, getYeguifFingerprint} from "./features/yeguif-adapter";
 import {bindYeguifMappings} from "./render/yeguif-mappings";
 import {bindProjectChoices} from "./render/project-choice";
 import {buildLifelogTimeline} from "./features/lifelog-timeline";
-import {NOTE_QUERY_INTERVAL_MS, NOTE_QUERY_MAX_ROWS, buildNoteQuerySql, isNoteQueryPreferenceReady, normalizeNoteQueryPreference, noteQueryCursorFromRows, noteQueryIngestDecision, parseNoteQueryRows, type NoteQueryPreference, type NoteQueryRow} from "./features/note-query";
+import {NOTE_QUERY_INTERVAL_MS, NOTE_QUERY_MAX_ROWS, buildNoteQuerySql, isNoteQueryPreferenceReady, normalizeNoteQueryPreference, noteQueryCursorFromRows, noteQueryIngestDecision, parseNoteQueryRows, getNoteQueryFingerprint, type NoteQueryPreference, type NoteQueryRow} from "./features/note-query";
 import {createSourceIngestReport, type DocumentSourceKey, type SourceIngestReport} from "./features/source-ingest-report";
 import {SOURCE_SCAN_MAX_PAGES, blockIdCursorClause, scanBoundedPages} from "./features/scan-cursor";
 import {normalizeSourceGovernance, settleSegmentsToDays, sourceDayMinutes} from "./features/source-framework";
@@ -477,11 +477,14 @@ export default class CheckinPlugin extends Plugin {
     yeguifIntegration = {...DEFAULT_VIEW_PREFERENCES.yeguifIntegration};
     private yeguifTimer?: number;
     private sourceIngestReports: Partial<Record<DocumentSourceKey, SourceIngestReport>> = {};
-    /* T-1629：三类文档来源的会话扫描游标（块 ID）——整页读满时推进续读，短页复位。
-       仅会话态：重载后从头幂等重扫（externalRef/墓碑/手动优先去重，不丢不重）。 */
+    /* T-1629 / T-1852：三类文档来源的会话扫描游标与配置代际指纹。
+       换绑、清除、恢复旧绑定时检测到指纹变化自动复位游标，杜绝旧游标 cross-document 漂移。 */
     private healthScanCursor = "";
+    private healthScanFingerprint = "";
     private noteQueryScanCursor = "";
+    private noteQueryScanFingerprint = "";
     private yeguifScanCursor = "";
+    private yeguifScanFingerprint = "";
     /** 最近一次拉取结果（内存态，供设置页状态行；Key 永不出现在消息/导出里）。 */
     private wereadLastPull?: {ok: boolean; days: number; written: number; pendingRetryable?: number; error?: string; upgrade?: string; finished?: {written: number; pending: number}; notes?: {status: "settled" | "empty" | "incomplete" | "skipped"; tally: number}};
     /** T-1455：今日页输入聚焦期间被挂起的后台渲染标记。 */
@@ -1306,8 +1309,15 @@ export default class CheckinPlugin extends Plugin {
         this.sourceIngestReports.health = report;
         const isCurrent = () => this.healthInbox === governance && !this.disposed && !this.disposing && this.acceptingOperations;
         if (!governance.metricBindings.length) { report.outcome = "not-configured"; return; }
+        const currentFingerprint = getHealthInboxFingerprint(governance);
+        if (this.healthScanFingerprint !== currentFingerprint) {
+            if (!preview) {
+                this.healthScanFingerprint = currentFingerprint;
+            }
+            this.healthScanCursor = "";
+        }
         try {
-        /* T-1629：有界分页扫描——整页读满推进游标续读，短页收尾复位；多页行累积后一次解析。 */
+        /* T-1629 / T-1852：有界分页扫描——代际指纹变更复位游标，整页读满推进游标续读，短页收尾复位。 */
         const scan = await scanBoundedPages({
             cursor: this.healthScanCursor,
             windowSize: HEALTH_INBOX_MAX_ROWS,
@@ -1321,6 +1331,7 @@ export default class CheckinPlugin extends Plugin {
         if (!isCurrent()) return;
         if (!preview) {
             this.healthScanCursor = scan.cursor;
+            this.healthScanFingerprint = currentFingerprint;
         }
         const rows = scan.rows;
         report.scanned = rows.length;
@@ -1380,7 +1391,14 @@ export default class CheckinPlugin extends Plugin {
         const isCurrent = () => this.noteQuery === governanceRef && !this.disposed && !this.disposing && this.acceptingOperations;
         const statement = buildNoteQuerySql(governance);
         if (!statement) { report.outcome = "not-configured"; return; }
-        /* T-1629：有界分页扫描——buildNoteQuerySql 原生游标参数（afterBlockId）首次接线。 */
+        const currentFingerprint = getNoteQueryFingerprint(governance);
+        if (this.noteQueryScanFingerprint !== currentFingerprint) {
+            if (!preview) {
+                this.noteQueryScanFingerprint = currentFingerprint;
+            }
+            this.noteQueryScanCursor = "";
+        }
+        /* T-1629 / T-1852：有界分页扫描——buildNoteQuerySql 原生游标参数（afterBlockId）代际复位接线。 */
         const scan = await scanBoundedPages({
             cursor: this.noteQueryScanCursor,
             windowSize: NOTE_QUERY_MAX_ROWS,
@@ -1395,6 +1413,7 @@ export default class CheckinPlugin extends Plugin {
         if (!isCurrent()) return;
         if (!preview) {
             this.noteQueryScanCursor = scan.cursor;
+            this.noteQueryScanFingerprint = currentFingerprint;
         }
         const scanRows = scan.rows;
         report.scanned = scanRows.length;
@@ -1695,7 +1714,14 @@ export default class CheckinPlugin extends Plugin {
             : this.store.items.some(item => !item.archived && this.hasMinuteTargetOnDate(item.id, today));
         if (!governance.notebookId || !hasTargets) { report.outcome = "not-configured"; return; }
         const createdFloor = `${today.replace(/-/g, "")}000000`;
-        /* T-1629：有界分页扫描——多页行累积后一次分组解析，跨页的同文档相邻 Marker
+        const currentFingerprint = getYeguifFingerprint(governance);
+        if (this.yeguifScanFingerprint !== currentFingerprint) {
+            if (!preview) {
+                this.yeguifScanFingerprint = currentFingerprint;
+            }
+            this.yeguifScanCursor = "";
+        }
+        /* T-1629 / T-1852：有界分页扫描——代际指纹变更复位游标，多页行累积后一次分组解析，跨页的同文档相邻 Marker
            前置段不因分页丢失（时长归属依赖文档内序列完整）。 */
         const scan = await scanBoundedPages({
             cursor: this.yeguifScanCursor,
@@ -1711,6 +1737,7 @@ export default class CheckinPlugin extends Plugin {
         if (!isCurrent()) return;
         if (!preview) {
             this.yeguifScanCursor = scan.cursor;
+            this.yeguifScanFingerprint = currentFingerprint;
         }
         const rows = scan.rows;
         report.scanned = rows.length;

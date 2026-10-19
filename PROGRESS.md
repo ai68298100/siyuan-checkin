@@ -3148,3 +3148,13 @@ dark 主题下选中态卡片底色（accent 14% 混 `#1A1B22`）与 hover 态�
 - 产物指标：TS 零编译警告，主链 100+ 项测试全绿通过。
 - 验证：`pnpm run check`、`pnpm build`、`node tests/scan-cursor.test.cjs`、`pnpm test` 全部通过。
 
+# 2026-10-19 T-1852 来源配置变更的扫描代际复位（D-506）
+
+- `src/features/health-inbox.ts`：实现 `getHealthInboxFingerprint` 纯函数，提取 `enabled`、`docId` 与规范排序的 `metricBindings` 生成确定性配置指纹；
+- `src/features/note-query.ts`：实现 `getNoteQueryFingerprint` 纯函数，提取 `enabled`、`template`、`scope`、`targetId`、`itemId`、`field`、`value`、`tag` 生成查询配置指纹；
+- `src/features/yeguif-adapter.ts`：实现 `getYeguifFingerprint` 纯函数，提取 `enabled`、`itemId`、`notebookId` 与规范排序的 `mappings` 生成集成配置指纹；
+- `src/index.ts`：三处来源摄取循环分别维护会话态 `healthScanFingerprint`、`noteQueryScanFingerprint`、`yeguifScanFingerprint`；在每次摄取或预览前对比当前指纹，一旦发现文档换绑、清除（docId 清空）、恢复旧绑定或映射变更，立即将会话游标重置为空串 `""`，彻底消灭旧文档块 ID 遗留在新文档 SQL 查询中导致的数据漏读与跨文档越界漂移；
+- `tests/scan-cursor.test.cjs`：补齐针对三类指纹纯函数（相同配置幂等、换绑变动、清除变动、排序无关）与 `src/index.ts` 指纹比对/游标复位接线的自动化门禁断言；
+- 产物指标：TS 零编译警告，主链全量测试绿通过。
+- 验证：`pnpm run check`、`pnpm build`、`node tests/scan-cursor.test.cjs`、`pnpm test` 全部通过。
+

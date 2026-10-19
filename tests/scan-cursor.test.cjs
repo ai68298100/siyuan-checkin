@@ -101,6 +101,47 @@ assert.match(pluginSource, /if \(!preview\)\s*\{\s*this\.healthScanCursor = scan
 assert.match(pluginSource, /if \(!preview\)\s*\{\s*this\.noteQueryScanCursor = scan\.cursor;/, "notequery cursor advance is guarded by !preview");
 assert.match(pluginSource, /if \(!preview\)\s*\{\s*this\.yeguifScanCursor = scan\.cursor;/, "yeguif cursor advance is guarded by !preview");
 
+/* —— T-1852：配置代际指纹与扫描复位纯函数测试 —— */
+fs.mkdirSync(path.join(dir, "features"), {recursive: true});
+fs.writeFileSync(path.join(dir, "date-keys.js"), ts.transpileModule(fs.readFileSync(path.join(root, "src", "date-keys.ts"), "utf8"), {compilerOptions}).outputText);
+fs.writeFileSync(path.join(dir, "features", "note-anchor.js"), ts.transpileModule(fs.readFileSync(path.join(root, "src", "features", "note-anchor.ts"), "utf8"), {compilerOptions}).outputText);
+fs.writeFileSync(path.join(dir, "features", "health-inbox.js"), ts.transpileModule(fs.readFileSync(path.join(root, "src", "features", "health-inbox.ts"), "utf8"), {compilerOptions}).outputText);
+const {getHealthInboxFingerprint} = require(path.join(dir, "features", "health-inbox.js"));
+fs.writeFileSync(path.join(dir, "features", "note-query.js"), ts.transpileModule(fs.readFileSync(path.join(root, "src", "features", "note-query.ts"), "utf8"), {compilerOptions}).outputText);
+const {getNoteQueryFingerprint} = require(path.join(dir, "features", "note-query.js"));
+fs.writeFileSync(path.join(dir, "features", "yeguif-adapter.js"), ts.transpileModule(fs.readFileSync(path.join(root, "src", "features", "yeguif-adapter.ts"), "utf8"), {compilerOptions}).outputText);
+const {getYeguifFingerprint} = require(path.join(dir, "features", "yeguif-adapter.js"));
+
+// HealthInbox fingerprint tests
+const fpHealth1 = getHealthInboxFingerprint({enabled: true, docId: "20260930120000-doc0001", metricBindings: [{metric: "steps", itemId: "item-1"}]});
+const fpHealth1Same = getHealthInboxFingerprint({enabled: true, docId: "20260930120000-doc0001", metricBindings: [{metric: "steps", itemId: "item-1"}]});
+assert.equal(fpHealth1, fpHealth1Same, "same health config produces identical fingerprint");
+
+const fpHealthRebind = getHealthInboxFingerprint({enabled: true, docId: "20260930120000-doc0002", metricBindings: [{metric: "steps", itemId: "item-1"}]});
+assert.notEqual(fpHealth1, fpHealthRebind, "rebind to different docId changes fingerprint");
+
+const fpHealthClear = getHealthInboxFingerprint({enabled: false, docId: "", metricBindings: []});
+assert.notEqual(fpHealth1, fpHealthClear, "clear health config changes fingerprint");
+
+const fpHealthMultiOrder1 = getHealthInboxFingerprint({enabled: true, docId: "20260930120000-doc0001", metricBindings: [{metric: "steps", itemId: "item-1"}, {metric: "weight", itemId: "item-2"}]});
+const fpHealthMultiOrder2 = getHealthInboxFingerprint({enabled: true, docId: "20260930120000-doc0001", metricBindings: [{metric: "weight", itemId: "item-2"}, {metric: "steps", itemId: "item-1"}]});
+assert.equal(fpHealthMultiOrder1, fpHealthMultiOrder2, "bindings sorted ensure canonical fingerprint regardless of array order");
+
+// NoteQuery fingerprint tests
+const fpNote1 = getNoteQueryFingerprint({enabled: true, template: "frontmatter", scope: "document", targetId: "20260930120000-doc0001", itemId: "item-1"});
+const fpNoteRebind = getNoteQueryFingerprint({enabled: true, template: "frontmatter", scope: "document", targetId: "20260930120000-doc0002", itemId: "item-1"});
+assert.notEqual(fpNote1, fpNoteRebind, "note query rebind changes fingerprint");
+
+// Yeguif fingerprint tests
+const fpYeguif1 = getYeguifFingerprint({enabled: true, notebookId: "nb-1", itemId: "item-1", mappings: [{project: "work", itemId: "item-1"}]});
+const fpYeguifRebind = getYeguifFingerprint({enabled: true, notebookId: "nb-2", itemId: "item-1", mappings: [{project: "work", itemId: "item-1"}]});
+assert.notEqual(fpYeguif1, fpYeguifRebind, "yeguif notebook change changes fingerprint");
+
+/* —— T-1852：接线守门——配置指纹变化必须复位游标 —— */
+assert.match(pluginSource, /if \(this\.healthScanFingerprint !== currentFingerprint\)\s*\{\s*if \(!preview\)\s*\{\s*this\.healthScanFingerprint = currentFingerprint;\s*\}\s*this\.healthScanCursor = "";\s*\}/, "health cursor resets to empty on fingerprint mismatch");
+assert.match(pluginSource, /if \(this\.noteQueryScanFingerprint !== currentFingerprint\)\s*\{\s*if \(!preview\)\s*\{\s*this\.noteQueryScanFingerprint = currentFingerprint;\s*\}\s*this\.noteQueryScanCursor = "";\s*\}/, "notequery cursor resets to empty on fingerprint mismatch");
+assert.match(pluginSource, /if \(this\.yeguifScanFingerprint !== currentFingerprint\)\s*\{\s*if \(!preview\)\s*\{\s*this\.yeguifScanFingerprint = currentFingerprint;\s*\}\s*this\.yeguifScanCursor = "";\s*\}/, "yeguif cursor resets to empty on fingerprint mismatch");
+
 fs.rmSync(dir, {recursive: true, force: true});
-console.log("Scan cursor checks passed: short-page reset, capped advance, coverage order, cursor whitelist, three-source wiring, preview-isolation.");
+console.log("Scan cursor checks passed: short-page reset, capped advance, coverage order, cursor whitelist, three-source wiring, preview-isolation, generation-reset.");
 })().catch((error) => { console.error(error); process.exit(1); });

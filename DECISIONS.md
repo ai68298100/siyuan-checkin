@@ -3123,3 +3123,10 @@
 - `src/index.ts` 中的 `healthScanCursor`、`noteQueryScanCursor` 与 `yeguifScanCursor` 推进逻辑统一添加 `if (!preview)` 守卫，确保预览操作纯只读，绝不推进正式游标。
 - 杜绝预览操作提前“吞噬”未实际持久化的增量文档，防止后续自动或手动正式扫描漏读数据。
 - `tests/scan-cursor.test.cjs` 增补针对三处来源游标 `!preview` 隔离的自动化断言，保证契约永久不退化。
+
+## D-506：T-1852 来源配置变更代际指纹与扫描游标自动复位（2026-10-19）
+
+- 在 `health-inbox.ts`、`note-query.ts`、`yeguif-adapter.ts` 引入 `getHealthInboxFingerprint`、`getNoteQueryFingerprint`、`getYeguifFingerprint` 确定性配置指纹函数。
+- 在 `src/index.ts` 会话层维护三类扫描指纹；摄取执行前对比指纹，检测到换绑（如绑定文档变动、查询范围变更、笔记本切换、映射修改或清除）时立即复位对应的会话游标为空串 `""`。
+- 确保从新绑定的文档或范围从第一页完整扫描，杜绝上一文档的块 ID 游标在目标文档 SQL 中造成越界过滤或数据漏摄。
+- 变更失败或预览操作保留原有指纹与游标状态；`tests/scan-cursor.test.cjs` 增补纯函数与插件接线的自动化门禁断言。

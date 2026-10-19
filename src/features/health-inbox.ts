@@ -130,3 +130,10 @@ export function addHealthMetricBinding(source: unknown, metric: HealthInboxMetri
     if (normalized.metricBindings.length >= HEALTH_MAX_METRIC_BINDINGS) return undefined;
     return normalizeHealthInboxPreference({...normalized, metricBindings: [...normalized.metricBindings, {metric: knownMetric, itemId: normalizedId}]});
 }
+
+/** T-1852 配置代际指纹：docId、绑定列表变更时生成不同指纹，用于自动复位游标。 */
+export function getHealthInboxFingerprint(source: unknown): string {
+    const pref = normalizeHealthInboxPreference(source);
+    const bindings = pref.metricBindings.map((b) => `${b.metric}:${b.itemId}`).sort().join(",");
+    return `${pref.enabled ? "1" : "0"}|${pref.docId}|${bindings}`;
+}

@@ -118,6 +118,21 @@ export function settleYeguifEntries(markers: readonly YeguifMarker[], localDate:
     return entries;
 }
 
+/** T-1852 配置代际指纹：笔记本或项目映射变更时生成不同指纹，用于自动复位游标。 */
+export function getYeguifFingerprint(source: unknown): string {
+    const s = source && typeof source === "object" ? (source as Record<string, unknown>) : {};
+    const enabled = s.enabled === true ? "1" : "0";
+    const itemId = typeof s.itemId === "string" ? s.itemId.trim() : "";
+    const notebookId = typeof s.notebookId === "string" ? s.notebookId.trim() : "";
+    const mappings = Array.isArray(s.mappings)
+        ? (s.mappings as Array<{project?: unknown; itemId?: unknown}>)
+            .map((m) => `${String(m.project || "")}:${String(m.itemId || "")}`)
+            .sort()
+            .join(",")
+        : "";
+    return `${enabled}|${itemId}|${notebookId}|${mappings}`;
+}
+
 export function buildYeguifActionMoment(localDate: string, startMinutes: number, startSecond = 0): ActionMoment | undefined {
     const parts = splitDateKey(localDate);
     if (!parts || !Number.isInteger(startMinutes) || startMinutes < 0 || startMinutes >= 1440
