@@ -3068,3 +3068,9 @@
 - `tokens.scss` 新增 4 个 deep-overlay 浅层白色 token：`deep-overlay-soft` 0.10 / `deep-overlay-icon` 0.12 / `deep-overlay-track` 0.14 / `deep-overlay-border` 0.20。
 - `components.scss` 中 `__focus-timer` 4 处 `rgba(255,255,255,...)` 字面量切到 token：`__focus-icon` / `__focus-progress` / focus-presets 按钮边 / `__focus-actions` hover。
 - 范围限定：仅做 focus-timer 主题叠加；review-compare / quick-dock / mobile-nav 三个高频面按 T-1816 第五切片继续。
+
+## D-498：T-1816 卡片 surface 第五切片：mobile-nav 顶部阴影收口（2026-10-19）
+
+- `tokens.scss` 新增 `nav-shadow` token（`0 -2px 10px color-mix(text 7%, transparent)`），把 `__mobile-nav` 顶部负向阴影字面量收口为单一来源。
+- 范围限定：`__dock-host` 在不同断点（mobile / dock / dialog-mobile / editor）的 min-height 散落值（46/50/52/54/58px）保留字面量——这些差异是不同 surface 容器的视觉微调意图，不强行合并。
+- 剩余：review-compare 内部组件的 card shadow 收口。

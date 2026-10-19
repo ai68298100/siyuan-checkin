@@ -3082,3 +3082,13 @@ dark 主题下选中态卡片底色（accent 14% 混 `#1A1B22`）与 hover 态�
 
 验证：所有视觉门禁与主链通过；CSS 659 KiB（674600 bytes）仍低于 660 KiB 硬线。
 
+# 2026-10-19 T-1816 卡片 surface 第五切片：mobile-nav 顶部阴影收口（D-498）
+
+`tokens.scss` 新增 `--lc-checkin-nav-shadow` token（`0 -2px 10px color-mix(in srgb, var(--lc-checkin-text) 7%, transparent)`）。`components.scss` 中 `__mobile-nav` 顶部负向阴影字面量切到 token。
+
+`__dock-host` 不同断点 min-height 散落值（46/50/52/54/58px）保留字面量——这些差异是不同 surface 容器的视觉微调意图，不是 token 化收益高的目标。
+
+剩余：review-compare 内部组件的 card shadow 收口。
+
+验证：所有视觉门禁与主链通过；CSS 659 KiB（674656 bytes）仍低于 660 KiB 硬线。
+

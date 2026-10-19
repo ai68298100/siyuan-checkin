@@ -80,6 +80,7 @@
     --lc-checkin-deep-overlay-icon: rgba(255, 255, 255, 0.12);
     --lc-checkin-deep-overlay-track: rgba(255, 255, 255, 0.14);
     --lc-checkin-deep-overlay-border: rgba(255, 255, 255, 0.20);
+    --lc-checkin-nav-shadow: 0 -2px 10px color-mix(in srgb, var(--lc-checkin-text) 7%, transparent);
     --lc-checkin-card-elevated: var(--lc-checkin-card-highlight), var(--lc-checkin-card-shadow);
     --lc-checkin-card-elevated-hover: var(--lc-checkin-card-highlight), var(--lc-checkin-card-shadow-hover);
     --lc-checkin-primary-gradient: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%);

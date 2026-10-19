@@ -1675,7 +1675,7 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     .lc-checkin__occasion-manager-list::-webkit-scrollbar-thumb,
     .lc-checkin__templates::-webkit-scrollbar-thumb { border-radius: 99px; background: color-mix(in srgb, var(--lc-checkin-accent) 40%, transparent); }
     .lc-checkin--today .lc-checkin__list { padding-bottom: 4px; }
-    .lc-checkin__mobile-nav { box-shadow: 0 -2px 10px color-mix(in srgb, var(--lc-checkin-text) 7%, transparent); }
+    .lc-checkin__mobile-nav { box-shadow: var(--lc-checkin-nav-shadow); }
     .lc-checkin--today .lc-checkin__completed-section .lc-checkin__section-toggle { color: var(--lc-checkin-muted); }
     .lc-checkin--today .lc-checkin__completed-section .lc-checkin__section-toggle:active,
     .lc-checkin--today .lc-checkin__completed-section .lc-checkin__section-toggle:focus-visible { color: var(--lc-checkin-accent-text); }
