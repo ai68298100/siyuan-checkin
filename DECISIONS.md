@@ -3000,3 +3000,24 @@
 - 双窗口夹具必须使用空 count 项目，避免 binary 首条事实完成门在存储锁之前拒绝并发调用；并发报告为 `.artifacts/storage-host-concurrency.json`。
 - 失败夹具只证明插件 `saveData` 入口的回滚/重试边界，不能代表思源内核自然磁盘、网络或断电故障；失败报告为 `.artifacts/storage-host-failure-reload.json`。
 - T-1807 继续保留为测量/证据任务，不引入 Store v3、schema v4、压缩、分层或节流。下一开发切片转入 T-1786 的 API/Agent/快速入口幂等回执统一。
+
+## D-488：T-1827 双主题硬编码色收口第一切片（2026-10-19）
+
+- 全仓 20 处 `color: #fff` 硬编码（components 19 + tokens::selection 1）按背景语义收口到三对 token：accent 背景 → `var(--lc-checkin-accent-contrast)`，success 背景 → 新增 `var(--lc-checkin-success-contrast)`（light=#FFFFFF / dark=#141419），deep/暗色底 → `var(--lc-checkin-deep-text)`。
+- 同步新建 `success-contrast` 在 light/dark 两组 token 中；不动现有 v3 卡片层 `card-bg / card-border / card-shadow`。
+- 暗色主题下选中态在 accent 紫罗兰底上从硬白字改为 `accent-contrast #141419` 自动反转，是 T-1813 治理清单第 4 项的语义修复。
+- 范围限定：不做 `color-mix(in srgb, #fff NN%, ...)` 内联白色混入的批量替换、forced-colors 适配与四调色板对比截图门禁；这些由 T-1827 的后续切片处理。
+
+## D-489：T-1816 卡片 surface 四级统一第一切片（2026-10-19）
+
+- 新增 4 对语义 token（light+dark 共 8 行）：`card-border-selected` / `card-shadow-raised` / `card-shadow-selected` / `card-bg-selected`。
+- 把 components.scss 中 5 类高频卡面（`__item` / `__history-event` / `__history-selected` / `__insight-stats div` / `__insight-section`）从 v2 `shadow-sm` 切到 v3 `card-shadow` 语义，hover/selected 走对应 hover/selected 变体。
+- 保留：表面`surface` 输入/筛选条（不下沉到 card）、focus-timer deep 块、all-done success 块、week-load 单元；这些不属于 page/card/raised/selected 四级。
+- 范围限定：`__all-done`、week-load、review-compare、focus-timer、quick-dock、mobile-nav 五个高频面与 workbench/maintenance-responsive 之间的卡片收口未做，留作后续切片。
+
+## D-490：T-1818 表单字段语义 token 收口第一切片（2026-10-19）
+
+- 新增 8 对表单字段语义 token：`field-radius` (8px) / `field-border` / `field-border-strong` / `field-padding-x` (8px) / `field-padding-y` (4px) / `field-bg` / `field-height` (32px) / `field-height-lg` (38px)。
+- 6 个高重复字段定义（custom-range / journal-notebook / icon-panel / search-field / insight-custom-range / insight-picker）切到上述 token。
+- 不动 30/36/40/42/44px 等高变体字段、72/84/88/100px 文本域、移动端/设置层覆盖；这些与"分类化"标签、帮助、必填、错误原因、成功、dirty、busy、disabled 状态合并一并留作下一切片。
+- 范围限定：error / success / busy / disabled 状态规则合并与 T-1788 错误态视觉矩阵按 T-1813 治理节奏逐个收口。

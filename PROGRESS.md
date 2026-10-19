@@ -2964,3 +2964,35 @@ Chrome 双主题状态审计发现完成事项芯片 `.is-complete` 的 `opacity
 - 受控失败夹具仅替换插件实例 `saveData` 并拒绝 `checkin-store`，确认失败调用内存事件为 0，重载后同身份最终只有 1 条 durable 事件；报告为 `.artifacts/storage-host-failure-reload.json`。这不是内核自然磁盘/网络故障证明。
 
 T-1807 的真实宿主预算、并发和插件写入口恢复证据已补齐，可以继续 T-1786。自然 I/O 故障注入、压缩/分层策略仍不因本轮结果自动立项；Store v3/schema v4 保持不变。
+
+# 2026-10-19 T-1827 双主题硬编码色收口第一切片（D-485）
+
+`components.scss` 19 处与 `tokens.scss::selection` 1 处共 20 处 `color: #fff` 硬编码全部按背景语义收口到三对 token：accent 背景 → `var(--lc-checkin-accent-contrast)`，success 背景 → 新增 `var(--lc-checkin-success-contrast)`（light=#FFFFFF / dark=#141419），deep/暗色底 → `var(--lc-checkin-deep-text)`。同时在 light/dark 两组 token 中新增 `--lc-checkin-success-contrast`。
+
+这一改修直接闭合 T-1813 治理清单第 4 项的"硬编码白"：dark 主题下原本硬写的 `#fff` 在 `accent-fill #8B93F8` 紫罗兰底上会回到浅色文字而失去 4.5:1 对比度，现在 `--lc-checkin-accent-contrast` 自动切到 `#141419` 与 accent 形成视觉反转，无障碍审计 1337 对组合零违规保持。
+
+验证：`pnpm run check` / `pnpm build` / `pnpm test` / `tests/responsive-layout.test.cjs` / `tests/ui-theme.test.cjs` / `tests/accessibility-audit.test.cjs` / `tests/css-hygiene.test.cjs` 全部通过；CSS 655 KiB 距离 660 KiB 硬线 7 KiB。
+
+# 2026-10-19 T-1816 卡片 surface 四级统一第一切片（D-486）
+
+新增 4 对语义 token（light+dark）：`--lc-checkin-card-border-selected`、`--lc-checkin-card-shadow-raised`、`--lc-checkin-card-shadow-selected`、`--lc-checkin-card-bg-selected`。把 components.scss 中 5 类高频卡面从 v2 全局 shadow（`shadow-sm` / `accent-soft` 25% 混入）切到 v3 card shadow 语义：
+
+- `.lc-checkin__item` → `card-bg + card-shadow`，hover/focus-within → `card-border-hover + card-shadow-hover`；
+- `.lc-checkin__item.is-complete` → `card-border-selected + card-bg-selected + card-shadow-selected`；
+- `.lc-checkin__history-event` → `card-shadow`，hover/selected 用对应 hover/selected 变体；
+- `.lc-checkin__history-selected` / `.lc-checkin__insight-stats div` / `.lc-checkin__insight-section` 全部改用 card surface。
+
+dark 主题下选中态卡片底色（accent 14% 混 `#1A1B22`）与 hover 态形成明确梯度，消除 Today / 回顾 / 事项 / 设置之间的选中态观感跳变。
+
+验证：所有视觉门禁与主链通过；CSS 增至 656 KiB 仍低于 660 KiB 硬线；785 个类 token，0 死类。
+
+# 2026-10-19 T-1818 表单字段语义 token 收口第一切片（D-487）
+
+`tokens.scss` 新增 7 个表单字段语义 token：`--lc-checkin-field-radius` (8px) / `--lc-checkin-field-border` / `--lc-checkin-field-border-strong` / `--lc-checkin-field-padding-x` (8px) / `--lc-checkin-field-padding-y` (4px) / `--lc-checkin-field-bg` / `--lc-checkin-field-height` (32px) / `--lc-checkin-field-height-lg` (38px)。
+
+`components.scss` 中 6 个高重复字段定义切到上述 token：`.lc-checkin__custom-range input`、`.lc-checkin__journal-notebook select / .lc-checkin__journal-docid input / .lc-checkin__document-picker select`、`.lc-checkin__icon-panel .lc-checkin__field input/select`、`.lc-checkin__search-field input`、`.lc-checkin__insight-custom-range input`、`.lc-checkin__insight-picker select` 及其同块变体。
+
+剩余切面（高变体 30/36/40/44/42px 字段、`min-height: 72/84/88/100px` 文本域）继续按可见表面优先小切片处理；error/success/busy/disabled 状态规则合并留作下一切片，给 T-1788 错误态视觉矩阵打基础。
+
+验证：所有视觉门禁与主链通过；CSS 656.5 KiB 仍低于 660 KiB 硬线。
+
