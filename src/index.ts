@@ -870,6 +870,10 @@ export default class CheckinPlugin extends Plugin {
 
     private async saveJournalData(): Promise<void> {
         await this.withStorageLock(async () => {
+            const previousTemplates = this.journalCustomTemplates;
+            const previousIntegration = this.journalIntegrationPref;
+            const previousPersistedTemplates = this.lastPersistedJournalTemplates;
+            const previousPersistedIntegration = this.lastPersistedJournalIntegration;
             const stored = await this.loadData(JOURNAL_DATA_NAME);
             const payload = stored && typeof stored === "object" ? stored as {templates?: unknown; integration?: unknown} : {};
             const remoteTemplates = normalizeCustomJournalTemplates(payload.templates);
@@ -878,11 +882,19 @@ export default class CheckinPlugin extends Plugin {
             const localIntegrationChanged = JSON.stringify(this.journalIntegrationPref) !== JSON.stringify(this.lastPersistedJournalIntegration);
             const templates = localTemplatesChanged ? this.journalCustomTemplates : remoteTemplates;
             const integration = localIntegrationChanged ? this.journalIntegrationPref : remoteIntegration;
-            await this.saveData(JOURNAL_DATA_NAME, {templates, integration});
-            this.journalCustomTemplates = templates;
-            this.journalIntegrationPref = integration;
-            this.lastPersistedJournalTemplates = templates.map((entry) => ({...entry, questions: entry.questions.map((question) => ({...question}))}));
-            this.lastPersistedJournalIntegration = {...integration};
+            try {
+                await this.saveData(JOURNAL_DATA_NAME, {templates, integration});
+                this.journalCustomTemplates = templates;
+                this.journalIntegrationPref = integration;
+                this.lastPersistedJournalTemplates = templates.map((entry) => ({...entry, questions: entry.questions.map((question) => ({...question}))}));
+                this.lastPersistedJournalIntegration = {...integration};
+            } catch (error) {
+                this.journalCustomTemplates = previousTemplates;
+                this.journalIntegrationPref = previousIntegration;
+                this.lastPersistedJournalTemplates = previousPersistedTemplates;
+                this.lastPersistedJournalIntegration = previousPersistedIntegration;
+                throw error;
+            }
         });
     }
 

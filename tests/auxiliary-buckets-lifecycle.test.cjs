@@ -57,7 +57,7 @@ assert.match(
     "persistCustomIconLibrary 必须在并集前过滤已删除图标，杜绝删除复活缺陷"
 );
 
-// 3. 覆盖型辅助桶（视图偏好与问卷日记脏检查）
+// 3. 覆盖型辅助桶（视图偏好与问卷日记脏检查与回滚）
 assert.match(
     srcIndex,
     /if \(JSON\.stringify\(this\.journalCustomTemplates\) === JSON\.stringify\(this\.lastPersistedJournalTemplates\)\)/,
@@ -67,6 +67,11 @@ assert.match(
     srcIndex,
     /if \(JSON\.stringify\(this\.journalIntegrationPref\) === JSON\.stringify\(this\.lastPersistedJournalIntegration\)\)/,
     "onDataChanged 必须在本地无脏修改时才跟随远端问卷集成配置"
+);
+assert.match(
+    srcIndex,
+    /this\.journalCustomTemplates = previousTemplates;\s*this\.journalIntegrationPref = previousIntegration;\s*this\.lastPersistedJournalTemplates = previousPersistedTemplates;\s*this\.lastPersistedJournalIntegration = previousPersistedIntegration;/,
+    "saveJournalData 必须在 saveData 失败时回滚内存与基线快照"
 );
 
 /* ---------------------------------------------------------
