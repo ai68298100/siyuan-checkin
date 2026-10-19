@@ -3194,3 +3194,14 @@ dark 主题下选中态卡片底色（accent 14% 混 `#1A1B22`）与 hover 态�
 - 产物指标：TS 零编译警告，主链全量测试通过。
 - 验证：`pnpm run check`、`pnpm build`、`node tests/checkin-block.test.cjs`、`pnpm test` 全部通过。
 
+# 2026-10-20 T-1857 渲染块记录按钮防重点、Pending 状态机与错误反馈（D-511）
+
+- `src/render/block-renderer.ts`：在今日打卡按钮点击处理中引入 `data-record-pending="true"` 防重入状态机，拦截并在 pending 期间丢弃后续并发点击，防止多重并发写入；
+- 6秒看门狗定时器：设置 `cleanupTimer = setTimeout(() => release(true), 6000)`，保证即使网络异常、宿主变异挂起或异常未捕获，按钮也会在 6 秒后安全自动解锁，绝不永久瘫痪；
+- 宿主闭环与错误恢复：宿主 `src/index.ts` 的 `recordBlockToday` 返回 `Promise<boolean>`，在卸载/找不到项目/变异失败时返回 `false`；渲染块根据执行结果执行 `release(error)`，成功时直接解除 pending，失败/拒绝时为按钮标记 `data-record-error="true"` 并在 2.5 秒后清除，向用户提供清晰失败反馈并恢复可点击状态；
+- `src/ui/components.scss`：通过既有类名下属性选择器 `&[data-record-pending]`（`opacity: 0.6; pointer-events: none; cursor: wait`）与 `&[data-record-error]`（红色警告提示）呈现状态，零新增 class token，严格维护 CSS 预算；
+- `tests/checkin-block.test.cjs`：补齐针对 pending 拦截、6 秒看门狗定时器、错误释放状态、宿主 `Promise<boolean>` 返回及 CSS 样式规则的自动化守门断言；
+- 产物指标：TS 零编译警告，主链全量测试通过，CSS 673,575 字节（低于 680 KiB 预算）。
+- 验证：`pnpm run check`、`pnpm build`、`node tests/checkin-block.test.cjs`、`node tests/css-hygiene.test.cjs`、`pnpm test` 全部通过。
+
+

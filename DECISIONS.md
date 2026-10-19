@@ -3159,3 +3159,12 @@
 - 预览点击监听器拦截 `[data-block-anchor-retry]` 点击，无需重载页面即可就地重触发解析渲染。
 - 解析落定回调校验 `lastRenderedConfig.get(block) === configText`，用户修改代码块配置或换绑时自动丢弃陈旧结果。
 - 导出 `clearAnchorResolveCache()` 并由 `src/index.ts` 的 `onunload()` 在插件卸载时统一清理；`tests/checkin-block.test.cjs` 补齐自动化守门断言。
+
+## D-511：T-1857 渲染块记录按钮防重点、Pending 状态机与错误反馈（2026-10-20）
+
+- 交互防重与状态机：`src/render/block-renderer.ts` 在今日打卡按钮点击时立即检查并设置 `data-record-pending="true"`，在 pending 态期间丢弃后续重入点击，杜绝连续快点造成多重入账或队列堆叠。
+- 看门狗定时器：设立 6 秒自动超时安全兜底（`setTimeout(() => release(true), 6000)`），若宿主变异队列拥堵或发生未捕获异常，按钮绝不永久锁死。
+- 宿主闭环与错误恢复：宿主 `src/index.ts` 中 `recordBlockToday` 返回 `Promise<boolean>`，在插件卸载/已销毁/未找到项目/变异捕获错误时返回 `false`。渲染块根据 Promise 结果解除 pending：成功直接解除；失败或拒绝则标记 `data-record-error="true"` 并在 2.5 秒后自动清除，呈现错误反馈后允许用户再次点击重试。
+- 视觉样式与样式预算：`src/ui/components.scss` 通过属性选择器 `&[data-record-pending]`（`opacity: 0.6; pointer-events: none; cursor: wait`）与 `&[data-record-error]`（红色边框与文字）提供清晰无障碍视觉反馈，零新增类名，严格控制 CSS 体积在预算以内。
+- 自动化契约守门：在 `tests/checkin-block.test.cjs` 建立状态机流转、防重丢弃、看门狗兜底、错误释放与样式定义的完整自动化断言。
+
