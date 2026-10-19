@@ -3042,3 +3042,9 @@
 - `__error` 的 padding/radius 进一步切到 T-1818 的 field token，保持与字段一致的"基座错误"识别。
 - `tests/ui-state-ledger.test.cjs` 的硬编码 `padding:10px` 断言同步更新到 token 形式——契约测试随 SCSS 演进。
 - 范围限定：未动统一图标、loading/slow/error/empty 高度与反馈节奏；`__onboard-start` / `__onboard-skip` 引导按钮与主按钮的层级关系、T-1788 错误态视觉矩阵按 T-1813 治理节奏逐个收口。
+
+## D-494：T-1813 卡片组合 shadow 收口（2026-10-19）
+
+- `tokens.scss` 新增 2 对组合 token：`--lc-checkin-card-elevated` / `--lc-checkin-card-elevated-hover`，分别打包 `card-highlight` + `card-shadow` 与 `card-highlight` + `card-shadow-hover` 的双层组合。
+- `src/ui/workbench.scss` 中 6 处显式 `box-shadow: var(--lc-checkin-card-highlight), var(--lc-checkin-card-shadow[...])` 全部切到组合 token，重复规则减少 6×N 字节。
+- 范围限定：只合并阴影双层组合；不动 `card-shadow` / `card-shadow-hover` / `card-shadow-raised` / `card-shadow-selected` 单独的语义；不动 components.scss 中的单层 shadow。下一轮可继续按相同思路合并 `card-border + card-border-hover` 的组合选择子等。

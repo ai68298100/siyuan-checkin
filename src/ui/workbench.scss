@@ -62,13 +62,13 @@
     .lc-checkin__overview:has(.lc-checkin__overview-streak):has(.lc-checkin__overview-focus) { grid-template-columns: minmax(0, 1.5fr) minmax(0, .9fr) minmax(0, 1fr); }
     .lc-checkin__overview > div {
         min-width: 0; min-height: 104px; padding: 16px 20px; border-radius: 18px;
-        box-shadow: var(--lc-checkin-card-highlight), var(--lc-checkin-card-shadow);
+        box-shadow: var(--lc-checkin-card-elevated);
         border: 1px solid var(--lc-checkin-card-border);
         transition: transform var(--lc-checkin-motion-card), box-shadow var(--lc-checkin-motion-card), border-color var(--lc-checkin-motion-card);
         &:hover {
             transform: translateY(-1px);
             border-color: var(--lc-checkin-card-border-hover);
-            box-shadow: var(--lc-checkin-card-highlight), var(--lc-checkin-card-shadow-hover);
+            box-shadow: var(--lc-checkin-card-elevated-hover);
         }
     }
     .lc-checkin__overview-label { display: block; font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; }
@@ -99,13 +99,13 @@
             border-radius: var(--lc-checkin-radius-lg);
             background: var(--lc-checkin-card-bg-gradient);
             border: 1px solid var(--lc-checkin-card-border);
-            box-shadow: var(--lc-checkin-card-highlight), var(--lc-checkin-card-shadow);
+            box-shadow: var(--lc-checkin-card-elevated);
             transition: transform var(--lc-checkin-motion-card), box-shadow var(--lc-checkin-motion-card), border-color var(--lc-checkin-motion-card);
 
             &:hover {
                 transform: translateY(-1px);
                 border-color: var(--lc-checkin-card-border-hover);
-                box-shadow: var(--lc-checkin-card-highlight), var(--lc-checkin-card-shadow-hover);
+                box-shadow: var(--lc-checkin-card-elevated-hover);
             }
 
             .lc-checkin__next-hero-main {
@@ -532,13 +532,13 @@
         border-radius: var(--lc-checkin-radius);
         background: var(--lc-checkin-card-bg-gradient);
         border: 1px solid var(--lc-checkin-card-border);
-        box-shadow: var(--lc-checkin-card-highlight), var(--lc-checkin-card-shadow);
+        box-shadow: var(--lc-checkin-card-elevated);
         transition: transform var(--lc-checkin-motion-card), box-shadow var(--lc-checkin-motion-card), border-color var(--lc-checkin-motion-card);
 
         &:hover {
             transform: translateY(-1px);
             border-color: var(--lc-checkin-card-border-hover);
-            box-shadow: var(--lc-checkin-card-highlight), var(--lc-checkin-card-shadow-hover);
+            box-shadow: var(--lc-checkin-card-elevated-hover);
         }
 
         h2 {
