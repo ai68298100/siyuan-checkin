@@ -1,3 +1,22 @@
+# 2026-10-20 建议采纳直通、复盘证据钻取与微触感动效深度落地（T-1876, T-1877, T-1878，D-528, D-529, D-530）
+
+**v18.20.0+ 持续演进——💡 闭环建议采纳、样本量守门与轻量物理动效**：
+1. **智能体建议一键采纳与明日生效修订直通（T-1876，D-528）**：
+   - 纯函数 `planSuggestionAdoption`：将建议（如连续跳过或强度下滑时的“降低行动门槛/改为弹性周配额”）转化为一条次日（`addDays(todayKey, 1)`）起生效的规则修订 `CheckinItemRevision`；
+   - 严格守门：已归档拒绝、同值周配额拒绝、二值项目非 1 拒绝，绝不追溯改写已发生历史事实；
+   - 宿主原子事务 `applySuggestionRevision`：独占 mutation 锁写入、单次 `persist()`、审计溯源与 UI 单飞防重。
+2. **周复盘卡片证据链钻取与样本量守门（T-1877，D-529）**：
+   - 纯函数 `buildCoachingEvidence`：基于计划日投影真实机会日，以 `COACHING_EVIDENCE_MIN_DAYS = 7` 为严谨样本门禁，不足时清晰标注非充分样本；
+   - 展开证据面板：在复盘卡片提供可折叠的“支撑证据”明细，直观呈现近 7 机会日的日期、状态与事实完成值/目标值，支持纯键盘焦点切换与 `aria-expanded`。
+3. **打卡卡片微物理回弹与触觉递增反馈（T-1878，D-530）**：
+   - 动效收敛：WAAPI 派发 `scale(1) → scale(0.985) → scale(1.008) → scale(1)` 缓动微脉冲（260ms），打卡或局部更新时呈现轻柔回弹反馈；
+   - 无障碍降级：遇 `reducedMotion` 或系统偏好即刻短路零动效，WebView 环境异常安全包裹；
+   - 触觉反馈：移动端单次轻振动 `pulseHaptic(10)`。
+4. **守门与验证**：
+   - 新增 `tests/agent-suggestion-adopt.test.cjs`、`tests/review-evidence-drilldown.test.cjs`、`tests/card-micro-motion.test.cjs` 全部纳入 `test:v18`（全 34 项全通）；
+   - CSS 卫生检查通过（823 class tokens，0 死类，674 KiB < 680 KiB 预算）；
+   - `pnpm run check`（TypeScript 零错误）、`pnpm run build:check` 全绿通过。
+
 # 2026-10-20 历史排期矩阵点选补卡与原子批量回填（T-1875，D-527）
 
 **v18.19.0+ 持续演进——🗓️ 多日漏记补录磨擦消除与三态循环点选**：

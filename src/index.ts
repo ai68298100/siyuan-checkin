@@ -27,6 +27,7 @@ import {createBackupEnvelopeFromBuckets, preflightUnifiedBackup, type BackupEnve
 import {PLUGIN_VERSION} from "./version";
 import {buildHabitInsights} from "./features/insights";
 import {buildCoachingSuggestions} from "./features/coaching";
+import {adoptionInputForSuggestion, buildCoachingEvidence, COACHING_EVIDENCE_MIN_DAYS, mergeAdoptedRevision, planSuggestionAdoption, type SuggestionAdoptionPlan} from "./features/suggestion-adoption";
 import {buildReviewAnalysisKey, selectReviewAnalysis, type ReviewAssistantGoal} from "./features/review-assistant";
 import {CHECKIN_API_NAME, CHECKIN_EVENT_NAMES, DOCK_TOMATO_ADAPTER_ID, emitIntegrationEvent} from "./integrations";
 import {appendEvent, appendEvents, computeLongestStreaks, appendStoreAudit, appendStoreSnapshotHistory, createDefaultStore, createEmptyStoreSnapshotHistory, createStoreSnapshotEnvelope, countCompletedDays, dateKey, deleteItemCascade, deleteItemsCascade, evaluateItemRule, getActiveItemById, getEventById, getEventsForDay, getEventsInDateRange, getItemById, getItemDirectionForDate, getItemRevisionForDate, getProgress, getSkipDatesForItem, isComplete, isItemAvailableOnDate, isScheduledToday, isSkipEvent, makeId, mergeNormalizedStores, mergeStoreAudits, normalizeItem as normalizeCheckinItem, normalizeStore, normalizeStoreAudit, parseStoreSnapshotHistoryExport, inspectStoreSnapshotHistory, readStoreSnapshotHistory, removeEvents, type StoreAuditEntry} from "./model";
@@ -4091,6 +4092,8 @@ this.scheduleMidnightRefresh();
             }
             /* Parent section and completion-state changes were rejected during
                preflight above; no card is moved or removed after mutation starts. */
+            /* T-1878：局部刷新成功后同样给出轻量徽脉冲动（减少动效时短路）。 */
+            this.pulseCard(root, itemId);
         }
         for (const surface of new Set(cards.map(({surface}) => surface))) {
             const scheduledItems = this.store.items.filter((candidate) => !candidate.archived && isItemAvailableOnDate(candidate, date) && isScheduledToday(candidate, date));
@@ -7122,6 +7125,13 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
         /* T-1295:全历史最长连续走模型单一实现(computeLongestStreaks),窗口最佳之外给用户马拉松视角。 */
         const longestEver = computeLongestStreaks(this.store, currentCalendarDate()).get(item.id) || 0;
         const suggestions = buildCoachingSuggestions(report, (key, params) => t(key, params));
+        /* T-1877：证据钻取——每条建议附带真实事实样本，样本不足如实标注。 */
+        const coachingEvidence = buildCoachingEvidence(this.store, item, dateKey(currentCalendarDate()), Math.min(28, rangeDays));
+        const evidenceRows = coachingEvidence.recent.map((sample) => {
+            const stateKey = sample.skipped ? "insights.evidenceSkipped" : sample.completed ? "insights.evidenceDone" : "insights.evidenceMissed";
+            return `<li class="lc-checkin__coaching-evidence-row is-${sample.skipped ? "skip" : sample.completed ? "done" : "missed"}"><time>${escapeHtml(sample.date)}</time><span>${t(stateKey)}</span><small>${escapeHtml(formatNumber(sample.progress))}/${escapeHtml(formatNumber(sample.target))}${escapeHtml(sample.unit)}</small></li>`;
+        }).join("");
+        const evidenceBlock = `<details class="lc-checkin__coaching-evidence" data-coaching-evidence><summary>${t("insights.evidenceTitle")}<small>${coachingEvidence.sufficient ? t("insights.evidenceSufficient", {n: coachingEvidence.eligibleDays}) : t("insights.evidenceInsufficient", {n: coachingEvidence.eligibleDays, min: COACHING_EVIDENCE_MIN_DAYS})}</small></summary><p class="lc-checkin__coaching-evidence-summary">${escapeHtml(t("insights.evidenceRange", {start: coachingEvidence.startDate, end: coachingEvidence.endDate, done: coachingEvidence.completedDays, skipped: coachingEvidence.skippedDays, missed: coachingEvidence.missedDays}))}</p>${evidenceRows ? `<ul class="lc-checkin__coaching-evidence-list">${evidenceRows}</ul>` : `<p class="review-scope-note">${t("insights.evidenceEmpty")}</p>`}</details>`;
         const rate = report.aggregates.completionRate === null ? t("review.quotaNone") : `${report.aggregates.completionRate}%`;
         const weekRows = report.weeklyTrend.slice(-6).map((week) => {
             const scheduledDays = week.eligibleScheduledDays || week.scheduledDays;
@@ -7143,7 +7153,18 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
         const firstRecordDay = (this.store.events || []).reduce((minimum, event) => event.itemId === item.id && event.localDate < minimum ? event.localDate : minimum, "9999-12-31");
         const maturityDays = firstRecordDay === "9999-12-31" ? 0 : daysBetweenHalfOpen(firstRecordDay, dateKey(currentCalendarDate())) ?? 0;
         const maturityPercent = Math.min(100, Math.round((maturityDays / 66) * 100));
-        const coaching = suggestions.length ? `<section class="lc-checkin__insight-section"><div class="lc-checkin__insight-heading"><h2>${t("insights.coaching")}</h2><small>${t("insights.coachingHint")}</small></div><div class="lc-checkin__coaching-list" role="list">${suggestions.map((suggestion, index) => `<div class="lc-checkin__coaching-item is-${suggestion.tone} ${index === 0 ? "is-primary" : ""}" role="listitem"><div><strong>${escapeHtml(suggestion.title)}</strong><span>${escapeHtml(suggestion.detail)}</span></div><small>${escapeHtml(suggestion.evidence)}</small>${item.archived ? "" : `<div class="lc-checkin__coaching-actions"><button class="lc-checkin__text-button" type="button" data-insight-records="${escapeHtml(item.id)}">${t("insights.coachingEvidence")}</button><button class="lc-checkin__text-button" type="button" data-insight-edit-rules="${escapeHtml(item.id)}">${t("insights.coachingAdjust")}</button></div>`}</div>`).join("")}</div></section>` : "";
+        const adoptionFor = (suggestionId: string, target: CheckinItem, todayKey: string): SuggestionAdoptionPlan => {
+            const current = getItemRevisionForDate(target, calendarDateFromKey(todayKey));
+            const suggestionTarget = current.kind === "binary" ? 1 : Math.max(1, Math.round(current.target * 0.8));
+            return planSuggestionAdoption(target, adoptionInputForSuggestion(suggestionId, 4, suggestionTarget), todayKey);
+        };
+        const coaching = suggestions.length ? `<section class="lc-checkin__insight-section"><div class="lc-checkin__insight-heading"><h2>${t("insights.coaching")}</h2><small>${t("insights.coachingHint")}</small></div><div class="lc-checkin__coaching-list" role="list">${suggestions.map((suggestion) => {
+            const adoption = adoptionFor(suggestion.id, item, dateKey(currentCalendarDate()));
+            const adoptButton = adoption.revision
+                ? `<button class="lc-checkin__text-button" type="button" data-adopt-suggestion="${escapeHtml(suggestion.id)}" data-adopt-effective="${escapeHtml(adoption.effectiveDate)}" title="${escapeHtml(t("insights.adoptHint"))}">${t("insights.adoptAction")}</button>`
+                : "";
+            return `<div class="lc-checkin__coaching-item is-${suggestion.tone}" role="listitem" data-coaching-id="${escapeHtml(suggestion.id)}"><div><strong>${escapeHtml(suggestion.title)}</strong><span>${escapeHtml(suggestion.detail)}</span></div><small>${escapeHtml(suggestion.evidence)}</small>${item.archived ? "" : `<div class="lc-checkin__coaching-actions"><button class="lc-checkin__text-button" type="button" data-insight-records="${escapeHtml(item.id)}">${t("insights.coachingEvidence")}</button><button class="lc-checkin__text-button" type="button" data-insight-edit-rules="${escapeHtml(item.id)}">${t("insights.coachingAdjust")}</button>${adoptButton}</div>`}</div>`;
+        }).join("")}</div>${evidenceBlock}</section>` : "";
         /* T-1609：戒除类日格用守住/破戒词表——二值守住日不显示「0/1」这类至少型读数。 */
         const initialFocusDate = report.days.find((day) => day.isToday)?.date || report.days[report.days.length - 1]?.date;
         const insightGrid = report.days.map((day) => {
@@ -8239,6 +8260,35 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
         });
     }
 
+    /**
+     * T-1876 采纳建议：从明日起追加一条有效修订（不追溯历史），失败整批回滚。
+     * 返回 true 表示已落盘；false 表示建议不适用或已存在相同规则。
+     */
+    async applySuggestionRevision(itemId: string, suggestionId: string): Promise<boolean> {
+        if (this.disposed || this.disposing || !this.acceptingOperations) return false;
+        const item = getActiveItemById(this.store, itemId);
+        if (!item) return false;
+        const todayKey = dateKey(currentCalendarDate());
+        const current = getItemRevisionForDate(item, calendarDateFromKey(todayKey));
+        const suggestionTarget = current.kind === "binary" ? 1 : Math.max(1, Math.round(current.target * 0.8));
+        const plan = planSuggestionAdoption(item, adoptionInputForSuggestion(suggestionId, 4, suggestionTarget), todayKey);
+        if (!plan.revision) return false;
+        const revision = plan.revision;
+        return this.enqueueMutation(async () => {
+            const previous = this.store;
+            const revisions = mergeAdoptedRevision(item, revision);
+            const nextItems = previous.items.map((entry) => entry.id === item.id ? {...entry, revisions, updatedAt: nextItemUpdatedAt(entry.updatedAt, new Date().toISOString())} : entry);
+            this.store = {...previous, items: nextItems};
+            try { await this.persist(); }
+            catch { this.store = previous; showMessage(t("msg.saveFail")); throw new Error("suggestion-adopt-failed"); }
+            this.invalidateSummary();
+            this.auditEntries = appendStoreAudit(this.auditEntries, {type: "migration", at: new Date().toISOString(), details: {status: "accepted", source: "suggestion-adopt", suggestionId, itemId: item.id, effectiveDate: revision.effectiveDate, schedule: plan.summary.scheduleTo, target: plan.summary.targetTo}});
+            void this.persistAuditBestEffort();
+            this.renderBackgroundUpdate();
+            return true;
+        });
+    }
+
     public cancelReviewSummary(root?: HTMLElement): void {
         const contexts = root ? [this.rootContexts.get(root)] : [...this.rootContexts.values()];
         for (const context of contexts) {
@@ -8962,8 +9012,9 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
             /* R-18.5（D-263 收尾）：连击命中里程碑 → 庆祝升级为里程碑级（其余为日常轻反馈）。 */
             ...(STREAK_MILESTONES.includes(currentStreak) ? {milestone: currentStreak} : {}),
         });
-        this.pendingLocalItemId = current.id;
+        this.pendingLocalItemId = item.id;
         this.pendingLocalItemDate = moment.localDate;
+        this.pulseCard(this.activeRoot ?? this.tabElement ?? this.dockElement ?? document.body, item.id);
         this.renderBackgroundUpdate();
         this.maybeAutoArchiveAfterRecord(current);
         return {...event};
@@ -9636,6 +9687,24 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
         if (!this.isMobileFrontend || !this.hapticFeedback) return;
         if (typeof navigator === "undefined" || typeof navigator.vibrate !== "function") return;
         try { navigator.vibrate(10); } catch { /* 个别 WebView 限制非手势振动，忽略 */ }
+    }
+
+    /* T-1878：打卡完成徽脉冲动——同一个数据条数递增的轻量确认，不依赖主题/颜色。
+       优先使用 Web Animations API；减少动效或宿主不支持时静默降级为零动画。 */
+    pulseCard(root: HTMLElement, itemId: string): void {
+        if (this.reducedMotion) return;
+        if (typeof root.querySelector !== "function") return;
+        if (typeof CSS === "undefined" || typeof CSS.escape !== "function") return;
+        const card = root.querySelector<HTMLElement>(`.lc-checkin__item[data-item-id="${CSS.escape(itemId)}"]`);
+        if (!card || typeof card.animate !== "function") return;
+        try {
+            card.animate([
+                {transform: "scale(1)"},
+                {transform: "scale(0.985)"},
+                {transform: "scale(1.008)"},
+                {transform: "scale(1)"},
+            ], {duration: 260, easing: "cubic-bezier(0.22, 1.2, 0.36, 1)"});
+        } catch { /* 部分宿主裁掉 WAAPI，降级为无动画 */ }
     }
 
     private async saveAvatarImage(avatarImage: string | undefined): Promise<void> {

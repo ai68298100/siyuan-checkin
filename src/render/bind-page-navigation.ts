@@ -108,6 +108,8 @@ export interface BindPageNavigationHost {
     enqueueMutation<T>(operation: () => Promise<T>): Promise<T>;
     /** T-1875：矩阵补卡草稿原子提交（按日派生事实变更，失败整批回滚） */
     recordMatrixBackfill?(itemId: string, drafts: ReadonlyMap<string, import("../features/batch-backfill").MatrixTriState>): Promise<number>;
+    /** T-1876：采纳行为建议，从明日起生效一条修订 */
+    applySuggestionRevision(itemId: string, suggestionId: string): Promise<boolean>;
     persist(): Promise<void>;
     invalidateSummary(): void;
     broadcast(event: unknown): void;
@@ -496,6 +498,30 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         const item = host.store.items.find((candidate) => candidate.id === itemId && !candidate.archived);
         if (!item) return;
         host.showEditor(item, "insights", root);
+    }));
+    /* T-1876：采纳行为建议——单飞 + busy 锁定 + 失败反馈，从明日起生效 */
+    root.querySelectorAll<HTMLElement>("[data-adopt-suggestion]").forEach((button) => button.addEventListener("click", (event) => {
+        const target = event.currentTarget as HTMLElement;
+        const suggestionId = target.dataset.adoptSuggestion || "";
+        const itemId = insightsState?.insightsItemId || host.insightsItemId || "";
+        const item = host.store.items.find((candidate) => candidate.id === itemId);
+        if (!suggestionId || !item) return;
+        if (item.archived) { showMessage(t("insights.adoptArchived")); return; }
+        if (!window.confirm(t("insights.adoptConfirm", {date: target.dataset.adoptEffective || "", weekly: 4, target: item.target}))) return;
+        if (target.getAttribute("aria-busy") === "true") return;
+        target.setAttribute("aria-busy", "true");
+        target.setAttribute("disabled", "true");
+        void host.applySuggestionRevision(item.id, suggestionId)
+            .then((applied) => {
+                if (!isCurrentSurface()) return;
+                showMessage(applied ? t("insights.adoptDone") : t("insights.adoptNoChange"));
+                renderReviewPage(`[data-adopt-suggestion="${CSS.escape(suggestionId)}"]`);
+            })
+            .catch(() => {
+                if (!isCurrentSurface()) return;
+                if (target.isConnected) { target.removeAttribute("aria-busy"); target.removeAttribute("disabled"); }
+                showMessage(t("insights.adoptFailed"));
+            });
     }));
     /* T-1649：洞察日期格使用 roving tabindex，避免长窗口的每一天都占一个 Tab 停靠点。
        方向键步进必须同时考虑 CSS 的列数与 grid-auto-flow：默认按行填充时左右
