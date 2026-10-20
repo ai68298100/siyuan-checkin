@@ -4989,6 +4989,9 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
             this.bindPageNavigation(root);
             if (page === "more") bindMoreNavigationFor(this as unknown as MoreNavigationHost, root);
         }
+        this.bindDialogClose(root);
+        this.bindMobileNav(root);
+        this.normalizeUiIcons(root);
         if (this.quickDialog && this.quickDialogElement === root) this.bindQuickKeyboard(root);
         /* 桌面弹窗打开/重渲染后把焦点收进弹窗容器：键盘流（j/k/e）立即生效，
            且按键不会再漏进背后的文档编辑器；用户已在弹窗内（搜索框等）时不打断。 */

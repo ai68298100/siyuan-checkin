@@ -68,11 +68,26 @@ export interface PluginOpsHost {
 }
 
 export function renderBackgroundUpdateFor(host: PluginOpsHost): void {
-    const candidateRoots = [host.dockElement, host.tabElement, host.quickDialogElement].filter((root): root is HTMLElement => Boolean(root));
+    const candidateRoots = [host.dockElement, host.tabElement, host.quickDialogElement]
+        .filter((root): root is HTMLElement => Boolean(root && (root.isConnected === undefined || root.isConnected)));
     if (typeof host.pageOfRoot === "function" && typeof host.renderInto === "function" && candidateRoots.length) {
         candidateRoots.forEach((root) => {
             const page = host.pageOfRoot ? host.pageOfRoot(root) : host.currentPage;
             if (page === "editor") return;
+            const active = typeof document !== "undefined" ? (document.activeElement as HTMLElement | null) : null;
+            if (active && root.contains(active) && active.matches("input, textarea, select, [contenteditable='true']")) {
+                if (!active.dataset.pendingRenderFlush) {
+                    active.dataset.pendingRenderFlush = "true";
+                    active.addEventListener("focusout", () => {
+                        delete active.dataset.pendingRenderFlush;
+                        if (!host.disposed && !host.disposing && root.isConnected) {
+                            const currentPage = host.pageOfRoot ? host.pageOfRoot(root) : host.currentPage;
+                            if (currentPage !== "editor") host.renderInto(root);
+                        }
+                    }, {once: true});
+                }
+                return;
+            }
             host.renderInto(root);
         });
         return;
@@ -176,7 +191,15 @@ export function bindNavOverflowHintFor(root: HTMLElement): void {
     const resizeObserver = typeof ResizeObserver === "function" ? new ResizeObserver(syncOverflowHint) : undefined;
     resizeObserver?.observe(scroller);
     const selected = scroller.querySelector<HTMLElement>("[aria-current='page']");
-    selected?.scrollIntoView?.({block: "nearest", inline: "nearest"});
+    if (selected) {
+        const left = selected.offsetLeft;
+        const right = left + selected.offsetWidth;
+        if (left < scroller.scrollLeft) {
+            scroller.scrollLeft = left;
+        } else if (right > scroller.scrollLeft + scroller.clientWidth) {
+            scroller.scrollLeft = Math.max(0, right - scroller.clientWidth);
+        }
+    }
 }
 
 export function changeHistoryMonthFor(host: PluginOpsHost, offset: number, root?: HTMLElement): void {

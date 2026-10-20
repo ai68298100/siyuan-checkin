@@ -1,3 +1,16 @@
+# D-522：顶栏图标突然消失与后台暴力重绘防御治理（2026-10-20）
+
+- **排查根因锁定**：
+  1. **后台定时轮询暴力重绘**：`siplayerTimer`（15s）、`reminderSlotTimer`（60s）及前台焦点切换频繁触发 `renderBackgroundUpdateFor`。旧逻辑在首层提前循环遍历 `candidateRoots` 执行 `host.renderInto(root)`，不仅绕过了下方的 `typingRoot` 交互守卫，而且在数据毫无变化时将整页 DOM 强行清空重建，导致用户观察到“内容突然重新渲染”。
+  2. **纵向滚动将顶栏推到屏幕外**：前序引入的 `bindNavOverflowHintFor` 调用了 `selected.scrollIntoView({block: 'nearest'})`。浏览器向上递归查找到父容器（弹窗/页签）并产生纵向滚动，把 `position: static` 的顶栏推到了视口上方边缘之外，在视觉上表现为“顶栏图标突然消失”。
+  3. **分屏 Tab / 窄弹窗 CSS 规则双重隐藏**：`workbench.scss` 中 `@container lc-dialog (max-width: 719px)` 把 `.lc-checkin__topnav-brand, .lc-checkin__topnav-tabs` 强行 `display: none`；`@container lc-tab (max-width: 719px)` 又把 `.lc-checkin-tab-host > .lc-checkin__topnav` 强行 `display: none`，导致弹窗在中窄屏或分屏 Tab 下顶栏图标全灭。
+  4. **顶栏事件绑定遗漏**：`renderInto` 对 Today / Review / Occasions 等页面渲染后漏调 `bindDialogClose` 与 `bindMobileNav`，重绘后顶栏按钮事件失效。
+- **根本性修复方案**：
+  1. **纯横向局部滚动**：`bindNavOverflowHintFor` 废弃 `scrollIntoView`，改用 scroller 自身 `scrollLeft` 纯横向位置计算，绝不牵连父容器纵向滚动。
+  2. **后台重绘活动态挂起守卫**：在 `renderBackgroundUpdateFor` 中检测当前 root 是否包含活动的输入/交互焦点（`input, textarea, select, [contenteditable]`），若有则挂起至失焦（`focusout`）再更新，绝不在用户眼前暴力闪烁重绘。
+  3. **窄屏顶栏紧凑保留**：在 440px~719px 下保留顶栏品牌与导航图标（自适应缩小间距和字号），仅在 < 440px 隐藏文字品牌名称并保留头像，绝不暴力抹除导航图标。
+  4. **全表面事件闭环与 SVG 尺寸固化**：在 `renderInto` 统一收尾处调用 `bindDialogClose`、`bindMobileNav` 与 `normalizeUiIcons`；在 CSS 中将顶栏 SVG 图标强制钉死为 `18px`，杜绝任何阶段的尺寸坍缩。
+
 # D-521：T-1824 宿主容器密度档与移动端软键盘滚动保护（2026-10-20）
 
 - **四类 Host 容器密度基线统一**：

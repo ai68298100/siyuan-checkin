@@ -1,3 +1,20 @@
+# 2026-10-20 顶栏图标突然消失与后台暴力重绘防御治理（D-522）
+
+**v18.18.0 持续增强——🐞 现场缺陷排查与渲染稳定性加固**：
+1. **排查定位**：
+   - 彻底查清“顶栏图标突然消失、内容被重新渲染”的链条：后台定时器（`siplayerTimer` 15s 轮询与前台切换）触发 `renderBackgroundUpdateFor`，旧逻辑未过 `typingRoot` 守卫即强制全量清空 DOM 并重刷 `root.innerHTML`；
+   - `bindNavOverflowHintFor` 中的 `scrollIntoView` 会把拥有滚动的父容器纵向向上滚，导致 `position: static` 的顶栏被直接推到视口上方视野外；
+   - `workbench.scss` 中 `@container lc-dialog (max-width: 719px)` 和 `@container lc-tab (max-width: 719px)` 规则把中窄屏弹窗和分屏 Tab 的顶栏图标暴力设为 `display: none`。
+2. **落地修复**：
+   - 替换 `scrollIntoView` 为局部 `scroller.scrollLeft` 纯横向自包含调整；
+   - 在 `renderBackgroundUpdateFor` 中建立焦点与输入保护门，用户正在交互时挂起至 `focusout` 再刷新，杜绝重绘打断；
+   - 放宽窄屏顶栏规则，在 440px~719px 保持紧凑模式显示品牌头像与导航图标；
+   - `renderInto` 统一闭环绑定 `bindDialogClose`、`bindMobileNav` 与 `normalizeUiIcons`；
+   - 固化 `.lc-checkin__topnav` 内所有 SVG 为 18px 显式规则与 currentColor 描边。
+3. **守门与验证**：
+   - 新增 `tests/topnav-render-stability.test.cjs` 纳入 `test:v18`；
+   - `node tests/css-hygiene.test.cjs`（0 死类，665 KiB 生产产物）、`node tests/responsive-layout.test.cjs`、`pnpm run test:v18`（27 项全通）、`pnpm run check`（TypeScript 零错误）、`pnpm run build:check` 全绿。
+
 # 2026-10-20 宿主容器密度档与移动端软键盘滚动保护（T-1824 第一切片，D-521）
 
 **v18.18.0 持续增强——📱 多容器宿主密度与触控几何统一**：

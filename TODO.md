@@ -202,7 +202,7 @@
 - 2026-10-09 增量：Today 局部 patch 成功时按 `itemId` 精确消费焦点恢复请求，避免 dock/tab/quick 同时记录时互相清除；完整任务仍归 T-1784/T-1804。
 - 2026-10-09 增量：初始化失败 toast 改为本地化 load/save 阶段标签，原始宿主异常只留结构化诊断码；完整 T-1783 脱敏矩阵仍开放。
 - [~] T-1783 诊断、审计与导出敏感信息及长度边界（P1，核心切片已交付 2026-10-09）——审计/诊断/迁移报告统一按 Unicode 长度、深度、键/数组/条目上限清理控制字符并遮罩凭据、本地路径，非法时间与超限输入安全回退；`diagnostics`、`model`、`restore-audit`、`privacy-scope` 已覆盖。复制/下载全字段矩阵、真实宿主和读屏现场仍开放。
-- [~] T-1784 Today 局部刷新、搜索输入与焦点/滚动并发一致性（P1，选区/回执切片已交付 2026-10-09）——搜索重绘保留起止选区和方向，局部成功回执重绑详情展开，IME/跨 root 定向夹具通过；完整慢存储、滚动和真实宿主矩阵仍开放。
+- [~] T-1784 Today 局部刷新、搜索输入与焦点/滚动并发一致性（P1，输入挂起与顶栏稳定性切片已交付 2026-10-20，D-522）——搜索重绘保留起止选区和方向，局部成功回执重绑详情展开，`renderBackgroundUpdateFor` 检测输入控件挂起全量重绘避免突发重刷打断，纯横向滚动消除顶栏纵向位移；IME/跨 root/顶栏稳定性定向夹具全通。剩余：极慢存储场景现场复核。
 - [x] T-1785 动态图标与 HTML/SVG 属性转义边界统一（P1，已交付 2026-10-09）——`isSafeIconImage` 统一收紧 HTTPS、栅格 base64 与无活动内容 SVG 白名单；危险 data/SVG、属性闭合、控制字符回退为转义文本，编辑器图标库分类与渲染共用 gate。`tests/render-boundary.test.cjs`、`tests/mobile-editor-structure.test.cjs`、check 通过；CSP/真实宿主仍按现场边界开放。
 - [x] T-1786 API/Agent/快速入口写入幂等、失败回执与首次破戒统一（P1，已交付 2026-10-20，D-390/D-518）——在 `recordExternalEvent` 与 `recordEvent` 统一二值项目完成阻断与戒除项目（atMost）首次破戒可写、重复破戒阻断口径；跨入口携带相同 `externalRef`（含 Agent 的 `agent:<requestId>`）严格幂等去重返回既有事实，避免重复增账；幂等回显与 API 写入成功统一同步 `setRecentRecord`，保证界面撤销对象与事实对账对齐。守门 `tests/write-idempotency-unified.test.cjs` 静态与动态测试全通；`check` / `test:v18` / `build:check` 全绿。
 - [x] T-1787 备份恢复版本化与独立桶迁移提示（P1，已交付 2026-10-20，D-517）——在 `src/backup-envelope.ts` 落地 `classifyBackupPayload` 与 `preflightUnifiedBackup`，精准区分旧版单主档与版本化多桶 BackupEnvelope（v1）；旧版单主档如实披露丢失的独立配置桶，提示现有独立配置保持不变；多桶 Envelope 自动生成逐桶覆盖/合并/跳过规划预览，敏感桶默认遮罩跳过；多桶恢复在锁内执行并在失败时原子回滚内存与磁盘；落地多桶备份导出与设置页按钮。守门 `tests/backup-migration-flow.test.cjs` 纳入 `test:v18`；`check` / `test:v18` / `build:check` 全绿。
