@@ -45,6 +45,8 @@ export interface ReviewRootContext {
     reviewStrengthItemId: string;
     reviewAssistantGoal: import("../features/review-assistant").ReviewAssistantGoal;
     heatmapYearOffset: number;
+    /** T-1874：该 surface 的年度热力图色板主题（可选：旧会话缺省回退插件偏好） */
+    heatmapTheme?: import("../view-preferences").HeatmapTheme;
     reviewFoldSections: Set<string>;
     reviewFoldTouched: boolean;
     editingHistoryNoteId: string | undefined;

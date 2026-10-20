@@ -15,6 +15,8 @@ export type CheckinAppearance = "system" | "light" | "dark";
 /** How the quick dialog sizes itself on desktop. "auto" adapts to the content and remembers a user resize. */
 export type DialogSizeMode = "auto" | "percent" | "fullscreen" | "fixed";
 export type CheckinPalette = "lavender" | "ocean" | "forest" | "sunset";
+/** T-1874：年度热力图色板主题预设（对标 Obsidian Contribution Graph） */
+export type HeatmapTheme = "violet-glow" | "classic-green" | "autumn-warm" | "monochrome";
 /** Which focus timer should open from a duration item's clock button. */
 export type FocusTimerProvider = "builtin" | "docktomato";
 /** T-1346：插件界面语言；"follow" 按思源界面语言自动选择（en* → en-US）。 */
@@ -60,6 +62,8 @@ export interface CheckinViewPreferences {
     dialogSizeMode: DialogSizeMode;
     /** Accent palette. Colors are fixed per palette and do not follow the host theme. */
     palette: CheckinPalette;
+    /** T-1874：年度热力图主题色板 */
+    heatmapTheme: HeatmapTheme;
     avatar: string;
     avatarImage?: string;
     /** ISO timestamp of the last JSON/CSV export, drives the gentle backup reminder. */
@@ -141,6 +145,7 @@ export const DEFAULT_VIEW_PREFERENCES: CheckinViewPreferences = {
     showWeekStrip: false,
     dialogSizeMode: "auto",
     palette: "lavender",
+    heatmapTheme: "violet-glow",
     avatar: "check",
     avatarImage: undefined,
     dialogScale: 90,
@@ -191,6 +196,7 @@ export function resetDisplayPreferences(current: CheckinViewPreferences): Checki
         ...resetViewPreferences(current),
         appearance: DEFAULT_VIEW_PREFERENCES.appearance,
         palette: DEFAULT_VIEW_PREFERENCES.palette,
+        heatmapTheme: DEFAULT_VIEW_PREFERENCES.heatmapTheme,
         pluginLanguage: DEFAULT_VIEW_PREFERENCES.pluginLanguage,
         reducedMotion: DEFAULT_VIEW_PREFERENCES.reducedMotion,
         hapticFeedback: DEFAULT_VIEW_PREFERENCES.hapticFeedback,
@@ -215,6 +221,7 @@ export const REPORT_SOURCE_VALUES = ["", "manual", "tomato", "api", "import"] as
 const SORT_MODES = new Set<CheckinItemSortMode>(["manual", "group", "priority", "createdAt", "updatedAt", "name"]);
 const DIALOG_SIZE_MODES = new Set<DialogSizeMode>(["auto", "percent", "fullscreen", "fixed"]);
 const PALETTES = new Set<CheckinPalette>(["lavender", "ocean", "forest", "sunset"]);
+export const HEATMAP_THEMES = new Set<HeatmapTheme>(["violet-glow", "classic-green", "autumn-warm", "monochrome"]);
 const FOCUS_TIMER_PROVIDERS = new Set<FocusTimerProvider>(["builtin", "docktomato"]);
 
 function clampNumber(value: unknown, min: number, max: number, fallback: number): number {
@@ -254,6 +261,7 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
     const pendingOnly = typeof source.pendingOnly === "boolean" ? source.pendingOnly : false;
     const dialogSizeMode = DIALOG_SIZE_MODES.has(source.dialogSizeMode as DialogSizeMode) ? source.dialogSizeMode as DialogSizeMode : DEFAULT_VIEW_PREFERENCES.dialogSizeMode;
     const palette = PALETTES.has(source.palette as CheckinPalette) ? source.palette as CheckinPalette : DEFAULT_VIEW_PREFERENCES.palette;
+    const heatmapTheme = HEATMAP_THEMES.has(source.heatmapTheme as HeatmapTheme) ? source.heatmapTheme as HeatmapTheme : DEFAULT_VIEW_PREFERENCES.heatmapTheme;
     const avatar = typeof source.avatar === "string" && source.avatar.trim().length > 0
         ? source.avatar.trim().slice(0, 8) : DEFAULT_VIEW_PREFERENCES.avatar;
     const legacySize = (source as {dialogSize?: unknown}).dialogSize;
@@ -336,6 +344,7 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
         pendingOnly,
         lastExportAt: typeof source.lastExportAt === "string" ? source.lastExportAt : undefined,
         palette,
+        heatmapTheme,
         avatar,
         // Keep complete raster data URLs or reject them; truncation corrupts persisted avatars.
         avatarImage: normalizeAvatarImage(source.avatarImage),

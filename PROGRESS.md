@@ -1,3 +1,20 @@
+# 2026-10-20 多主题色阶年度热力图与日格快速钻取落地（T-1874，D-526）
+
+**v18.19.0+ 持续演进——📊 数据可视化色板解耦与丝滑钻取交互**：
+1. **多主题色板预设解耦与动态变量驱动**：
+   - 在 `view-preferences.ts` 规范 4 档热力图主题预设：`violet-glow`（紫罗兰之光）、`classic-green`（经典翡翠绿）、`autumn-warm`（秋日暖阳）、`monochrome`（极简水墨）；
+   - 在 `tokens.scss` 中实现各色板 4 阶颜色定义，明暗双主题自动调校对比度；
+   - 在 `components.scss` 中收敛硬编码的内联 `color-mix`，改由 `--lc-checkin-heat-step-1..4` 变量驱动，兼顾渲染块与回顾页图例。
+2. **日格无障碍激活与日期快速钻取**：
+   - `renderYearHeatmap` 生成的每个有效日格均携带 `data-heatmap-date`、`role="button"`、`tabindex="0"` 与可读 `aria-label`；
+   - 在 `bind-page-navigation.ts` 中绑定点击与键盘 Enter/空格，点击任意日格直接同 root 钻取切换至 `records` 记录面板并定位到该日期的事实明细；
+   - 包含高可见度 `:focus-visible` 焦点环与悬浮边框高亮。
+3. **即时色板切换与偏好持久化**：
+   - 回顾页热力图导航条增设色板切换选择器，变动通过 `applyPreferenceMutation` 事务安全写入偏好并支持失败回滚。
+4. **守门与验证**：
+   - 新增 `tests/heatmap-theme-interaction.test.cjs` 纳入 `test:v18`（全 30 项全通）；
+   - `node tests/css-hygiene.test.cjs`（0 死类，670 KiB 生产产物）、`node tests/review-presentation.test.cjs`、`pnpm run test:v18`、`pnpm run check`、`pnpm run build:check` 全绿。
+
 # 2026-10-20 习惯稳固度 Sigmoid 饱和成长曲线与三阶段成熟度模型落地（T-1873，D-525）
 
 **v18.19.0+ 持续演进——🌱 习惯成熟度算法升级与心理学阶段化引导**：

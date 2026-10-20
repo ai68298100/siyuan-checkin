@@ -1,3 +1,18 @@
+# D-526：T-1874 多主题色阶年度热力图与日格快速钻取（2026-10-20）
+
+- **四档色阶调色板解耦**：
+  在 `tokens.scss` 与 `view-preferences.ts` 中规范 4 档热力图色板主题：
+  - `violet-glow`（紫罗兰之光，小驴品牌原色）
+  - `classic-green`（经典翡翠绿，对标 GitHub / Loop 经典绿）
+  - `autumn-warm`（秋日暖阳，暖橙琥珀阶梯）
+  - `monochrome`（极简水墨，黑白灰灰阶）
+  通过 CSS 变量 `--lc-checkin-heat-step-1..4` 动态控制，在明亮与暗黑模式下均自动经过对比度校准，彻底淘汰原有写死的内联 `color-mix` 规则。
+- **日格无障碍与快速钻取交互闭环**：
+  `renderYearHeatmap` 生成的每个有效日格均携带 `data-heatmap-date`、`role="button"`、`tabindex="0"` 与可读 `aria-label`；
+  在 `bind-page-navigation.ts` 中监听点击与键盘（Enter / 空格），点击任意日格直接同 root 钻取切换至 `records` 记录面板并定位到该日期的事实明细，实现对标 Obsidian Contribution Graph 的丝滑浏览体验。
+- **即时主题切换与偏好持久化**：
+  在回顾页热力图标题栏增加即时色板切换下拉菜单，改动通过 `applyPreferenceMutation` 事务安全写入偏好并支持失败快照回滚。
+
 # D-525：T-1873 逻辑斯蒂饱和稳固度算法与三阶段成熟度模型（2026-10-20）
 
 - **Sigmoid 饱和稳固度数学收敛**：

@@ -5377,19 +5377,41 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__heatmap-weekly > summary { cursor: pointer; color: var(--lc-checkin-accent-text); font-size: 12px; }
 .lc-checkin__heatmap-weekly small { display: block; margin-top: 5px; }
 .lc-yearheatmap .is-empty { fill: var(--lc-checkin-muted-surface); stroke: var(--lc-checkin-border); stroke-width: .5; }
-.lc-yearheatmap .is-level-1 { fill: color-mix(in srgb, var(--lc-checkin-accent) 18%, var(--lc-checkin-surface)); }
-.lc-yearheatmap .is-level-2 { fill: color-mix(in srgb, var(--lc-checkin-accent) 38%, var(--lc-checkin-surface)); }
-.lc-yearheatmap .is-level-3 { fill: color-mix(in srgb, var(--lc-checkin-accent) 65%, var(--lc-checkin-surface)); }
+.lc-yearheatmap .is-level-1 { fill: var(--lc-checkin-heat-step-1); }
+.lc-yearheatmap .is-level-2 { fill: var(--lc-checkin-heat-step-2); }
+.lc-yearheatmap .is-level-3 { fill: var(--lc-checkin-heat-step-3); }
 .lc-yearheatmap .is-level-4 { fill: var(--lc-checkin-heat-step-4); }
+.lc-yearheatmap rect[data-heatmap-date] {
+    cursor: pointer;
+    transition: stroke var(--lc-checkin-motion-fast);
+}
+.lc-yearheatmap rect[data-heatmap-date]:hover {
+    stroke: var(--lc-checkin-accent-text);
+    stroke-width: 1.5;
+}
+.lc-yearheatmap rect[data-heatmap-date]:focus-visible {
+    outline: 2px solid var(--lc-checkin-accent);
+    outline-offset: 1px;
+    stroke: var(--lc-checkin-accent-text);
+    stroke-width: 1.5;
+}
 .lc-yearheatmap__label { fill: var(--lc-checkin-muted); font-size: 8px; }
 .lc-checkin__yearheatmap-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; margin-top: 8px; color: var(--lc-checkin-muted); }
 .lc-checkin__yearheatmap-meta > small:last-child { margin-left: auto; }
+.lc-checkin__heatmap-theme-select {
+    padding: 2px 6px;
+    border: 1px solid var(--lc-checkin-border);
+    border-radius: var(--lc-checkin-radius-sm);
+    background: var(--lc-checkin-surface);
+    color: var(--lc-checkin-text);
+    font-size: 11px;
+}
 .lc-checkin__yearheatmap-legend { display: inline-flex; align-items: center; gap: 3px; }
 .lc-checkin__yearheatmap-legend em { margin: 0 3px; font-size: 9px; font-style: normal; }
 .lc-checkin__yearheatmap-legend i { width: 10px; height: 10px; border: 1px solid var(--lc-checkin-border); border-radius: 3px; background: var(--lc-checkin-muted-surface); }
-.lc-checkin__yearheatmap-legend .is-level-1 { background: color-mix(in srgb, var(--lc-checkin-accent) 18%, var(--lc-checkin-surface)); }
-.lc-checkin__yearheatmap-legend .is-level-2 { background: color-mix(in srgb, var(--lc-checkin-accent) 38%, var(--lc-checkin-surface)); }
-.lc-checkin__yearheatmap-legend .is-level-3 { background: color-mix(in srgb, var(--lc-checkin-accent) 65%, var(--lc-checkin-surface)); }
+.lc-checkin__yearheatmap-legend .is-level-1 { background: var(--lc-checkin-heat-step-1); }
+.lc-checkin__yearheatmap-legend .is-level-2 { background: var(--lc-checkin-heat-step-2); }
+.lc-checkin__yearheatmap-legend .is-level-3 { background: var(--lc-checkin-heat-step-3); }
 .lc-checkin__yearheatmap-legend .is-level-4 { background: var(--lc-checkin-heat-step-4); }
 /* ============================================================
    8.2b 回顾页折叠区块（趋势/日志/近期事项/成就）

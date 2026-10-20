@@ -417,6 +417,7 @@ export interface YearHeatmapRenderOptions {
     monthLabel?: (month: number) => string;
     weekdayLabel?: (mondayOffset: number) => string;
     dayLabel?: (day: YearHeatmapDay) => string;
+    theme?: string;
 }
 
 export function renderYearHeatmap(heatmap: YearHeatmap, options: YearHeatmapRenderOptions = {}): string {
@@ -443,7 +444,8 @@ export function renderYearHeatmap(heatmap: YearHeatmap, options: YearHeatmapRend
         const x = labelLeft + gap + weekIndex * (cell + gap);
         const y = labelTop + gap + dayIndex * (cell + gap);
         const title = options.dayLabel?.(day) || (day.skip ? `${day.date}：跳过` : `${day.date}：${day.count} 条记录`);
-        return `<rect class="${levelClass(day.level, day.skip)}" x="${x}" y="${y}" width="${cell}" height="${cell}" rx="2.5"><title>${escapeChartText(title)}</title></rect>`;
+        const labelText = escapeChartText(title);
+        return `<rect class="${levelClass(day.level, day.skip)}" data-heatmap-date="${escapeChartText(day.date)}" role="button" tabindex="0" x="${x}" y="${y}" width="${cell}" height="${cell}" rx="2.5" aria-label="${labelText}"><title>${labelText}</title></rect>`;
     }).join("")).join("");
     const monthLabels = Array.from({length: 12}, (_, month) => {
         const first = new Date(heatmap.year, month, 1);
@@ -456,7 +458,8 @@ export function renderYearHeatmap(heatmap: YearHeatmap, options: YearHeatmapRend
         return `<text class="lc-yearheatmap__label" x="2" y="${labelTop + gap + index * (cell + gap) + cell - 1}">${escapeChartText(label || "")}</text>`;
     }).join("");
     const ariaLabel = options.ariaLabel || `${heatmap.year} 年每日打卡分布：每格一天，颜色越深表示记录越多，共 ${heatmap.total} 条记录`;
-    return `<svg class="lc-yearheatmap" viewBox="0 0 ${width.toFixed(0)} ${height.toFixed(0)}" role="img" aria-label="${escapeChartText(ariaLabel)}">${monthLabels}${weekdayLabels}${cells}</svg>`;
+    const themeAttr = options.theme ? ` data-heatmap-theme="${escapeChartText(options.theme)}"` : "";
+    return `<svg class="lc-yearheatmap" viewBox="0 0 ${width.toFixed(0)} ${height.toFixed(0)}" role="img" aria-label="${escapeChartText(ariaLabel)}"${themeAttr}>${monthLabels}${weekdayLabels}${cells}</svg>`;
 }
 
 /**

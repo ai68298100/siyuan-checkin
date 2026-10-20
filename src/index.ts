@@ -34,7 +34,7 @@ import type {FocusAdapter, SummaryProvider} from "./integrations";
 import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinKind, CheckinPriority, CheckinSchedule, CheckinStore, CheckinTimeSlot, CompletionSource, ScheduleType, TomatoValueMode, TodayRootContext, UserTemplate} from "./types";
 import type {CustomSummaryRange, SummaryRange, EventRangeSummary, EventRangeSummaryOptions} from "./analytics";
 import type {HistorySortOrder, HistorySourceFilter, HistoryChannelFilter, HistoryMeteringFilter} from "./features/history-filter";
-import {DEFAULT_REPORT_SECTIONS, DEFAULT_VIEW_PREFERENCES, normalizeViewPreferences, resetDisplayPreferences, resetViewPreferences, type CheckinPalette, type CheckinViewPreferences, type DialogSizeMode, type ReportSectionToggles} from "./view-preferences";
+import {DEFAULT_REPORT_SECTIONS, DEFAULT_VIEW_PREFERENCES, normalizeViewPreferences, resetDisplayPreferences, resetViewPreferences, type CheckinPalette, type CheckinViewPreferences, type DialogSizeMode, type HeatmapTheme, type ReportSectionToggles} from "./view-preferences";
 import {isWithinQuietHours, normalizeReminderQuietHours, normalizeDailyReminderSlots, type ReminderQuietHours} from "./features/reminder-preferences";
 import {addDays, daysBetweenHalfOpen} from "./date-keys";
 import {evaluateQuickEntry, resolveQuickEntryTarget, QUICK_ENTRY_DESCRIPTORS, type QuickEntryRuntime} from "./features/quick-entry-capabilities";
@@ -293,6 +293,7 @@ export default class CheckinPlugin extends Plugin {
     private appearance: CheckinAppearance = DEFAULT_VIEW_PREFERENCES.appearance;
     private dialogSizeMode: DialogSizeMode = DEFAULT_VIEW_PREFERENCES.dialogSizeMode;
     private palette: CheckinPalette = DEFAULT_VIEW_PREFERENCES.palette;
+    private heatmapTheme: HeatmapTheme = DEFAULT_VIEW_PREFERENCES.heatmapTheme;
     private avatar: string = DEFAULT_VIEW_PREFERENCES.avatar;
     private avatarImage: string | undefined = DEFAULT_VIEW_PREFERENCES.avatarImage;
     private closeAvatarEditor?: () => void;
@@ -4234,7 +4235,7 @@ this.scheduleMidnightRefresh();
             historyPage: 0, reviewProjectPage: 0, historyQuery: "", historySource: "all", historyMetering: "all", historyOrder: "newest",
             historyBatchSelected: new Set(), historyBatchPreviewOpen: false, historyBatchValues: {},
             itemCompareSelection: new Set(), itemCompareQuery: "", reviewProjectOrder: "attention", reviewTrend: "weekly",
-            reviewStrengthItemId: "", reviewAssistantGoal: "summary", heatmapYearOffset: 0,
+            reviewStrengthItemId: "", reviewAssistantGoal: "summary", heatmapYearOffset: 0, heatmapTheme: this.heatmapTheme,
             reviewFoldSections: new Set(this.initialSurfacePreferences.reviewFold), reviewFoldTouched: this.initialSurfacePreferences.reviewFoldTouched,
             editingHistoryNoteId: undefined, recordDetailsExpanded: new Set(), reminderFilter: "all",
         };
@@ -4355,6 +4356,7 @@ private reviewCompatibilitySnapshotOf(review: ReviewRootContext) {
             reviewStrengthItemId: review.reviewStrengthItemId,
             reviewAssistantGoal: review.reviewAssistantGoal,
             heatmapYearOffset: review.heatmapYearOffset,
+            heatmapTheme: review.heatmapTheme ?? this.heatmapTheme,
             reviewFoldSections: review.reviewFoldSections,
             reviewFoldTouched: review.reviewFoldTouched,
             editingHistoryNoteId: review.editingHistoryNoteId,
@@ -7471,6 +7473,7 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
                 reviewStrengthItemId: this.reviewStrengthItemId,
                 reviewAssistantGoal: this.reviewAssistantGoal,
                 heatmapYearOffset: this.heatmapYearOffset,
+                heatmapTheme: this.heatmapTheme,
                 reviewFoldSections: this.reviewFoldSections,
                 reviewFoldTouched: this.reviewFoldTouched,
                 editingHistoryNoteId: this.editingHistoryNoteId,
@@ -9510,6 +9513,7 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
         this.dialogSizeMode = preferences.dialogSizeMode;
         this.dialogScale = preferences.dialogScale;
         this.palette = preferences.palette;
+        this.heatmapTheme = preferences.heatmapTheme;
         this.avatar = preferences.avatar;
         this.avatarImage = preferences.avatarImage;
         this.dialogFixedSize = {...preferences.dialogFixedSize};
@@ -9628,6 +9632,7 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
             dialogSizeMode: this.dialogSizeMode,
             dialogScale: this.dialogScale,
             palette: this.palette,
+            heatmapTheme: this.heatmapTheme,
             avatar: this.avatar,
             avatarImage: avatarOverride ? avatarOverride.avatarImage : this.avatarImage,
             dialogFixedSize: {...this.dialogFixedSize},

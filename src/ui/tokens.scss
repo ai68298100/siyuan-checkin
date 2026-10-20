@@ -375,3 +375,43 @@
     --lc-checkin-lilac-text: #F8B79D;
     --lc-checkin-lilac-soft: #3A2620;
 }
+
+/* ---- T-1874 多主题色阶年度热力图 (D-526) ---- */
+.lc-checkin [data-heatmap-theme="classic-green"] {
+    --lc-checkin-heat-step-1: #d1f2d9;
+    --lc-checkin-heat-step-2: #7bc96f;
+    --lc-checkin-heat-step-3: #239a3b;
+    --lc-checkin-heat-step-4: #196127;
+}
+.lc-checkin[data-appearance="dark"] [data-heatmap-theme="classic-green"] {
+    --lc-checkin-heat-step-1: #163b22;
+    --lc-checkin-heat-step-2: #236e38;
+    --lc-checkin-heat-step-3: #2ea043;
+    --lc-checkin-heat-step-4: #3fb950;
+}
+
+.lc-checkin [data-heatmap-theme="autumn-warm"] {
+    --lc-checkin-heat-step-1: #fef3c7;
+    --lc-checkin-heat-step-2: #fcd34d;
+    --lc-checkin-heat-step-3: #f59e0b;
+    --lc-checkin-heat-step-4: #d97706;
+}
+.lc-checkin[data-appearance="dark"] [data-heatmap-theme="autumn-warm"] {
+    --lc-checkin-heat-step-1: #451a03;
+    --lc-checkin-heat-step-2: #78350f;
+    --lc-checkin-heat-step-3: #b45309;
+    --lc-checkin-heat-step-4: #f59e0b;
+}
+
+.lc-checkin [data-heatmap-theme="monochrome"] {
+    --lc-checkin-heat-step-1: #e5e7eb;
+    --lc-checkin-heat-step-2: #9ca3af;
+    --lc-checkin-heat-step-3: #4b5563;
+    --lc-checkin-heat-step-4: #111827;
+}
+.lc-checkin[data-appearance="dark"] [data-heatmap-theme="monochrome"] {
+    --lc-checkin-heat-step-1: #374151;
+    --lc-checkin-heat-step-2: #6b7280;
+    --lc-checkin-heat-step-3: #9ca3af;
+    --lc-checkin-heat-step-4: #f3f4f6;
+}

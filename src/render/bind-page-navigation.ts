@@ -43,6 +43,8 @@ export interface BindPageNavigationHost {
     reviewStrengthItemId: string;
     reviewAssistantGoal: ReviewAssistantGoal;
     heatmapYearOffset: number;
+    /** T-1874：年度热力图色板主题 */
+    heatmapTheme?: import("../view-preferences").HeatmapTheme;
     selectedHistoryDate: string;
     historyBatchSelected: Set<string>;
     recordHistoryBatch(date: string, itemIds: string[], action: "record" | "skip", root?: HTMLElement): Promise<number>;
@@ -812,6 +814,39 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         else return;
         renderReviewPreservingView(`[data-heatmap-year="${offset}"]`);
     }));
+    /* T-1874：年度热力图色板切换与日格键盘/点击快速钻取 */
+    root.querySelector<HTMLSelectElement>("[data-action='change-heatmap-theme']")?.addEventListener("change", (event) => {
+        const val = (event.currentTarget as HTMLSelectElement).value as import("../view-preferences").HeatmapTheme;
+        if (["violet-glow", "classic-green", "autumn-warm", "monochrome"].includes(val)) {
+            if (host.applyPreferenceMutation) {
+                host.applyPreferenceMutation(() => {
+                    host.heatmapTheme = val;
+                });
+            } else {
+                host.heatmapTheme = val;
+            }
+            renderReviewPreservingView("[data-action='change-heatmap-theme']");
+        }
+    });
+    root.querySelectorAll<SVGElement>("[data-heatmap-date]").forEach((cell) => {
+        const handleDateSelect = () => {
+            const date = cell.getAttribute("data-heatmap-date");
+            if (!date) return;
+            writeReviewValue("selectedHistoryDate", date);
+            writeReviewValue("reviewWorkspace", "records");
+            writeReviewValue("historyScope", "day");
+            writeReviewValue("historyPage", 0);
+            renderReviewPreservingView(`[data-heatmap-date="${CSS.escape(date)}"]`);
+        };
+        cell.addEventListener("click", handleDateSelect);
+        cell.addEventListener("keydown", (event: Event) => {
+            const ke = event as KeyboardEvent;
+            if (ke.key === "Enter" || ke.key === " ") {
+                ke.preventDefault();
+                handleDateSelect();
+            }
+        });
+    });
     root.querySelector<HTMLElement>("[data-action='archived']")?.addEventListener("click", () => host.showArchived(root));
     root.querySelector<HTMLElement>("[data-action='occasions']")?.addEventListener("click", () => host.showOccasions(root));
     root.querySelectorAll<HTMLElement>("[data-review-insights-id]").forEach((button) => button.addEventListener("click", () => {
