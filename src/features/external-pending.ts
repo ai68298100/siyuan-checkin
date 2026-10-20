@@ -56,7 +56,8 @@ export type ExternalWriteFailureReason =
     | "revision-changed"
     | "unit-mismatch"
     | "unchanged"
-    | "storage-failed";
+    | "storage-failed"
+    | "already-complete";
 
 export interface ExternalWriteOutcome {
     reason?: ExternalWriteFailureReason;

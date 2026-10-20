@@ -1,3 +1,19 @@
+# 2026-10-20 跨入口写入幂等去重、二值完成阻断与破戒回执对账统一（T-1786，D-518）
+
+**v18.18.0 持续增强——🛡️ 事实层一致性、幂等防重与回执对账闭环**：
+1. **二值完成与戒除破戒在各入口同口径收敛**：
+   - 在 `recordExternalEvent`（API 单条 recordEvent 入口）对齐业务判定：
+     - 普通二值项目（`direction === "atLeast"`）若当天已完成（`isComplete`），拦截写入并返回 `fail("already-complete")`；
+     - 二值戒除项目（`direction === "atMost"`）若当天零破戒事实，首次破戒允许写入，如实记录犯规事实并中断守住连击；当天已有破戒事实时拦截重复破戒并返回 `fail("already-complete")`。
+   - 彻底解决了此前外部 API 相比内部记录器缺少二值完成/重复破戒拦截导致的重复双计隐患。
+2. **跨入口写入幂等与事实回显**：
+   - 无论通过 API 单条 `recordEvent`、Agent `checkin-record-item` 携带 `requestId`（映射为 `agent:<requestId>`）还是 UI 入口，重复提交同一 `externalRef` 时严格返回既有事实，杜绝重复增账。
+3. **回执对账与撤销对象统一**：
+   - 幂等回显既有事件以及外部 API 写入成功时，统一调用 `setRecentRecord` 刷新当前回执（含 `eventId`, `itemId`, `localDate`, `source`, `target`, `progress`），保证界面上的事实展示、查看详情面板与撤销对象跟实际入账事件 100% 对齐。
+4. **验证证据**：
+   - 扩展并运行 `tests/write-idempotency-unified.test.cjs`，涵盖静态架构断言与动态模拟场景（二值完成阻断、二值戒除首破可写、重复破戒拦截、externalRef 幂等去重）。
+   - `pnpm run check`（TypeScript 零错误）、`pnpm run test:v18`（26 项全通）、`node tests/agent-lapse.test.cjs`、`node tests/api-v5.test.cjs`、`node tests/external-pending.test.cjs`、`pnpm run build:check`（生产构建成功）全绿。
+
 # 2026-10-20 备份恢复版本化与多桶 Envelope 迁移提示与原子事务（T-1787，D-517）
 
 **v18.18.0 持续增强——🛡️ 数据可靠性、版本化备份与原子恢复事务收口**：

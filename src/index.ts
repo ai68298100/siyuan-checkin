@@ -3009,8 +3009,21 @@ this.scheduleMidnightRefresh();
             return fail("identity-rejected");
         }
         if (externalRef) {
-            const existing = this.store.events.find((event) => event.itemId === item.id && event.source === source && event.externalRef === externalRef);
+            const existing = this.store.events.find((event) => event.itemId === item.id && (event.source === source || event.externalRef === externalRef) && event.externalRef === externalRef);
             if (existing) {
+                const revision = getItemRevisionForDate(item, actionDate);
+                const currentStreak = computeStreaksValue(this.store).get(item.id) || 0;
+                this.setRecentRecord({
+                    eventId: existing.id,
+                    itemId: item.id,
+                    message: t("msg.recordedToast", {name: item.name, value: formatNumber(existing.value), unit: existing.unit || "次"}),
+                    progress: getProgress(this.store, item, actionDate),
+                    target: revision.schedule.type === "quota" ? revision.schedule.quota?.amount || revision.target : revision.target,
+                    unit: existing.unit || "次",
+                    source: existing.source,
+                    localDate: existing.localDate,
+                    ...(STREAK_MILESTONES.includes(currentStreak) ? {milestone: currentStreak} : {}),
+                });
                 return {...existing};
             }
         }
@@ -3018,6 +3031,19 @@ this.scheduleMidnightRefresh();
             return fail("revision-changed");
         }
         const revision = getItemRevisionForDate(item, actionDate);
+        /* T-1786：二值完成与戒除破戒在 recordExternalEvent 与 recordEvent 保持同口径：
+           atMost 首次破戒可写，多次破戒拦截；普通二值已完成直接拦截。 */
+        const direction = getItemDirectionForDate(item, actionDate);
+        if (revision.kind === "binary") {
+            if (direction === "atMost") {
+                const hasLapsed = getEventsForDay(this.store, item.id, actionDate).some((e) => !isSkipEvent(e));
+                if (hasLapsed) {
+                    return fail("already-complete");
+                }
+            } else if (isComplete(this.store, item, actionDate)) {
+                return fail("already-complete");
+            }
+        }
         const requestedUnit = typeof input.unit === "string" && input.unit.trim() ? input.unit.trim().slice(0, 16) : revision.unit;
         if (requestedUnit !== revision.unit) {
             return fail("unit-mismatch");
@@ -3049,6 +3075,19 @@ this.scheduleMidnightRefresh();
         this.invalidateSummary();
         this.broadcast({type: "event-recorded", item, event});
         this.broadcast({type: "analytics-updated", analyticsAsOf: event.localDate});
+        /* T-1786：API 与外部写入成功同样更新 recentRecord 回执与撤销对象 */
+        const currentStreak = computeStreaksValue(this.store).get(item.id) || 0;
+        this.setRecentRecord({
+            eventId: event.id,
+            itemId: item.id,
+            message: t("msg.recordedToast", {name: item.name, value: formatNumber(event.value), unit: revision.unit || "次"}),
+            progress: getProgress(this.store, item, actionDate),
+            target: revision.schedule.type === "quota" ? revision.schedule.quota?.amount || revision.target : revision.target,
+            unit: revision.unit || "次",
+            source: event.source,
+            localDate: event.localDate,
+            ...(STREAK_MILESTONES.includes(currentStreak) ? {milestone: currentStreak} : {}),
+        });
         this.pendingLocalItemId = item.id;
         this.pendingLocalItemDate = event.localDate;
         this.renderBackgroundUpdate();
@@ -8791,6 +8830,19 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
         if (externalRef) {
             const existing = this.store.events.find((event) => event.itemId === current.id && event.externalRef === externalRef);
             if (existing) {
+                /* T-1786：幂等回显已有事件时对齐 recentRecord 回执与撤销对象 */
+                const currentStreak = computeStreaksValue(this.store).get(current.id) || 0;
+                this.setRecentRecord({
+                    eventId: existing.id,
+                    itemId: current.id,
+                    message: t("msg.recordedToast", {name: current.name, value: formatNumber(existing.value), unit: revision.unit || "次"}),
+                    progress: getProgress(this.store, current, actionDate),
+                    target: revision.schedule.type === "quota" ? revision.schedule.quota?.amount || revision.target : revision.target,
+                    unit: revision.unit || "次",
+                    source: existing.source,
+                    localDate: existing.localDate,
+                    ...(STREAK_MILESTONES.includes(currentStreak) ? {milestone: currentStreak} : {}),
+                });
                 return {...existing};
             }
         }

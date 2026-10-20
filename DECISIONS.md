@@ -1,3 +1,11 @@
+# D-518：T-1786 跨入口写入幂等去重、二值完成阻断与破戒回执对账统一（2026-10-20）
+
+- **二值完成与戒除破戒口径彻底统一**：在 `recordExternalEvent`（API 单条调用）补齐对二值项目完成和二值戒除项目（`atMost`）的同口径判定：
+  - 二值普通项目当天若已完成（`isComplete`），拦截并返回 `fail("already-complete")`；
+  - 二值戒除项目当天零破戒事实时，首次破戒允许写入，如实记录犯规事实并中断守住连击；当天若已有破戒事实，后续重复尝试拦截并返回 `fail("already-complete")`。
+  - 彻底消除了此前内部记录器与外部 API 之间的口径分叉。
+- **跨入口幂等回显与回执对账对齐**：当携带 `externalRef`（包含 Agent 的 `agent:<requestId>` 或外部系统的请求唯一标识）重复提交时，`recordEvent` 与 `recordExternalEvent` 均直接回显已入账的事实事件；同时统一调用 `setRecentRecord` 更新前端界面当前回执，保证通过 API、Agent 还是 UI 快捷入口发起的重试，界面上的撤销对象、通知和事件详情与该条持久化事实 100% 同步。
+
 # D-517：T-1787 备份恢复版本化与多桶 Envelope 迁移提示（2026-10-20）
 
 - **统一预检与格式识别**：`preflightUnifiedBackup` 精准识别输入备份类型。对旧版单主档 JSON 备份（`envelopeVersion: 0`），如实披露未包含模板、问卷、偏好等独立存储桶，提示用户导入仅覆盖项目与记录、不清除或覆盖现有独立配置；对版本化多桶 BackupEnvelope（`envelopeVersion: 1`），执行协议版本校验（未知版本严格 fail-closed 拒绝），并基于 D-514 生成逐桶覆盖/合并/跳过规划预览，敏感桶默认遮罩并跳过。
