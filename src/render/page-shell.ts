@@ -52,6 +52,10 @@ export interface ReviewRootContext {
     editingHistoryNoteId: string | undefined;
     recordDetailsExpanded: Set<string>;
     reminderFilter: import("../reminders").ReminderFilter;
+    /** T-1875：矩阵补卡点选草稿 Map<localDate, MatrixTriState> */
+    matrixDraftStates?: Map<string, import("../features/batch-backfill").MatrixTriState>;
+    /** T-1875：矩阵补卡面板是否展开 */
+    matrixPanelOpen?: boolean;
 }
 
 export interface RootContext {

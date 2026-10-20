@@ -1,3 +1,9 @@
+# D-527：T-1875 历史排期矩阵点选补卡与原子批量回填（2026-10-20）
+
+- **三态循环点选与原始基线对比**：矩阵日期格在 `未打卡 → 完成 → 跳过 → 未打卡` 之间循环；单次渲染同时携带 `data-matrix-original` 与当前态，任何回到原始态的点击自动从草稿 Map 中移除，避免“看似无变更却计脏”的统计失真。
+- **未来与不排期日硬阻断**：`buildMatrixMonthCalendar` 对 `isFuture` 与 `scheduled === false` 输出禁用态（`disabled aria-disabled="true"`），同时 `planMatrixBatchCommit` 与 `recordMatrixBackfill` 双重拦截未来日期，杜绝提前制造事实。
+- **单次原子事务与整批回滚**：`recordMatrixBackfill` 回出所有受影响日的旧事件、再按当日生效修订重建事件（完成取当日 `recordStep`、跳过写 `kind: "skip"`），单次 `persist()`；任何失败恢复 `previous` 并抛错，草稿态保留供用户重试。
+
 # D-526：T-1874 多主题色阶年度热力图与日格快速钻取（2026-10-20）
 
 - **四档色阶调色板解耦**：

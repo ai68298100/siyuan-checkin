@@ -4357,6 +4357,8 @@ private reviewCompatibilitySnapshotOf(review: ReviewRootContext) {
             reviewAssistantGoal: review.reviewAssistantGoal,
             heatmapYearOffset: review.heatmapYearOffset,
             heatmapTheme: review.heatmapTheme ?? this.heatmapTheme,
+            matrixDraftStates: review.matrixDraftStates,
+            matrixPanelOpen: review.matrixPanelOpen,
             reviewFoldSections: review.reviewFoldSections,
             reviewFoldTouched: review.reviewFoldTouched,
             editingHistoryNoteId: review.editingHistoryNoteId,
@@ -7474,6 +7476,8 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
                 reviewAssistantGoal: this.reviewAssistantGoal,
                 heatmapYearOffset: this.heatmapYearOffset,
                 heatmapTheme: this.heatmapTheme,
+                matrixDraftStates: new Map(),
+                matrixPanelOpen: false,
                 reviewFoldSections: this.reviewFoldSections,
                 reviewFoldTouched: this.reviewFoldTouched,
                 editingHistoryNoteId: this.editingHistoryNoteId,
@@ -7516,6 +7520,9 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
             reviewStrengthItemId: review.reviewStrengthItemId,
             reviewAssistantGoal: review.reviewAssistantGoal,
             heatmapYearOffset: review.heatmapYearOffset,
+            heatmapTheme: review.heatmapTheme ?? this.heatmapTheme,
+            matrixDraftStates: review.matrixDraftStates,
+            matrixPanelOpen: review.matrixPanelOpen,
             reviewFoldSections: review.reviewFoldSections,
             reviewFoldTouched: review.reviewFoldTouched,
             summaryRange: review.summaryRange,
@@ -8177,6 +8184,58 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
             this.broadcast({type: "analytics-updated", analyticsAsOf: date});
             this.renderBackgroundUpdate();
             return events.length;
+        });
+    }
+
+    /**
+     * T-1875 日历矩阵点选补卡：将用户三态点选草稿转为单次原子事实变更。
+     * 按日继承当日生效修订的单位与方向；单次 append/删除 + 一次 persist，失败整批回滚。
+     */
+    async recordMatrixBackfill(itemId: string, drafts: ReadonlyMap<string, import("./features/batch-backfill").MatrixTriState>, _root?: HTMLElement): Promise<number> {
+        if (!drafts.size || this.disposed || this.disposing || !this.acceptingOperations) return 0;
+        const resolvedId = itemId || this.store.items.find((entry) => !entry.archived)?.id || "";
+        const item = getActiveItemById(this.store, resolvedId);
+        if (!item) return 0;
+        const todayKey = dateKey(new Date());
+        return this.enqueueMutation(async () => {
+            const previous = this.store;
+            const removals = new Set<string>();
+            const additions: CheckinEvent[] = [];
+            for (const [localDate, state] of drafts) {
+                if (!isValidLocalDateInput(localDate) || localDate > todayKey) continue;
+                for (const event of previous.events) {
+                    if (event.itemId === item.id && event.localDate === localDate) removals.add(event.id);
+                }
+                const day = calendarDateFromKey(localDate);
+                if (!day) continue;
+                const revision = getItemRevisionForDate(item, day);
+                const moment = {occurredAt: new Date(day.getFullYear(), day.getMonth(), day.getDate(), 12).toISOString(), localDate};
+                if (state === "done") {
+                    const value = revision.kind === "binary" ? 1 : Math.max(1, revision.recordStep || revision.target || 1);
+                    additions.push(this.makeEvent(item, value, "manual", revision.unit || "次", undefined, undefined, moment));
+                } else if (state === "skip") {
+                    additions.push({...this.makeEvent(item, 0, "manual", revision.unit || "次", undefined, undefined, moment), kind: "skip"});
+                }
+            }
+            if (!removals.size && !additions.length) return 0;
+            let next = previous;
+            if (removals.size) {
+                next = {...next, events: next.events.filter((event) => !removals.has(event.id))};
+            }
+            if (additions.length) {
+                next = appendEvents(next, additions);
+            }
+            const changed = additions.length;
+            if (!changed) return 0;
+            this.store = next;
+            try { await this.persist(); }
+            catch { this.store = previous; showMessage(t("msg.saveFail")); throw new Error("matrix-persist-failed"); }
+            this.invalidateSummary();
+            for (const event of additions) this.broadcast({type: "event-recorded", item, event});
+            const latestDate = [...drafts.keys()].sort().pop() || todayKey;
+            this.broadcast({type: "analytics-updated", analyticsAsOf: latestDate});
+            this.renderBackgroundUpdate();
+            return changed;
         });
     }
 

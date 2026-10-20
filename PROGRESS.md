@@ -1,3 +1,22 @@
+# 2026-10-20 历史排期矩阵点选补卡与原子批量回填（T-1875，D-527）
+
+**v18.19.0+ 持续演进——🗓️ 多日漏记补录磨擦消除与三态循环点选**：
+1. **纯函数层（`features/batch-backfill.ts`）**：
+   - `nextMatrixTriState`：empty → done → skip → empty 三态循环；
+   - `buildMatrixMonthCalendar`：按月投影每日排期适用性、原始态（完成/跳过/空）、草稿覆盖与当日有效修订单位/步长；
+   - `planMatrixBatchCommit`：输出待新增打卡、待新增跳过与待删除事件，未来日与未变更日不入计划。
+2. **交互层（`render/review.ts` + `bind-page-navigation.ts`）**：
+   - 回顾记录页月历下方挂载“日历快速补卡”折叠面板，日期格为原生按钮，支持键盘焦点环与 `aria-pressed`；
+   - 点击循环切换并由 `data-matrix-original` 判定是否回到基线，脏计数与提交按钮实时联动；
+   - “放弃变更”一键清空草稿。
+3. **宿主原子事务（`index.ts`）**：
+   - `recordMatrixBackfill` 在 mutation 内按日回出旧事件、重建完成/跳过事件，单次持久化；失败回滚并抛错保留草稿；
+   - 严格拒绝未来与非法日期，完成值取当日修订 `recordStep`，跳过事件写 `kind: "skip"`。
+4. **守门与验证**：
+   - 新增 `tests/matrix-batch-checkin.test.cjs` 纳入 `test:v18`（全 31 项全通）；
+   - `tests/batch-backfill.test.cjs` 补充模型依赖夹具后全绿；
+   - `node tests/css-hygiene.test.cjs`（812 class tokens，0 死类）、`node tests/review-presentation.test.cjs`、`pnpm run test:v18`、`pnpm run check`、`pnpm run build:check` 全绿。
+
 # 2026-10-20 多主题色阶年度热力图与日格快速钻取落地（T-1874，D-526）
 
 **v18.19.0+ 持续演进——📊 数据可视化色板解耦与丝滑钻取交互**：

@@ -11,7 +11,7 @@ import {buildYearHeatmap, renderBarChart, renderLineChart, renderWeeklyHeatmap, 
 import {buildAchievements} from "../features/achievements";
 import {buildRecordTrust} from "../features/record-trust";
 import {buildRecordDetails} from "../features/record-details";
-import {buildBatchBackfillPreview, type BatchBackfillItemSnapshot} from "../features/batch-backfill";
+import {buildBatchBackfillPreview, buildMatrixMonthCalendar, planMatrixBatchCommit, type BatchBackfillItemSnapshot, type MatrixTriState} from "../features/batch-backfill";
 import {buildItemDenominatorDetail, buildRangeDayCounts} from "../features/stat-denominators";
 import {buildItemTrendSeries, groupItemTrendsByUnit} from "../features/item-trend-compare";
 import {weeklyReviewDraftFor, buildWeeklyReviewMarkdown, type WeeklyReviewDraft} from "../features/weekly-review";
@@ -88,6 +88,9 @@ export interface ReviewViewContext {
     /** T-1511 批量补记预览：面板开合与逐项实际值草稿（会话态；可选：旧桩按关闭处理）。 */
     historyBatchPreviewOpen?: boolean;
     historyBatchValues?: Readonly<Record<string, string>>;
+    /** T-1875：矩阵补卡点选草稿 */
+    matrixDraftStates?: ReadonlyMap<string, MatrixTriState>;
+    matrixPanelOpen?: boolean;
     /** T-1517 横向比较选中的项目（会话态，2~4 个；可选：旧桩按空处理）。 */
     itemCompareSelection?: ReadonlySet<string>;
     /** T-1578 比较器候选搜索词（会话态；可选：旧桩按无过滤处理）。 */
@@ -316,6 +319,26 @@ export function renderReviewView(ctx: ReviewViewContext): string {
         : `<div class="lc-checkin__history-empty">${selectedEvents.length ? t("review.historyFilterEmpty") : t("review.historyDayEmpty")}</div>`;
     const currentMonth = new Date(asOf.getFullYear(), asOf.getMonth(), 1);
     const nextDisabled = ctx.historyMonth >= currentMonth;
+    /* T-1875：历史排期日历轻量点选补卡与矩阵批量回填（对标 Loop Habit Tracker） */
+    const renderMatrixBackfill = (): string => {
+        const targetItem = ctx.store.items.find((item) => item.id === ctx.historyItemId) ?? (ctx.historyItemId ? undefined : ctx.store.items.find(i => !i.archived));
+        if (!targetItem) return "";
+        const asOfKey = dateKey(asOf);
+        const year = ctx.historyMonth.getFullYear();
+        const month = ctx.historyMonth.getMonth();
+        const drafts = ctx.matrixDraftStates ?? new Map();
+        const days = buildMatrixMonthCalendar(ctx.store, targetItem, year, month, drafts, asOfKey);
+        const plan = planMatrixBatchCommit(ctx.store, targetItem, days);
+        const leading = days[0]?.weekday ?? 0;
+        const padCells = Array.from({length: leading}, () => `<span class="lc-checkin__matrix-pad" aria-hidden="true"></span>`).join("");
+        const cells = days.map((day) => {
+            const disabled = day.isFuture || !day.scheduled;
+            const label = t("review.matrixCellAria", {date: day.date, state: t(`review.matrixState.${day.currentState}`)});
+            return `<button class="lc-checkin__matrix-cell is-${day.currentState}${day.scheduled ? " is-scheduled" : ""}" type="button" data-matrix-date="${escapeHtml(day.date)}" data-matrix-original="${day.originalState}" aria-label="${escapeHtml(label)}" aria-pressed="${day.currentState !== "empty"}" ${disabled ? `disabled aria-disabled="true"` : ""}><span>${day.dayNumber}</span></button>`;
+        }).join("");
+        const open = Boolean(ctx.matrixPanelOpen);
+        return `<details class="lc-checkin__matrix-backfill" data-matrix-backfill ${open ? "open" : ""}><summary><span>${t("review.matrixTitle")}</span><small>${escapeHtml(targetItem.name)}</small></summary><div class="lc-checkin__matrix-body"><div class="lc-checkin__matrix-head"><span>${t("date.monthYear", {year, month: month + 1})}</span><span class="lc-checkin__matrix-dirty">${t("review.matrixDirty", {n: plan.changedCount})}</span></div><div class="lc-checkin__matrix-weekdays" aria-hidden="true">${calendarWeekdays().map(day => `<span>${day}</span>`).join("")}</div><div class="lc-checkin__matrix-grid" role="group" aria-label="${t("review.matrixTitle")}">${padCells}${cells}</div><div class="lc-checkin__matrix-legend"><span><i class="is-done"></i>${t("review.matrixState.done")}</span><span><i class="is-skip"></i>${t("review.matrixState.skip")}</span><span><i class="is-empty"></i>${t("review.matrixState.empty")}</span></div><div class="lc-checkin__matrix-actions"><button type="button" class="lc-checkin__primary-button" data-matrix-commit ${plan.changedCount ? "" : "disabled"}>${t("review.matrixCommit", {n: plan.changedCount})}</button><button type="button" class="lc-checkin__text-button" data-matrix-cancel ${plan.changedCount ? "" : "disabled"}>${t("review.matrixCancel")}</button></div></div></details>`;
+    };
     /* T-1512 渠道细筛与计量方式筛选：选项带命中数（其余条件不变时）；
        api 按登记前缀细分，未知身份归其他/未知，不猜插件名。 */
     const historyChannelOptions: HistoryChannelFilter[] = ["all", "manual", "tomato", "import", "api", "api:health", "api:notequery", "api:taskhorizon", "api:other", "sireader", "siplayer", "weread", "yeguif"];
@@ -339,8 +362,8 @@ export function renderReviewView(ctx: ReviewViewContext): string {
     </div><p class="review-scope-note">${escapeHtml(ctx.historyScope === "day" ? t("review.dayScopeHint", {date: ctx.selectedHistoryDate}) : t("review.periodScopeHint", {start: summary.startDate, end: summary.endDate}))}</p>
     <div class="lc-checkin__review-layout ${ctx.historyScope === "day" ? "" : "is-period"}">
         ${ctx.historyScope === "day" ? `<div class="lc-checkin__review-calendar">
-            <div class="lc-checkin__month-nav"><button type="button" data-history-month="-1" aria-label="${t("review.prevMonth")}">‹</button><strong>${t("date.monthYear", {year, month: month + 1})}</strong><button type="button" data-history-month="1" aria-label="${t("review.nextMonth")}" ${nextDisabled ? "disabled" : ""}>›</button></div>
-            <div class="lc-checkin__calendar-weekdays">${calendarWeekdays().map(day => `<span>${day}</span>`).join("")}</div><div class="lc-checkin__calendar">${calendarCells}</div></div>` : ""}
+        <div class="lc-checkin__month-nav"><button type="button" data-history-month="-1" aria-label="${t("review.prevMonth")}">‹</button><strong>${t("date.monthYear", {year, month: month + 1})}</strong><button type="button" data-history-month="1" aria-label="${t("review.nextMonth")}" ${nextDisabled ? "disabled" : ""}>›</button></div>
+        <div class="lc-checkin__calendar-weekdays">${calendarWeekdays().map(day => `<span>${day}</span>`).join("")}</div><div class="lc-checkin__calendar">${calendarCells}</div>${renderMatrixBackfill()}</div>` : ""}
         <div class="lc-checkin__review-detail">
             ${historyTools}${hasHistoryFilter ? `<div class="lc-checkin__history-result" role="status" aria-live="polite"><span>${resultLabel}</span><button class="lc-checkin__text-button" type="button" data-action="clear-history-filters">${t("review.clearFilters")}</button></div>` : ""}
             ${ctx.historyScope === "day" && aggregateDetails ? `<details class="review-day-totals"><summary>${t("review.historyAggregate")}</summary>${aggregateDetails}</details>` : ""}

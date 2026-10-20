@@ -12,11 +12,19 @@ const root = path.join(__dirname, "..");
 const compilerOptions = {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS};
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-batch-backfill-"));
 const load = (relative) => {
-    const target = path.join(dir, relative.replace(/[\\/]/g, "_"));
-    fs.writeFileSync(target, ts.transpileModule(fs.readFileSync(path.join(root, "src", relative), "utf8"), {compilerOptions}).outputText);
+    const flat = relative.replace(/[\\/]/g, "_").replace(/\.ts$/, ".js");
+    const target = path.join(dir, flat);
+    let source = fs.readFileSync(path.join(root, "src", relative), "utf8");
+    /* 扁平的模型依赖：把相对导入改写为同目录扁平文件名（T-1875）。 */
+    source = source.replace(/from "\.\.\/([a-z-]+)"/g, (_m, name) => `from "./${name}.js"`);
+    fs.writeFileSync(target, ts.transpileModule(source, {compilerOptions}).outputText);
     return require(target);
 };
+for (const relative of ["types.ts", "date-keys.ts", "record-step.ts", "quota.ts", "rules.ts", "model.ts"]) {
+    load(relative);
+}
 const backfill = load("features/batch-backfill.ts");
+/* T-1875：批次分类仍保持纯函数；矩阵补卡新增了 store 投影器，缺省注入真实 model。 */
 
 const snapshot = (overrides = {}) => ({id: "a", name: "拉伸", hasEvent: false, scheduled: true, kind: "duration", unit: "分钟", recordStep: 5, atMost: false, hasJournal: false, ...overrides});
 

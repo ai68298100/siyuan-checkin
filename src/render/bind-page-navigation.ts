@@ -106,6 +106,8 @@ export interface BindPageNavigationHost {
     reviewFoldTouched: boolean;
     changeHistoryMonth(offset: number, root?: HTMLElement): void;
     enqueueMutation<T>(operation: () => Promise<T>): Promise<T>;
+    /** T-1875：矩阵补卡草稿原子提交（按日派生事实变更，失败整批回滚） */
+    recordMatrixBackfill?(itemId: string, drafts: ReadonlyMap<string, import("../features/batch-backfill").MatrixTriState>): Promise<number>;
     persist(): Promise<void>;
     invalidateSummary(): void;
     broadcast(event: unknown): void;
@@ -229,6 +231,47 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
     bindResponsiveCharts(root);
     host.bindDialogClose(root);
     host.bindMobileNav(root);
+    /* T-1875：日历矩阵点选补卡——未打卡 → 完成 → 跳过 三态循环，确认后单次原子提交 */
+    root.querySelectorAll<HTMLElement>("[data-matrix-date]").forEach((cell) => {
+        if (cell.getAttribute("aria-disabled") === "true") return;
+        cell.addEventListener("click", () => {
+            const date = cell.dataset.matrixDate;
+            if (!date) return;
+            const drafts = new Map(reviewValue("matrixDraftStates", undefined) ?? []);
+            const current = cell.classList.contains("is-done") ? "done" : cell.classList.contains("is-skip") ? "skip" : "empty";
+            const next = current === "empty" ? "done" : current === "done" ? "skip" : "empty";
+            const original = cell.dataset.matrixOriginal as string | undefined;
+            if (next === (original || "empty")) drafts.delete(date);
+            else drafts.set(date, next);
+            writeReviewValue("matrixDraftStates", drafts);
+            renderReviewPreservingView(`[data-matrix-date="${CSS.escape(date)}"]`);
+        });
+    });
+    root.querySelector<HTMLElement>("[data-matrix-cancel]")?.addEventListener("click", () => {
+        writeReviewValue("matrixDraftStates", new Map());
+        renderReviewPreservingView("[data-matrix-backfill]");
+    });
+    root.querySelector<HTMLElement>("[data-matrix-commit]")?.addEventListener("click", (event) => {
+        const button = event.currentTarget as HTMLButtonElement;
+        const drafts = reviewValue("matrixDraftStates", undefined);
+        if (!drafts || !drafts.size) return;
+        button.disabled = true;
+        button.setAttribute("aria-busy", "true");
+        void host.enqueueMutation?.(async () => {
+            try {
+                const count = await host.recordMatrixBackfill?.(reviewValue("historyItemId", host.historyItemId), drafts);
+                if (!isCurrentSurface()) return;
+                writeReviewValue("matrixDraftStates", new Map());
+                renderReviewPage("[data-matrix-backfill]");
+                showMessage(t("review.matrixSaved", {n: count ?? drafts.size}));
+            } catch {
+                if (!isCurrentSurface()) return;
+                button.disabled = false;
+                button.removeAttribute("aria-busy");
+                showMessage(t("review.matrixFailed"));
+            }
+        });
+    });
     const rhythm = root.querySelector<HTMLElement>(".review-rhythm-days");
     if (rhythm && !initializedRhythmScrollers.has(rhythm)) {
         initializedRhythmScrollers.add(rhythm);

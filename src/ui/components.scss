@@ -11199,6 +11199,63 @@ dialog.lc-checkin.lc-checkin__avatar-editor {
 .review-batch-state { color: var(--lc-checkin-muted); font-size: 11px; }
 .review-batch-state.is-error { color: var(--lc-checkin-danger-text); }
 
+/* T-1875 日历矩阵快速补卡（对标 Loop Habit Tracker） */
+.lc-checkin__matrix-backfill {
+    margin-top: 10px;
+    border: 1px solid var(--lc-checkin-border);
+    border-radius: var(--lc-checkin-radius-sm);
+    background: var(--lc-checkin-surface);
+    > summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 8px 10px;
+        color: var(--lc-checkin-text);
+        font-size: 12px;
+        font-weight: 620;
+        cursor: pointer;
+        small { color: var(--lc-checkin-muted); font-size: 11px; font-weight: 400; }
+    }
+}
+.lc-checkin__matrix-body { display: grid; gap: 8px; padding: 0 10px 10px; }
+.lc-checkin__matrix-head { display: flex; align-items: center; justify-content: space-between; color: var(--lc-checkin-muted); font-size: 11px; }
+.lc-checkin__matrix-dirty { color: var(--lc-checkin-accent-text); font-weight: 600; }
+.lc-checkin__matrix-weekdays { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; text-align: center; color: var(--lc-checkin-muted); font-size: 10px; }
+.lc-checkin__matrix-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.lc-checkin__matrix-pad { aspect-ratio: 1; }
+.lc-checkin__matrix-cell {
+    display: grid;
+    place-items: center;
+    aspect-ratio: 1;
+    min-height: 28px;
+    padding: 0;
+    border: 1px solid var(--lc-checkin-border);
+    border-radius: 6px;
+    color: var(--lc-checkin-muted);
+    background: var(--lc-checkin-muted-surface);
+    font: inherit;
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+    transition: background-color var(--lc-checkin-motion-fast), border-color var(--lc-checkin-motion-fast), color var(--lc-checkin-motion-fast);
+    &.is-scheduled { color: var(--lc-checkin-text); background: var(--lc-checkin-surface); }
+    &.is-done { color: var(--lc-checkin-success-contrast); border-color: var(--lc-checkin-success); background: var(--lc-checkin-success); }
+    &.is-skip { color: var(--lc-checkin-warning-text); border-color: var(--lc-checkin-warning); background: var(--lc-checkin-warm-soft); }
+    &:disabled { cursor: not-allowed; opacity: 0.42; }
+    &:focus-visible { outline: 2px solid var(--lc-checkin-accent); outline-offset: 1px; }
+}
+.lc-checkin__matrix-legend { display: flex; flex-wrap: wrap; gap: 10px; color: var(--lc-checkin-muted); font-size: 10px; }
+.lc-checkin__matrix-legend span { display: inline-flex; align-items: center; gap: 4px; }
+.lc-checkin__matrix-legend i { width: 9px; height: 9px; border-radius: 3px; border: 1px solid var(--lc-checkin-border); background: var(--lc-checkin-muted-surface); }
+.lc-checkin__matrix-legend i.is-done { background: var(--lc-checkin-success); border-color: var(--lc-checkin-success); }
+.lc-checkin__matrix-legend i.is-skip { background: var(--lc-checkin-warm-soft); border-color: var(--lc-checkin-warning); }
+.lc-checkin__matrix-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.lc-checkin__matrix-actions > button { min-height: 36px; }
+@media (max-width: 400px) {
+    .lc-checkin__matrix-cell { min-height: 26px; font-size: 10px; }
+}
+
 /* T-1818 & T-1821 表单字段微视觉与分节分隔规范 */
 .lc-checkin--editor .lc-checkin__field-heading[data-editor-section] {
     margin: 16px 0 8px;

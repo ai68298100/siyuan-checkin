@@ -6,6 +6,9 @@
      跳转既有单条问卷流程；配额沿用既有配额内核，不做新口径；
    - 已存在事件（含跳过）判 existing，不重复记账；排期不适用如实呈现。 */
 
+import {dateKey, getItemRevisionForDate, getSkipDatesForItem, isComplete, isItemAvailableOnDate, isScheduledToday} from "../model";
+import type {CheckinItem, CheckinStore} from "../types";
+
 export type CheckinKindLike = "binary" | "count" | "duration" | "quantity" | "custom";
 
 export type BatchBackfillState = "ready" | "existing" | "off-schedule" | "unsupported";
@@ -88,3 +91,119 @@ export function planBatchBackfillSubmit(snapshots: readonly BatchBackfillItemSna
         .filter((entry) => entry.state === "ready" && !entry.errorKey && entry.value !== undefined)
         .map((entry) => ({itemId: entry.itemId, value: entry.value as number}));
 }
+
+/* ===== T-1875 历史排期日历轻量点选补卡与矩阵批量回填（对标 Loop Habit Tracker） ===== */
+
+export type MatrixTriState = "empty" | "done" | "skip";
+
+export function nextMatrixTriState(current: MatrixTriState): MatrixTriState {
+    if (current === "empty") return "done";
+    if (current === "done") return "skip";
+    return "empty";
+}
+
+export interface MatrixCalendarDayInfo {
+    date: string;
+    dayNumber: number;
+    weekday: number;
+    isFuture: boolean;
+    scheduled: boolean;
+    originalState: MatrixTriState;
+    currentState: MatrixTriState;
+    unit: string;
+    step: number;
+}
+
+export function buildMatrixMonthCalendar(
+    store: CheckinStore,
+    item: CheckinItem,
+    year: number,
+    month: number, // 0~11
+    drafts: ReadonlyMap<string, MatrixTriState> = new Map(),
+    asOfDate = dateKey(new Date()),
+): MatrixCalendarDayInfo[] {
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const result: MatrixCalendarDayInfo[] = [];
+
+    const skipDates = getSkipDatesForItem(store, item.id);
+
+    for (let day = 1; day <= daysInMonth; day += 1) {
+        const curDate = new Date(year, month, day);
+        const curKey = dateKey(curDate);
+        const isFuture = curKey > asOfDate;
+        const available = isItemAvailableOnDate(item, curDate);
+        const scheduled = available && isScheduledToday(item, curDate);
+        const revision = getItemRevisionForDate(item, curDate);
+
+        let originalState: MatrixTriState = "empty";
+        if (skipDates.has(curKey)) {
+            originalState = "skip";
+        } else {
+            const hasComplete = isComplete(store, item, curDate);
+            if (hasComplete) originalState = "done";
+        }
+
+        const currentState = drafts.has(curKey) ? drafts.get(curKey)! : originalState;
+
+        result.push({
+            date: curKey,
+            dayNumber: day,
+            weekday: (curDate.getDay() + 6) % 7, // 0=周一, 6=周日
+            isFuture,
+            scheduled,
+            originalState,
+            currentState,
+            unit: revision.unit || "次",
+            step: revision.recordStep || 1,
+        });
+    }
+
+    return result;
+}
+
+export interface MatrixPlanResult {
+    changedCount: number;
+    toAddCheckins: Array<{itemId: string; localDate: string; value: number; unit: string}>;
+    toAddSkips: Array<{itemId: string; localDate: string; unit: string}>;
+    toDeleteEventIds: string[];
+}
+
+export function planMatrixBatchCommit(
+    store: CheckinStore,
+    item: CheckinItem,
+    calendarDays: readonly MatrixCalendarDayInfo[],
+): MatrixPlanResult {
+    const toAddCheckins: Array<{itemId: string; localDate: string; value: number; unit: string}> = [];
+    const toAddSkips: Array<{itemId: string; localDate: string; unit: string}> = [];
+    const toDeleteEventIds: string[] = [];
+    let changedCount = 0;
+
+    for (const day of calendarDays) {
+        if (day.isFuture || day.currentState === day.originalState) continue;
+        changedCount += 1;
+        const dayEvents = store.events.filter((e) => e.itemId === item.id && e.localDate === day.date);
+
+        if (day.currentState === "done") {
+            dayEvents.forEach((e) => toDeleteEventIds.push(e.id));
+            toAddCheckins.push({
+                itemId: item.id,
+                localDate: day.date,
+                value: day.step,
+                unit: day.unit,
+            });
+        } else if (day.currentState === "skip") {
+            dayEvents.forEach((e) => toDeleteEventIds.push(e.id));
+            toAddSkips.push({
+                itemId: item.id,
+                localDate: day.date,
+                unit: day.unit,
+            });
+        } else if (day.currentState === "empty") {
+            dayEvents.forEach((e) => toDeleteEventIds.push(e.id));
+        }
+    }
+
+    return {changedCount, toAddCheckins, toAddSkips, toDeleteEventIds};
+}
+
