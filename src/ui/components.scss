@@ -75,6 +75,27 @@
 :is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) .lc-checkin__journal-actions button { min-height: 44px; }
 :is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) .lc-checkin__mobile-nav button { min-height: 44px; }
 
+/* T-1824: dock / quick / tab / mobile 四类宿主容器的密度档与几何基线 */
+.lc-checkin-dock-host {
+    --lc-checkin-density-scale: 0.9;
+    --lc-checkin-control-height: var(--lc-checkin-compact-min-target);
+}
+
+.lc-checkin-tab-host,
+.lc-checkin-dialog-host {
+    --lc-checkin-density-scale: 1;
+    --lc-checkin-control-height: var(--lc-checkin-normal-min-target);
+}
+
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) {
+    --lc-checkin-density-scale: 1.1;
+    --lc-checkin-control-height: var(--lc-checkin-touch-min-target);
+
+    .lc-checkin :is(input, select, textarea):focus {
+        scroll-margin-bottom: 96px;
+    }
+}
+
 /* T-1465 问卷日记弹窗：问题表单 + 写入目标配置（复用主题 token，双主题自动生效）。 */
 .lc-checkin__journal-form { display: flex; flex-direction: column; gap: 10px; padding: 4px 2px; }
 .lc-checkin__journal-hint { margin: 0; color: var(--lc-checkin-warm-text); font-size: 12px; }

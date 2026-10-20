@@ -1,3 +1,13 @@
+# D-521：T-1824 宿主容器密度档与移动端软键盘滚动保护（2026-10-20）
+
+- **四类 Host 容器密度基线统一**：
+  - 新增 `--lc-checkin-touch-min-target: 44px`、`--lc-checkin-compact-min-target: 30px`、`--lc-checkin-normal-min-target: 34px`；
+  - `.lc-checkin-dock-host` 自动激活紧凑密度（`--lc-checkin-density-scale: 0.9`，`--lc-checkin-control-height: 30px`），保证侧边栏高信息密度；
+  - `.lc-checkin-tab-host` / `.lc-checkin-dialog-host` 采用标准桌面密度（`--lc-checkin-density-scale: 1`，`--lc-checkin-control-height: 34px`）；
+  - `:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile)` 采用触控优先密度（`--lc-checkin-density-scale: 1.1`，`--lc-checkin-control-height: 44px`），完全满足 WCAG 2.2 / Apple HIG 触控下限。
+- **移动端软键盘输入滚动安全区**：
+  - 在移动端宿主下为所有处于 `:focus` 的输入框、选择器和多行文本域配置 `scroll-margin-bottom: 96px`，确保移动端虚拟键盘弹起时永远不会遮挡输入内容或确认操作栏。
+
 # D-520：T-1819 导航溢出指引与活动态无障碍收口（2026-10-20）
 
 - **横向溢出渐变指引**：`topnav-tabs` 外包一层 `__topnav-tabs-wrap`，通过 `bindNavOverflowHintFor` 在 `scroll` / `ResizeObserver` 下派发 `data-overflow-start` / `data-overflow-end`，CSS 伪元素仅在对应方向可滚动时才显示 16px 渐变蒙层，避免“已到端点仍显示可滚动暗示”的误导。

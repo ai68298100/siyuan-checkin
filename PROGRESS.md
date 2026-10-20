@@ -1,3 +1,19 @@
+# 2026-10-20 宿主容器密度档与移动端软键盘滚动保护（T-1824 第一切片，D-521）
+
+**v18.18.0 持续增强——📱 多容器宿主密度与触控几何统一**：
+1. **多宿主容器密度基线统一**：
+   - 在 `tokens.scss` 增加 `--lc-checkin-touch-min-target: 44px`、`--lc-checkin-compact-min-target: 30px`、`--lc-checkin-normal-min-target: 34px`。
+   - `components.scss` 中实现四类 Host 容器的变量级联映射：
+     - `.lc-checkin-dock-host`：紧凑密度 scale 0.9，控件高度收敛到 30px；
+     - `.lc-checkin-tab-host` / `.lc-checkin-dialog-host`：常规桌面密度 scale 1.0，控件高度 34px；
+     - `:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile)`：触控优先密度 scale 1.1，控件下限严格锁定在 44px（符合 Apple HIG / Material / WCAG 2.2 规范）。
+2. **移动端软键盘防遮挡保护**：
+   - 移动宿主下所有 `:focus` 状态输入框设置 `scroll-margin-bottom: 96px`，确保虚拟键盘弹出时滚动容器预留足够视野，彻底解决短屏与小屏遮挡痛点。
+3. **验证证据**：
+   - `node tests/css-hygiene.test.cjs`（0 死类，679 KB < 680 KiB 维护硬限）。
+   - `node tests/responsive-layout.test.cjs`（全通过）。
+   - `pnpm run test:v18`（全 26 项通过）、`pnpm run check`（TypeScript 零错误）、`pnpm run build:check`（生产打包成功）。
+
 # 2026-10-20 导航横向溢出指引与活动态无障碍收口（T-1819 第二切片，D-520）
 
 **v18.18.0 持续增强——🧭 导航溢出可发现性与键盘可达性收口**：

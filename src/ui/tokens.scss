@@ -132,6 +132,13 @@
     --lc-checkin-line-height-base: 1.45;
     --lc-checkin-line-height-relaxed: 1.6;
 
+    /* ---- host density & touch geometry (T-1824) ---- */
+    --lc-checkin-touch-min-target: 44px;
+    --lc-checkin-compact-min-target: 30px;
+    --lc-checkin-normal-min-target: 34px;
+    --lc-checkin-host-nav-mobile-height: 52px;
+    --lc-checkin-host-nav-dock-height: 48px;
+
     /* ---- nav geometry ---- */
     --lc-checkin-rail-width: 76px;
     --lc-checkin-nav-height: 58px;
