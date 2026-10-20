@@ -71,9 +71,17 @@ function loadTs(filename) {
     new Function("require", "module", "exports", compiled)(localRequire, loaded, loaded.exports);
     return loaded.exports;
 }
-const {escapeHtml, renderIconMarkup} = loadTs(path.resolve("src/shared.ts"));
+const {escapeHtml, renderIconMarkup, formatNumber, calendarDateFromKey} = loadTs(path.resolve("src/shared.ts"));
 const {t, setPluginLanguage} = loadTs(path.resolve("src/i18n.ts"));
 const {renderPageShellHead} = loadTs(path.resolve("src/render/page-shell.ts"));
+const {daysBetweenHalfOpen} = loadTs(path.resolve("src/date-keys.ts"));
+const {getItemRevisionForDate} = loadTs(path.resolve("src/rules.ts"));
+const {
+    buildCoachingEvidence,
+    COACHING_EVIDENCE_MIN_DAYS,
+    planSuggestionAdoption,
+    adoptionInputForSuggestion,
+} = loadTs(path.resolve("src/features/suggestion-adoption.ts"));
 const sourceFile = ts.createSourceFile("index.ts", source, ts.ScriptTarget.Latest, true);
 let method;
 function findRenderer(node) {
@@ -94,12 +102,55 @@ const report = {
     ], aggregates: {completionRate: 29}, currentStreak: 1, longestStreak: 2, maturity: 8, startDate: "2026-06-29", endDate: "2026-09-20",
 };
 let reportOptions;
-const View = new Function("getItemById", "buildHabitInsights", "computeLongestStreaks", "buildCoachingSuggestions", "currentCalendarDate", "escapeHtml", "renderIconMarkup", "t", "renderPageShellHead", "dateKey", `${compiled}; return InsightView;`)(
-    (store, id) => store.items.find(item => item.id === id), (store, id, options) => { reportOptions = options; return report; }, () => new Map(), () => [{tone: "neutral", title: "Advice", detail: "Detail", evidence: "Evidence"}], () => new Date("2026-09-20T12:00:00"), escapeHtml, renderIconMarkup, t, renderPageShellHead, date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`,
+const View = new Function(
+    "getItemById",
+    "buildHabitInsights",
+    "computeLongestStreaks",
+    "buildCoachingSuggestions",
+    "currentCalendarDate",
+    "escapeHtml",
+    "renderIconMarkup",
+    "t",
+    "renderPageShellHead",
+    "dateKey",
+    "buildCoachingEvidence",
+    "COACHING_EVIDENCE_MIN_DAYS",
+    "formatNumber",
+    "daysBetweenHalfOpen",
+    "calendarDateFromKey",
+    "getItemRevisionForDate",
+    "planSuggestionAdoption",
+    "adoptionInputForSuggestion",
+    `${compiled}; return InsightView;`
+)(
+    (store, id) => store.items.find(item => item.id === id),
+    (store, id, options) => { reportOptions = options; return report; },
+    () => new Map(),
+    () => [{id: "freq", tone: "neutral", title: "Advice", detail: "Detail", evidence: "Evidence"}],
+    () => new Date("2026-09-20T12:00:00"),
+    escapeHtml,
+    renderIconMarkup,
+    t,
+    renderPageShellHead,
+    date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`,
+    buildCoachingEvidence,
+    COACHING_EVIDENCE_MIN_DAYS,
+    formatNumber,
+    daysBetweenHalfOpen,
+    calendarDateFromKey,
+    getItemRevisionForDate,
+    planSuggestionAdoption,
+    adoptionInputForSuggestion,
 );
 const view = new View();
 const imageIcon = "data:image/png;base64,aGVsbG8=";
-view.store = {items: [{id: "custom", name: "自定义图片", icon: imageIcon, group: "学习"}, {id: "text", name: "文字图标", icon: "✓"}]};
+view.store = {
+    items: [
+        {id: "custom", name: "自定义图片", icon: imageIcon, group: "学习", kind: "binary", target: 1, schedule: {type: "daily"}},
+        {id: "text", name: "文字图标", icon: "✓", kind: "binary", target: 1, schedule: {type: "daily"}},
+    ],
+    events: [],
+};
 view.insightsItemId = "custom";
 view.resolvedAppearance = () => "light";
 setPluginLanguage("zh-CN");

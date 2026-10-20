@@ -9012,7 +9012,7 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
             /* R-18.5（D-263 收尾）：连击命中里程碑 → 庆祝升级为里程碑级（其余为日常轻反馈）。 */
             ...(STREAK_MILESTONES.includes(currentStreak) ? {milestone: currentStreak} : {}),
         });
-        this.pendingLocalItemId = item.id;
+        this.pendingLocalItemId = current.id;
         this.pendingLocalItemDate = moment.localDate;
         this.pulseCard(this.activeRoot ?? this.tabElement ?? this.dockElement ?? document.body, item.id);
         this.renderBackgroundUpdate();

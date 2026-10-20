@@ -44,6 +44,7 @@ const artifactRoot = path.join(projectRoot, ".artifacts", "surface-session");
                             },
                             getFrontend: () => "desktop", openTab: async () => ({close() {}}),
                             showMessage(message) { window.__messages.push(message); },
+                            fetchSyncPost: async () => ({code: 0, data: []}),
                         };
                     };
                 });
