@@ -7220,7 +7220,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
             : "";
         const avatarPresetGlyph: Record<string, string> = {star: "★", horse: "🐴", leaf: "🌿", sun: "☀", target: "🎯"};
         const avatar = this.avatarImage ? `<img src="${escapeHtml(this.avatarImage)}" alt="" width="34" height="34" decoding="async" />` : this.avatar === "check" ? uiIcon("check") : escapeHtml(avatarPresetGlyph[this.avatar] || this.avatar);
-        return `<nav class="lc-checkin__topnav" aria-label="${t("app.navAria")}"><span class="lc-checkin__topnav-brand"><span class="lc-checkin__topnav-avatar" aria-hidden="true">${avatar}</span>${t("dock.title")}</span><div class="lc-checkin__topnav-tabs">${entries.map(([navPage, label, icon]) => `<button type="button" data-mobile-nav="${navPage}" class="${isSelected(navPage) ? "is-selected" : ""}" aria-current="${isSelected(navPage) ? "page" : "false"}" aria-label="${label}" title="${label}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}</div>${dialogActions}</nav>`;
+        return `<nav class="lc-checkin__topnav" aria-label="${t("app.navAria")}"><span class="lc-checkin__topnav-brand"><span class="lc-checkin__topnav-avatar" aria-hidden="true">${avatar}</span>${t("dock.title")}</span><div class="lc-checkin__topnav-tabs-wrap"><div class="lc-checkin__topnav-tabs" data-nav-scroller>${entries.map(([navPage, label, icon]) => `<button type="button" data-mobile-nav="${navPage}" class="${isSelected(navPage) ? "is-selected" : ""}" aria-current="${isSelected(navPage) ? "page" : "false"}" aria-label="${label}" title="${label}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}</div></div>${dialogActions}</nav>`;
     }
 
     /* 8.6 连续记录：按项目统计当前连续打卡天数（自然日粒度，从事件推导）。 */

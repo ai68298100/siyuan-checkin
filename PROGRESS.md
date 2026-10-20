@@ -1,3 +1,11 @@
+# 2026-10-20 导航横向溢出指引与活动态无障碍收口（T-1819 第二切片，D-520）
+
+**v18.18.0 持续增强——🧭 导航溢出可发现性与键盘可达性收口**：
+1. **溢出渐变指引**：新增 `__topnav-tabs-wrap` 包裹层与 `bindNavOverflowHintFor`，在 `scroll` / `ResizeObserver` 下精确派发 `data-overflow-start` / `data-overflow-end`，只在还能继续滚动的方向显示 16px 渐变蒙层，不再出现“已到端点仍提示可滑”的误导。
+2. **窄屏防折行与滚动吸附**：容器启用 `scroll-snap-type: x proximity`，导航按钮 `flex: 0 0 auto` + `nowrap`，杜绝窄屏下多字标题换行压屋；当前页通过 `scrollIntoView({inline:"nearest"})` 自动进入可视区。
+3. **活动态与键盘焦点**：设置侧导航活动项增加 2px 内侧 accent 高亮条与 650 字重，hover 态补全边框，补齐 `:focus-visible` 2px 焦点环；`prefers-reduced-motion` 下关闭过渡。
+4. **验证证据**：`node tests/css-hygiene.test.cjs`（0 死类，678 KB < 680 KiB 硬限）、`node tests/responsive-layout.test.cjs`、`node tests/settings-navigation.test.cjs`、`node tests/cross-root-navigation.test.cjs`、`node tests/agent-navigation.test.cjs`、`pnpm run test:v18`（26 项全通）、`pnpm run check`、`pnpm run build:check` 全绿。
+
 # 2026-10-20 表单字段视觉规范与长表单分节系统第二切片收口（T-1818/T-1821，D-519）
 
 **v18.18.0 持续增强——🎨 UI/UX 规范化与样式资产卫生门禁收敛**：

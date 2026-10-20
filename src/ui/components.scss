@@ -627,9 +627,17 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin-dialog-host .lc-checkin__title { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .lc-checkin__topnav { min-width:0; }
 .lc-checkin__topnav { min-height: 48px; padding-inline: 6px; }
-.lc-checkin__topnav-tabs { min-width:0; overflow-x:auto; scrollbar-width:none; }
+.lc-checkin__topnav-tabs { min-width:0; overflow-x:auto; overflow-y:hidden; display:flex; gap:2px; padding:1px 2px 2px; scrollbar-width:none; -webkit-overflow-scrolling:touch; scroll-snap-type:x proximity; }
 .lc-checkin__topnav-tabs::-webkit-scrollbar { display:none; }
-.lc-checkin__topnav-tabs button { flex:0 0 auto; white-space:nowrap; }
+.lc-checkin__topnav-tabs button { flex:0 0 auto; white-space:nowrap; scroll-snap-align:center; }
+/* T-1819 第二切片：导航横向溢出时提供左右边缘渐变指引 */
+.lc-checkin__topnav-tabs-wrap { position:relative; min-width:0; flex:1 1 auto; display:flex; }
+.lc-checkin__topnav-tabs-wrap::before,
+.lc-checkin__topnav-tabs-wrap::after { content:""; position:absolute; top:0; bottom:2px; width:16px; pointer-events:none; opacity:0; transition:opacity var(--lc-checkin-motion-fast); z-index:1; }
+.lc-checkin__topnav-tabs-wrap::before { left:0; background:linear-gradient(to right, var(--lc-checkin-surface), transparent); }
+.lc-checkin__topnav-tabs-wrap::after { right:0; background:linear-gradient(to left, var(--lc-checkin-surface), transparent); }
+.lc-checkin__topnav-tabs-wrap[data-overflow-start="true"]::before,
+.lc-checkin__topnav-tabs-wrap[data-overflow-end="true"]::after { opacity:1; }
 .lc-checkin__topnav-actions { flex:0 0 auto; }
 .lc-checkin--today .lc-checkin__item-action { column-gap: 4px; }
 .lc-checkin--today .lc-checkin__item-action :is(.lc-checkin__focus-button, .lc-checkin__more-button) { opacity: .78; }
@@ -4285,8 +4293,14 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     cursor: pointer;
     transition: color var(--lc-checkin-motion-fast), background-color var(--lc-checkin-motion-fast);
 }
-.lc-checkin__settings-nav button:hover { color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); }
-.lc-checkin__settings-nav button.is-active { color: var(--lc-checkin-accent-text); border-color: color-mix(in srgb, var(--lc-checkin-accent) 40%, var(--lc-checkin-border)); background: var(--lc-checkin-accent-soft); }
+.lc-checkin__settings-nav button:hover { color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); border-color: color-mix(in srgb, var(--lc-checkin-accent) 26%, var(--lc-checkin-border)); }
+.lc-checkin__settings-nav button.is-active { color: var(--lc-checkin-accent-text); border-color: color-mix(in srgb, var(--lc-checkin-accent) 40%, var(--lc-checkin-border)); background: var(--lc-checkin-accent-soft); font-weight:650; box-shadow: inset 2px 0 0 var(--lc-checkin-accent); }
+.lc-checkin__settings-nav button:focus-visible { outline: 2px solid var(--lc-checkin-accent); outline-offset: 2px; }
+.lc-checkin__settings-nav button[aria-current="true"],
+.lc-checkin__settings-nav button[aria-selected="true"] { color: var(--lc-checkin-accent-text); font-weight: 650; }
+@media (prefers-reduced-motion: reduce) {
+    .lc-checkin__settings-nav button { transition: none; }
+}
 /* Settings section rail follows the scroll position while remaining within the page column. */
 .lc-checkin--settings .lc-checkin__settings-nav {
     position: sticky;

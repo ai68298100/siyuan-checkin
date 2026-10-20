@@ -1,3 +1,9 @@
+# D-520：T-1819 导航溢出指引与活动态无障碍收口（2026-10-20）
+
+- **横向溢出渐变指引**：`topnav-tabs` 外包一层 `__topnav-tabs-wrap`，通过 `bindNavOverflowHintFor` 在 `scroll` / `ResizeObserver` 下派发 `data-overflow-start` / `data-overflow-end`，CSS 伪元素仅在对应方向可滚动时才显示 16px 渐变蒙层，避免“已到端点仍显示可滚动暗示”的误导。
+- **滚动吸附与防折行**：容器启用 `scroll-snap-type: x proximity`，按钮 `flex: 0 0 auto` + `white-space: nowrap` + `scroll-snap-align: center`，窄屏下按钮不压缩变形成两行；选中页通过 `scrollIntoView({inline:"nearest"})` 自动进入可视区。
+- **活动态语义与键盘可见性**：设置侧导航活动项增加 `inset 2px 0 0 accent` 内侧高亮条与 650 字重，补齐 `:focus-visible` 焦点环；`prefers-reduced-motion` 下关闭过渡。
+
 # D-519：T-1818 & T-1821 表单字段视觉规范与长表单分节系统第二切片（2026-10-20）
 
 - **表单输入高度与文本域 Token 收敛（T-1818）**：

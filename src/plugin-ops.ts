@@ -155,6 +155,28 @@ export function bindMobileNavFor(host: PluginOpsHost, root: HTMLElement): void {
             else host.openQuickDialog();
         }
     }));
+    bindNavOverflowHintFor(root);
+}
+
+/** T-1819 第二切片：导航横向溢出时按滚动位置切换边缘渐变指引，并保证选中项可见。 */
+export function bindNavOverflowHintFor(root: HTMLElement): void {
+    const scroller = root.querySelector<HTMLElement>("[data-nav-scroller]");
+    if (!scroller) return;
+    const wrap = scroller.parentElement;
+    if (!wrap) return;
+    const syncOverflowHint = () => {
+        const maxScroll = scroller.scrollWidth - scroller.clientWidth;
+        const atStart = scroller.scrollLeft <= 1;
+        const atEnd = maxScroll <= 1 || scroller.scrollLeft >= maxScroll - 1;
+        wrap.dataset.overflowStart = String(!atStart && maxScroll > 1);
+        wrap.dataset.overflowEnd = String(!atEnd && maxScroll > 1);
+    };
+    syncOverflowHint();
+    scroller.addEventListener("scroll", syncOverflowHint, {passive: true});
+    const resizeObserver = typeof ResizeObserver === "function" ? new ResizeObserver(syncOverflowHint) : undefined;
+    resizeObserver?.observe(scroller);
+    const selected = scroller.querySelector<HTMLElement>("[aria-current='page']");
+    selected?.scrollIntoView?.({block: "nearest", inline: "nearest"});
 }
 
 export function changeHistoryMonthFor(host: PluginOpsHost, offset: number, root?: HTMLElement): void {
