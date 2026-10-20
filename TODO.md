@@ -7,6 +7,13 @@
 - 竞品深度调研落地（Loop/Table Habit/Habitica/TickTick/Obsidian/Streaks 对标）。
 - 本文件中历史版本号属于任务登记时的历史基线，保留用于追溯；新任务统一以源码、`PROGRESS.md`、`BLOCKERS.md` 和 `docs/releases/` 的最新版本为准。
 
+## 2026-10-20 发布 v18.19.0（R-RELEASE-18.19.0）
+
+- [x] 版本源、README 当前入口、变更记录和发布说明已统一为 v18.19.0。
+- [x] 发布提交 `e7d6efb0`、tag `v18.19.0`、GitHub Release 和 `main` push 已完成；Release 地址为 https://github.com/ai68298100/siyuan-checkin/releases/tag/v18.19.0，`package.zip` SHA-256 为 `64f4e4d56f3ca5f5234e4fb3988509021eda0f48eb5cf2f468954ed1d77bfd1e`。
+- [x] 发布链 `pnpm run check`、`pnpm test`、`pnpm run test:ui`、`pnpm run test:legacy-style`、`pnpm run test:mobile`、`pnpm run test:ecosystem`、`pnpm run test:extended`、`pnpm run test:v18`、`pnpm run test:review-comparison`、`pnpm run test:perf`、`pnpm run check:release` 全部通过；生产 CSS 665 KiB 严格低于 680 KiB 硬预算，0 死类。
+- [x] 彻底排查并根治顶栏图标突然消失与后台定时轮询暴力重绘问题（D-522）。
+
 ## 2026-10-19 v18.18.0 里程碑交付
 
 - [x] T-1871 Task Horizon 提供端协议全面就绪（C-01 远端变更广播、C-02 API 生命周期规范、C-03 日历投影增量字段 scheduleType/asOfDate、W-03 严格时间与写入约束校验、C-04 边界测试）。
