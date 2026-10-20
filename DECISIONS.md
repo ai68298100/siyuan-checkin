@@ -1,3 +1,16 @@
+# D-519：T-1818 & T-1821 表单字段视觉规范与长表单分节系统第二切片（2026-10-20）
+
+- **表单输入高度与文本域 Token 收敛（T-1818）**：
+  - 新增 `--lc-checkin-field-height-sm: 28px`、`--lc-checkin-field-textarea-min-height: 72px`、`--lc-checkin-field-textarea-min-height-lg: 88px` 标准 token；
+  - 收敛事项、问卷日记、长备注文本域散落的 `72px/84px/88px` 高度到单一 token；
+  - 统一校验状态（`aria-invalid="true"` 聚焦获得 danger 光环，禁用态半透明与 forbidden 指针，忙碌态 wait 指针）；
+  - 在 `@media (prefers-contrast: more)` 下对所有输入框与文本域提供 2px 实体边框与高可见度 focus outline。
+- **编辑器长表单分节与折叠系统（T-1821）**：
+  - 为 `[data-editor-section]` 增设虚线视觉分隔与加粗标题，清晰界定“基础设置 / 排期规则 (when) / 记录方式 (how)”区域；
+  - 收敛高级设置 `[data-advanced]` 抽屉展开过渡与指示器翻转；在 `prefers-reduced-motion` 下平滑跳过动效。
+- **CSS 资产零死类合规**：
+  - 增补 `BUTTON_SEMANTIC_CLASSES` 到 `labels.ts`，打通 T-1817 五级按钮语义类名，`css-audit` 保持 0 死类、CSS 产物 662 KiB 严格低于 680 KiB 硬预算。
+
 # D-518：T-1786 跨入口写入幂等去重、二值完成阻断与破戒回执对账统一（2026-10-20）
 
 - **二值完成与戒除破戒口径彻底统一**：在 `recordExternalEvent`（API 单条调用）补齐对二值项目完成和二值戒除项目（`atMost`）的同口径判定：

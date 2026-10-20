@@ -574,7 +574,7 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__field { min-width:0; }
 .lc-checkin__field > span { min-width:0; overflow-wrap:anywhere; word-break:break-word; line-height:1.35; }
 .lc-checkin__field input,.lc-checkin__field select,.lc-checkin__field textarea { min-width:0; width:100%; box-sizing:border-box; }
-.lc-checkin__field textarea { min-height:72px; resize:vertical; }
+.lc-checkin__field textarea { min-height:var(--lc-checkin-field-textarea-min-height); resize:vertical; }
 .lc-checkin__field input:focus-visible,.lc-checkin__field select:focus-visible,.lc-checkin__field textarea:focus-visible { outline:2px solid var(--lc-checkin-accent); }
 .lc-checkin__form-row { min-width:0; }
 .lc-checkin__form-row > * { min-width:0; }
@@ -595,11 +595,11 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__occasion-manager-row:hover { border-color:var(--lc-checkin-card-border-hover); box-shadow:var(--lc-checkin-card-shadow-hover); transform:translateY(-1px); }
 .lc-checkin__occasion-icon { border-radius:var(--lc-checkin-radius-sm); background:var(--lc-checkin-accent-soft); }
 .lc-checkin__occasion-form-panel form { gap:var(--lc-checkin-space-4); }
-.lc-checkin--occasions .lc-checkin__field textarea { min-height:88px; }
+.lc-checkin--occasions .lc-checkin__field textarea { min-height:var(--lc-checkin-field-textarea-min-height-lg); }
 .lc-checkin__history-filter-row { padding:var(--lc-checkin-space-3); border:1px solid var(--lc-checkin-border); border-radius:var(--lc-checkin-radius); background:var(--lc-checkin-surface); }
 .lc-checkin__occasion-form-panel .lc-checkin__field > span { font-weight:650; }
-.lc-checkin__occasion-form-panel .lc-checkin__field input,.lc-checkin__occasion-form-panel .lc-checkin__field select { min-height:38px; }
-.lc-checkin__occasion-form-panel .lc-checkin__field textarea { min-height:84px; }
+.lc-checkin__occasion-form-panel .lc-checkin__field input,.lc-checkin__occasion-form-panel .lc-checkin__field select { min-height:var(--lc-checkin-field-height-lg); }
+.lc-checkin__occasion-form-panel .lc-checkin__field textarea { min-height:var(--lc-checkin-field-textarea-min-height-lg); }
 .lc-checkin__occasion-manager-list { min-width:0; }
 .lc-checkin__occasion-manager-row { min-width:0; }
 .lc-checkin__occasion-row-body { min-width:0; overflow:hidden; }
@@ -667,7 +667,9 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__visually-hidden { position:absolute !important; width:1px !important; height:1px !important; padding:0 !important; margin:-1px !important; overflow:hidden !important; clip:rect(0 0 0 0) !important; white-space:nowrap !important; border:0 !important; }
 .lc-checkin__field[aria-invalid="true"] > span { color:var(--lc-checkin-danger-text); }
 .lc-checkin__field[aria-invalid="true"] input,.lc-checkin__field[aria-invalid="true"] select,.lc-checkin__field[aria-invalid="true"] textarea { border-color:var(--lc-checkin-danger) !important; }
+.lc-checkin__field[aria-invalid="true"] :is(input, select, textarea):focus { outline:2px solid var(--lc-checkin-danger) !important; box-shadow:0 0 0 3px color-mix(in srgb, var(--lc-checkin-danger) 24%, transparent) !important; }
 .lc-checkin__field[aria-invalid="false"] input,.lc-checkin__field[aria-invalid="false"] select,.lc-checkin__field[aria-invalid="false"] textarea { border-color:var(--lc-checkin-success); }
+.lc-checkin__field :is(input, select, textarea):disabled { opacity: 0.62; cursor: not-allowed; background-color: var(--lc-checkin-muted-surface); }
 .lc-checkin__kbd { display:inline-flex; align-items:center; min-height:20px; padding:0 5px; border:1px solid var(--lc-checkin-border); border-bottom-width:2px; border-radius:4px; color:var(--lc-checkin-muted); background:var(--lc-checkin-muted-surface); font:10px ui-monospace,monospace; }
 .lc-checkin__item.is-complete { opacity: .78; }
 .lc-checkin__item.is-complete .lc-checkin__item-progress { opacity: .72; }
@@ -3011,10 +3013,10 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 
 /* ---------------- inputs ---------------- */
 .lc-checkin :is(input, select, textarea) {
-    border: 1px solid var(--lc-checkin-border-strong);
-    border-radius: var(--lc-checkin-radius-sm);
+    border: var(--lc-checkin-field-border-strong);
+    border-radius: var(--lc-checkin-field-radius);
     color: var(--lc-checkin-text);
-    background: var(--lc-checkin-surface);
+    background: var(--lc-checkin-field-bg);
     font: inherit;
     transition: border-color var(--lc-checkin-motion-fast), background-color var(--lc-checkin-motion-fast), box-shadow var(--lc-checkin-motion-fast);
 }
@@ -3022,7 +3024,8 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin :is(input, select, textarea):focus {
     border-color: var(--lc-checkin-accent-text);
     box-shadow: var(--lc-checkin-focus);
-    outline: none;
+    outline: 2px solid var(--lc-checkin-accent);
+    outline-offset: 1px;
 }
 
 /* ---------------- today ---------------- */
@@ -10964,5 +10967,29 @@ dialog.lc-checkin.lc-checkin__avatar-editor {
 .review-batch-entry input[type="number"] { width: 120px; max-width: 40%; min-height: 36px; padding: 4px 8px; border: 1px solid var(--lc-checkin-border-strong); border-radius: var(--lc-checkin-radius-sm); background: var(--lc-checkin-surface); color: inherit; font: inherit; }
 .review-batch-state { color: var(--lc-checkin-muted); font-size: 11px; }
 .review-batch-state.is-error { color: var(--lc-checkin-danger-text); }
+
+/* T-1818 & T-1821 表单字段微视觉与分节分隔规范 */
+.lc-checkin--editor .lc-checkin__field-heading[data-editor-section] {
+    margin: 16px 0 8px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--lc-checkin-border);
+    > span {
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--lc-checkin-text);
+        letter-spacing: 0.02em;
+    }
+}
+
+@media (prefers-contrast: more) {
+    .lc-checkin :is(input, select, textarea) {
+        border-width: 2px !important;
+    }
+    .lc-checkin :is(input, select, textarea):focus-visible {
+        outline: 3px solid Highlight !important;
+        outline-offset: 1px !important;
+    }
+}
+
 .lc-checkin--today .lc-checkin__item-topline .lc-checkin__streak-badge { height: 28px; min-height: 28px; line-height: 28px; }
 @include meta.load-css("./reminder-density");

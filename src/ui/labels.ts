@@ -38,3 +38,13 @@ export const SCHEDULE_LABELS: Record<ScheduleType, string> = {
     interval: "schedule.interval",
     quota: "schedule.quota",
 };
+
+/** T-1817 / D-516 按钮五级动作语义体系类名映射 */
+export const BUTTON_SEMANTIC_CLASSES = {
+    primary: "lc-checkin__primary-button",
+    secondary: "lc-checkin__secondary-button",
+    quiet: "lc-checkin__quiet-button",
+    destructive: "lc-checkin__destructive-button",
+    icon: "lc-checkin__icon-button",
+} as const;
+

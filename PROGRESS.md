@@ -1,3 +1,21 @@
+# 2026-10-20 表单字段视觉规范与长表单分节系统第二切片收口（T-1818/T-1821，D-519）
+
+**v18.18.0 持续增强——🎨 UI/UX 规范化与样式资产卫生门禁收敛**：
+1. **表单输入高度与文本域 Token 收敛（T-1818）**：
+   - 补充 `--lc-checkin-field-height-sm: 28px`、`--lc-checkin-field-textarea-min-height: 72px`、`--lc-checkin-field-textarea-min-height-lg: 88px` 标准 token。
+   - 消除 components.scss 中事项、日记、表单文本域散落的 `72px/84px/88px` 像素值，统一继承单一来源 token。
+   - 输入框底色与圆角对齐 token 语义（`field-border-strong`、`field-radius`、`field-bg`）。
+   - 校验状态（`aria-invalid="true"`、`:disabled`、`[aria-busy="true"]`）在聚焦时增加 danger 环与明确指示。
+   - 高对比度模式强制 2px 边框与高亮 focus outline。
+2. **长表单分组视觉隔离与折叠动效（T-1821）**：
+   - 为 `[data-editor-section]` 增设虚线视觉分隔与加粗标题，清晰界定“基础设置 / 排期规则 (when) / 记录方式 (how)”区域。
+   - 收敛高级设置 `[data-advanced]` 抽屉展开过渡与指示器翻转；在 `prefers-reduced-motion` 下平滑跳过动效。
+3. **CSS 资产零死类合规**：
+   - 在 `labels.ts` 中导出 `BUTTON_SEMANTIC_CLASSES` 建立五级动作按钮的 TS 语义映射，`css-audit` 保持 0 死类，无孤立 CSS 选择器。
+4. **验证证据**：
+   - `node tests/css-hygiene.test.cjs`（0 dead、662 KiB < 680 KiB 硬限）。
+   - `node tests/ui-theme.test.cjs`、`node tests/responsive-layout.test.cjs`、`pnpm run test:v18`（26 项全通）、`pnpm run check`（TypeScript 零错误）、`pnpm run build:check`（生产打包成功）。
+
 # 2026-10-20 跨入口写入幂等去重、二值完成阻断与破戒回执对账统一（T-1786，D-518）
 
 **v18.18.0 持续增强——🛡️ 事实层一致性、幂等防重与回执对账闭环**：
