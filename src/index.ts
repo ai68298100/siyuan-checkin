@@ -22,7 +22,9 @@ import {getPluginLocale, setPluginLanguage, t} from "./i18n";
 import {uiIcon, type UiIconName} from "./ui/icons";
 import {PRIORITY_LABELS, TIME_SLOT_LABELS, SORT_LABELS, SCHEDULE_LABELS, KIND_LABELS} from "./ui/labels";
 import {escapeHtml, normalizeCustomIconLibrary, withTimeout, renderIconMarkup, formatNumber, captureActionMoment, nextItemUpdatedAt, currentCalendarDate, calendarDateFromKey, isValidLocalDateInput, storeNeedsMigration, getRecordStep, formatHistoryDate, type ActionMoment} from "./shared";
-import {buildRecoveryAuditDetails, classifyJsonRecoveryError, parseCheckinCsv, preflightJsonRecovery, summarizeJsonBackup} from "./export";
+import {assessJsonMigration, buildRecoveryAuditDetails, classifyJsonRecoveryError, parseCheckinCsv, preflightJsonRecovery, summarizeJsonBackup} from "./export";
+import {createBackupEnvelopeFromBuckets, preflightUnifiedBackup, type BackupEnvelope, type UnifiedBackupPreflight} from "./backup-envelope";
+import {PLUGIN_VERSION} from "./version";
 import {buildHabitInsights} from "./features/insights";
 import {buildCoachingSuggestions} from "./features/coaching";
 import {buildReviewAnalysisKey, selectReviewAnalysis, type ReviewAssistantGoal} from "./features/review-assistant";
@@ -57,7 +59,7 @@ import {saveEditorForm, type SaveFormHost} from "./render/save-form";
 import {cloneItemForDateValue, cloneItemValue, cloneStoreValue, computeStreaksValue, getSummaryEventsValue, itemFingerprintValue, makeEventValue, revisionFingerprintValue} from "./model-helpers";
 import {persistNormalizedStoreWithVerification, persistStoreWithReconciliation, projectLocalStoreChanges, reconcileNormalizedStoreSnapshots} from "./storage-transaction";
 import {createTeardownDeadline, createTeardownWriteGate, TEARDOWN_DRAIN_BUDGET_MS, TEARDOWN_FLUSH_BUDGET_MS, waitWithinDeadline} from "./teardown";
-import {bindDialogCloseFor, bindMobileNavFor, changeHistoryMonthFor, downloadDiagnosticsFor, downloadDockTomatoDiagnosticsFor, downloadExportFor, downloadLoopExportFor, downloadReportMarkdownFor, downloadSnapshotHistoryFor, downloadStoreAuditFor, downloadSuggestionAuditFor, focusTodaySearchFor, getQuickTodayItems, importCsvRowsInto, downloadObsidianExportFor, importLoopPlanInto, importObsidianHabitsInto, invalidateSummaryFor, renderBackgroundUpdateFor, restoreItemFor, settleReadyFor, showSyncNoticeFor, type ImportConflictDisposition, type PluginOpsHost} from "./plugin-ops";
+import {bindDialogCloseFor, bindMobileNavFor, changeHistoryMonthFor, downloadBackupEnvelopeFor, downloadDiagnosticsFor, downloadDockTomatoDiagnosticsFor, downloadExportFor, downloadLoopExportFor, downloadReportMarkdownFor, downloadSnapshotHistoryFor, downloadStoreAuditFor, downloadSuggestionAuditFor, focusTodaySearchFor, getQuickTodayItems, importCsvRowsInto, downloadObsidianExportFor, importLoopPlanInto, importObsidianHabitsInto, invalidateSummaryFor, renderBackgroundUpdateFor, restoreItemFor, settleReadyFor, showSyncNoticeFor, type ImportConflictDisposition, type PluginOpsHost} from "./plugin-ops";
 import {buildLoopImportPlan, type LoopImportPlan} from "./features/loop-csv";
 import {ANCHOR_ATTR_KEY, appendAnchorNote, buildAnchorAttrValue, buildAnchorNoteMarkdown, clearAnchorAttr, resolveAnchorBlock, validateAnchorBlockId, withBoundedRetry, writeAnchorAttr} from "./features/note-anchor";
 import {buildDailySummaryLine, buildSummaryDuplicateQuery, extractSummaryRows} from "./features/summary-resident";
@@ -6603,6 +6605,21 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
                 downloadDiagnosticsFor(this.diagnostics);
             });
         }));
+        root.querySelector<HTMLElement>("[data-action='export-envelope']")?.addEventListener("click", (event) => runSettingsAction(event.currentTarget as HTMLElement, async () => {
+            const envelope = createBackupEnvelopeFromBuckets({
+                pluginVersion: PLUGIN_VERSION,
+                store: this.cloneStore(),
+                viewPreferences: this.collectViewPreferences(),
+                userTemplates: this.userTemplates,
+                customIconLibrary: this.customIconLibrary,
+                journalData: {templates: this.journalCustomTemplates, integration: this.journalIntegrationPref},
+                occasionStore: this.occasionStore,
+                auditEntries: this.auditEntries,
+                includeSensitive: false,
+            });
+            await downloadBackupEnvelopeFor(envelope);
+            settingsFeedback(t("msg.exportEnvelopeSuccess"));
+        }));
         root.querySelector<HTMLInputElement>("[data-import-json]")?.addEventListener("change", async (event) => {
             const input = event.currentTarget as HTMLInputElement;
             const file = input.files?.[0];
@@ -6610,43 +6627,178 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
             if (settingsBusy.has(input)) return;
             settingsBusy.add(input); input.disabled = true; input.setAttribute("aria-busy", "true");
             try {
-                const preflight = preflightJsonRecovery(await file.text(), normalizeStore, summarizeJsonBackup(this.store));
-                const {report: migration, assessment, validationErrors} = preflight;
-                const backup = migration;
-                if (validationErrors.length) {
-                    this.auditEntries = appendStoreAudit(this.auditEntries, {type: "migration", at: new Date().toISOString(), details: buildRecoveryAuditDetails("json-import", preflight, "rejected", validationErrors)});
-                    this.recordDiagnostic("migration-rejected", (validationErrors[0] || "unknown").slice(0, 200));
+                const text = await file.text();
+                const preflight = preflightUnifiedBackup(text, {normalizeStore, preflightLegacy: preflightJsonRecovery}, summarizeJsonBackup(this.store));
+                if (preflight.validationErrors.length) {
+                    this.auditEntries = appendStoreAudit(this.auditEntries, {
+                        type: "migration",
+                        at: new Date().toISOString(),
+                        details: {status: "rejected", format: preflight.format, source: "json-import", errors: preflight.validationErrors},
+                    });
+                    this.recordDiagnostic("migration-rejected", (preflight.validationErrors[0] || "unknown").slice(0, 200));
                     void this.persistAuditBestEffort();
-                    settingsFeedback(t("msg.jsonRestoreValidationFail", {list: validationErrors.join("；")}));
+                    settingsFeedback(t("msg.jsonRestoreValidationFail", {list: preflight.validationErrors.join("；")}));
                     input.value = "";
                     return;
                 }
-                const {itemCount, eventCount, archivedItemCount, dateRange} = backup.summary;
-                const rangeLabel = dateRange ? `，日期 ${dateRange.from} 至 ${dateRange.to}` : "";
-                const warningLabel = backup.warnings.length ? `\n\n兼容性提示：${backup.warnings.join("；")}` : "";
-                    const reviewLabel = assessment.requiresReview ? `\n\n请复核：${assessment.reasons.join("；")}` : "";
-                    if (!window.confirm(t("msg.jsonRestoreConfirm", {items: itemCount, archived: archivedItemCount, events: eventCount, range: `${rangeLabel}${reviewLabel}`, warning: warningLabel}))) { input.value = ""; return; }
+
+                let confirmMessage = "";
+                if (preflight.format === "legacy-store") {
+                    const backup = preflight.mainStoreReport!;
+                    const {itemCount, eventCount, archivedItemCount, dateRange} = backup.summary;
+                    const rangeLabel = dateRange ? `，日期 ${dateRange.from} 至 ${dateRange.to}` : "";
+                    const warningLabel = backup.warnings.length ? `\n\n兼容性提示：${backup.warnings.join("；")}` : "";
+                    const reviewLabel = preflight.requiresReview ? `\n\n请复核：${preflight.reviewReasons.join("；")}` : "";
+                    confirmMessage = `【旧版单主档备份】\n注意：此文件仅包含打卡项目与记录，不包含模板、问卷、偏好等独立配置存储桶。现有独立配置不会被清除或覆盖。\n\n` +
+                        t("msg.jsonRestoreConfirm", {items: itemCount, archived: archivedItemCount, events: eventCount, range: `${rangeLabel}${reviewLabel}`, warning: warningLabel});
+                } else {
+                    const bucketList = preflight.bucketPlans.map((b) => `• ${b.key}: ${b.description}`).join("\n");
+                    const warningLabel = preflight.mainStoreReport && preflight.mainStoreReport.warnings.length
+                        ? `\n\n兼容性提示：${preflight.mainStoreReport.warnings.join("；")}`
+                        : "";
+                    const reviewLabel = preflight.requiresReview ? `\n\n请复核：\n${preflight.reviewReasons.join("；\n")}` : "";
+                    confirmMessage = `【版本化多桶备份 (Envelope v${preflight.envelopeVersion})】\n` +
+                        `来源版本：${preflight.pluginVersion}，导出时间：${preflight.exportedAt ? new Date(preflight.exportedAt).toLocaleString() : "未知"}\n\n` +
+                        `包含的存储桶与恢复策略：\n${bucketList}${warningLabel}${reviewLabel}\n\n确认导入并应用上述存储桶吗？`;
+                }
+
+                if (!window.confirm(confirmMessage)) { input.value = ""; return; }
+
                 try {
-                    await this.enqueueMutation(async () => {
-                        const previous = this.store;
-                        this.store = backup.store;
+                    await this.withStorageLock(async () => {
+                        const previousStore = this.store;
+                        const previousTemplates = this.userTemplates;
+                        const previousIcons = this.customIconLibrary;
+                        const previousJournalTemplates = this.journalCustomTemplates;
+                        const previousJournalIntegration = this.journalIntegrationPref;
+                        const previousOccasions = this.occasionStore;
+                        const previousPreferences = this.collectViewPreferences();
+
                         try {
-                            await this.persist();
+                            const backup = preflight.mainStoreReport;
+                            if (backup) {
+                                await this.enqueueMutation(async () => {
+                                    const previous = this.store;
+                                    this.store = backup.store;
+                                    try {
+                                        await this.persist();
+                                    } catch (error) {
+                                        this.store = previous;
+                                        throw error;
+                                    }
+                                });
+                            }
+
+                            if (preflight.format === "envelope" && preflight.rawEnvelope) {
+                                const buckets = preflight.rawEnvelope.buckets || {};
+
+                                const templateBucket = buckets["checkin-templates"];
+                                if (templateBucket && templateBucket.data && !templateBucket.masked) {
+                                    const rawList = Array.isArray(templateBucket.data)
+                                        ? templateBucket.data.map((item) => normalizeUserTemplate(item)).filter((item): item is UserTemplate => Boolean(item))
+                                        : [];
+                                    const resolution = preflight.bucketPlans.find((b) => b.key === "checkin-templates")?.resolution || "overwrite";
+                                    const newTemplates = resolution === "merge" ? mergeUserTemplates(this.userTemplates, rawList) : rawList;
+                                    await this.saveData(USER_TEMPLATES_NAME, newTemplates);
+                                    this.userTemplates = newTemplates;
+                                }
+
+                                const iconBucket = buckets["checkin-custom-icon-library"];
+                                if (iconBucket && iconBucket.data && !iconBucket.masked) {
+                                    const rawIcons = Array.isArray(iconBucket.data) ? iconBucket.data.filter((item): item is string => typeof item === "string") : [];
+                                    const resolution = preflight.bucketPlans.find((b) => b.key === "checkin-custom-icon-library")?.resolution || "overwrite";
+                                    const newIcons = resolution === "merge" ? [...new Set([...this.customIconLibrary, ...rawIcons])] : rawIcons;
+                                    await this.saveData(CUSTOM_ICON_LIBRARY_NAME, newIcons);
+                                    this.customIconLibrary = newIcons;
+                                }
+
+                                const journalBucket = buckets["checkin-journal-data"];
+                                if (journalBucket && journalBucket.data && !journalBucket.masked) {
+                                    const raw = journalBucket.data as {templates?: unknown; integration?: unknown};
+                                    const templates = normalizeCustomJournalTemplates(raw.templates);
+                                    const integration = normalizeJournalIntegration(raw.integration);
+                                    await this.saveData(JOURNAL_DATA_NAME, {templates, integration});
+                                    this.journalCustomTemplates = templates;
+                                    this.journalIntegrationPref = integration;
+                                    this.lastPersistedJournalTemplates = templates.map((e) => ({...e, questions: e.questions.map((q) => ({...q}))}));
+                                    this.lastPersistedJournalIntegration = {...integration};
+                                }
+
+                                const occasionBucket = buckets["checkin-occasion-store"];
+                                if (occasionBucket && occasionBucket.data && !occasionBucket.masked) {
+                                    const newOccasions = normalizeOccasionStore(occasionBucket.data);
+                                    await this.saveData(OCCASIONS_STORAGE_NAME, newOccasions);
+                                    this.occasionStore = newOccasions;
+                                }
+
+                                const prefBucket = buckets["checkin-view-preferences"];
+                                if (prefBucket && prefBucket.data && !prefBucket.masked) {
+                                    const newPrefs = normalizeViewPreferences(prefBucket.data);
+                                    await this.saveData(VIEW_PREFERENCES_NAME, newPrefs);
+                                    this.applyViewPreferences(newPrefs);
+                                }
+                            }
                         } catch (error) {
-                            this.store = previous;
+                            this.store = previousStore;
+                            this.userTemplates = previousTemplates;
+                            this.customIconLibrary = previousIcons;
+                            this.journalCustomTemplates = previousJournalTemplates;
+                            this.journalIntegrationPref = previousJournalIntegration;
+                            this.occasionStore = previousOccasions;
+                            this.applyViewPreferences(previousPreferences);
+
+                            try {
+                                await this.saveData(STORAGE_NAME, previousStore);
+                                await this.saveData(USER_TEMPLATES_NAME, previousTemplates);
+                                await this.saveData(CUSTOM_ICON_LIBRARY_NAME, previousIcons);
+                                await this.saveData(JOURNAL_DATA_NAME, {templates: previousJournalTemplates, integration: previousJournalIntegration});
+                                await this.saveData(OCCASIONS_STORAGE_NAME, previousOccasions);
+                                await this.saveData(VIEW_PREFERENCES_NAME, previousPreferences);
+                            } catch {
+                                // best-effort disk rollback
+                            }
                             throw error;
                         }
                     });
                 } catch {
-                    this.auditEntries = appendStoreAudit(this.auditEntries, {type: "migration", at: new Date().toISOString(), details: buildRecoveryAuditDetails("json-import", preflight, "rejected", ["persist-failed"])});
-                    this.recordDiagnostic("save-failed", "json-import-persist-failed");
+                    this.auditEntries = appendStoreAudit(this.auditEntries, {
+                        type: "migration",
+                        at: new Date().toISOString(),
+                        details: {status: "rejected", format: preflight.format, source: "unified-backup-import", error: "persist-failed"},
+                    });
+                    this.recordDiagnostic("save-failed", "backup-recovery-persist-failed");
                     await this.persistAuditBestEffort();
                     settingsFeedback(t("msg.restoreFailed"));
                     return;
                 }
-                this.auditEntries = appendStoreAudit(this.auditEntries, {type: "migration", at: new Date().toISOString(), details: buildRecoveryAuditDetails("json-import", preflight, "accepted")});
-                await this.persistAuditBestEffort();
-                settingsFeedback(t("msg.jsonRestored", {items: itemCount, events: eventCount, repaired: backup.repaired ? t("msg.jsonRepaired") : ""}));
+
+                if (preflight.format === "legacy-store") {
+                    const backup = preflight.mainStoreReport!;
+                    this.auditEntries = appendStoreAudit(this.auditEntries, {
+                        type: "migration",
+                        at: new Date().toISOString(),
+                        details: buildRecoveryAuditDetails("json-import", {report: backup, assessment: assessJsonMigration(backup), validationErrors: []}, "accepted"),
+                    });
+                    await this.persistAuditBestEffort();
+                    settingsFeedback(t("msg.jsonRestored", {items: backup.summary.itemCount, events: backup.summary.eventCount, repaired: backup.repaired ? t("msg.jsonRepaired") : ""}));
+                } else {
+                    const applied = preflight.bucketPlans.filter((b) => b.present && b.resolution !== "skip").map((b) => b.key);
+                    const skipped = preflight.bucketPlans.filter((b) => !b.present || b.resolution === "skip").map((b) => b.key);
+                    this.auditEntries = appendStoreAudit(this.auditEntries, {
+                        type: "migration",
+                        at: new Date().toISOString(),
+                        details: {
+                            status: "accepted",
+                            format: "envelope",
+                            envelopeVersion: preflight.envelopeVersion,
+                            appliedCount: applied.length,
+                            appliedBuckets: applied,
+                            skippedCount: skipped.length,
+                        },
+                    });
+                    await this.persistAuditBestEffort();
+                    settingsFeedback(t("msg.envelopeRestored", {applied: applied.length, skipped: skipped.length}));
+                }
                 this.render();
             } catch (error) {
                 const failureKind = classifyJsonRecoveryError(error);

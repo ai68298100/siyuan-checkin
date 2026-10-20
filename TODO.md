@@ -205,7 +205,7 @@
 - [~] T-1784 Today 局部刷新、搜索输入与焦点/滚动并发一致性（P1，选区/回执切片已交付 2026-10-09）——搜索重绘保留起止选区和方向，局部成功回执重绑详情展开，IME/跨 root 定向夹具通过；完整慢存储、滚动和真实宿主矩阵仍开放。
 - [x] T-1785 动态图标与 HTML/SVG 属性转义边界统一（P1，已交付 2026-10-09）——`isSafeIconImage` 统一收紧 HTTPS、栅格 base64 与无活动内容 SVG 白名单；危险 data/SVG、属性闭合、控制字符回退为转义文本，编辑器图标库分类与渲染共用 gate。`tests/render-boundary.test.cjs`、`tests/mobile-editor-structure.test.cjs`、check 通过；CSP/真实宿主仍按现场边界开放。
 - [ ] T-1786 API/Agent/快速入口写入幂等、失败回执与首次破戒统一（P1，T-1768/T-1670 后续）——`src/index.ts:6651-6653`、`src/agent-capabilities.ts:184-185` 及 quick/渲染块入口均有异步写入，但缺少统一 request-id 回执和跨入口对账。验证同 request 重复提交只有一条事件，失败保留可重试状态且无部分事实；atMost 首次破戒可写、普通二值仍阻断，API/Agent/今日显示同一事件详情与撤销对象。
-- [ ] T-1787 备份恢复版本化与独立桶迁移提示（P1，D-318/T-1627 后续）——主档 JSON 已明确不含模板、问卷、图标、事项、提醒动作、视图偏好和失败箱，但多桶恢复尚无具体协议。设计旧/新 schema 校验、逐桶覆盖/合并/跳过预览、敏感遮罩和整体失败回滚；导入后主档与辅助桶均可追溯，界面不再把主档恢复宣传成静默全量迁移。
+- [x] T-1787 备份恢复版本化与独立桶迁移提示（P1，已交付 2026-10-20，D-517）——在 `src/backup-envelope.ts` 落地 `classifyBackupPayload` 与 `preflightUnifiedBackup`，精准区分旧版单主档与版本化多桶 BackupEnvelope（v1）；旧版单主档如实披露丢失的独立配置桶，提示现有独立配置保持不变；多桶 Envelope 自动生成逐桶覆盖/合并/跳过规划预览，敏感桶默认遮罩跳过；多桶恢复在锁内执行并在失败时原子回滚内存与磁盘；落地多桶备份导出与设置页按钮。守门 `tests/backup-migration-flow.test.cjs` 纳入 `test:v18`；`check` / `test:v18` / `build:check` 全绿。
 - [ ] T-1788 实时状态、错误态与慢响应视觉/操作验收矩阵（P2，T-1778 可执行资产）——现有 `tests/visual-qa.cjs`、`tests/width-walkthrough.cjs` 主要覆盖静态和成功态；补 loading、error、slow-source、empty、长英文和 400% 缩放夹具，覆盖 320/390/720/900/1400px、双主题、中英、焦点、重试、禁用、`aria-live` 与长字段。逐项记录自动化、计算样式和真实宿主证据边界，不另造页面功能任务。
 
 ### 第三轮：监听生命周期、日期契约、导入事实与跨 root 可用性（2026-09-30；只登记不开发）

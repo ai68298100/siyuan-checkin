@@ -216,6 +216,17 @@ export function downloadMigrationReportFor(report: JsonMigrationReport): void {
     void saveGeneratedFile({fileName: `siyuan-checkin-migration-${dateKey(new Date())}.json`, content: serializeJsonMigrationReport(report), mime: "application/json;charset=utf-8"});
 }
 
+/** T-1787：版本化多桶备份 Envelope 导出，走统一安全导出通道 */
+export function downloadBackupEnvelopeFor(envelope: import("./backup-envelope").BackupEnvelope): Promise<SaveOutcome> {
+    const content = JSON.stringify(envelope, null, 2);
+    return saveGeneratedFile({
+        fileName: `siyuan-checkin-envelope-${dateKey(new Date())}.json`,
+        content,
+        mime: "application/json;charset=utf-8",
+    });
+}
+
+
 /* T-1217：本地生成的 Markdown 报告与其他导出共用同一条保存通道。 */
 export function downloadReportMarkdownFor(markdown: string): Promise<SaveOutcome> {
     return saveGeneratedFile({fileName: `siyuan-checkin-report-${dateKey(new Date())}.md`, content: markdown, mime: "text/markdown;charset=utf-8"});

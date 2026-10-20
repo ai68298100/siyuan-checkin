@@ -1,3 +1,22 @@
+# 2026-10-20 备份恢复版本化与多桶 Envelope 迁移提示与原子事务（T-1787，D-517）
+
+**v18.18.0 持续增强——🛡️ 数据可靠性、版本化备份与原子恢复事务收口**：
+1. **统一输入识别与旧版单主档向后兼容（T-1787）**：
+   - 在 `src/backup-envelope.ts` 落地 `classifyBackupPayload` 与 `preflightUnifiedBackup`，自动识别旧版单主档 JSON（`envelopeVersion: 0`）与新版多桶 BackupEnvelope（`envelopeVersion: 1`）。
+   - 对旧版单主档如实披露丢失的独立配置桶（模板、问卷、图标、事项、偏好），明确提示恢复不影响现有独立配置，消除“主档恢复等于全量迁移”的用户误解。
+   - 对未知未来版本（如 `envelopeVersion >= 2`）或损坏文件严格 fail-closed 拦截并记录审计日志。
+2. **多桶逐桶规划与敏感桶遮罩治理**：
+   - 依据 D-514 分类策略，在 `planBackupEnvelopeImport` 中自动生成逐桶处理规划（主档/覆盖型=overwrite，追加型=merge，敏感桶=skip 且 payload null 遮罩）。
+   - 恢复前弹窗展示清晰的存储桶清单、版本与时间戳、修改风险提示，得到明确确认后才执行恢复。
+3. **多桶原子写入与全量回滚事务（Atomic Multi-Bucket Rollback）**：
+   - 恢复过程在 `withStorageLock` 锁内执行，预先快照所有桶的内存状态（主档、模板、图标、问卷日记、事项、界面偏好）。
+   - 主档严格走 `enqueueMutation` 并发调度；若主档或任何辅助桶在保存时异常，立即触发全量原子回滚，回滚内存并重写磁盘快照，杜绝部分迁移或内存-磁盘分叉。
+4. **多桶备份导出能力**：
+   - 落地 `createBackupEnvelopeFromBuckets` 与 `downloadBackupEnvelopeFor`，在设置页提供“导出完整备份 (多桶 Envelope)”按钮，支持导出包含全部辅助桶与脱敏审计日志的完整版本化备份。
+5. **守门与验证**：
+   - 新增 `tests/backup-migration-flow.test.cjs`（覆盖旧版兼容、多桶规划、非法版本拦截、敏感遮罩与回滚断言），纳入 `test:v18`（全 26 项全通）。
+   - `pnpm run check`（TypeScript 零错误）、`pnpm run test:v18`、`node tests/csv-roundtrip.test.cjs`、`pnpm run build:check`（生产打包成功）全绿。
+
 # 2026-10-20 空态/引导与 4 级动作按钮语义系统收口（T-1817/T-1820，D-516）
 
 **v18.18.0 持续增强——🎨 UI/UX 精细化打磨与无障碍收敛**：
