@@ -665,12 +665,36 @@ export function renderReviewView(ctx: ReviewViewContext): string {
         return `<ol class="lc-checkin__lifelog-timeline" role="list">${rows}</ol>`;
     };
 
+    /* T-1872：心流与精力自评分布看板（对标 TickTick/Atoms） */
+    const renderEnergyFlow = (): string => {
+        const flow = summary.energyFlow;
+        if (!flow || flow.totalWithEnergy === 0) {
+            return `<div class="lc-checkin__energy-flow-card"><p class="review-scope-note">${escapeHtml(t("review.energyEmpty"))}</p></div>`;
+        }
+        const levels = [
+            {lvl: 5, icon: "🚀", name: t("item.energy5")},
+            {lvl: 4, icon: "😊", name: t("item.energy4")},
+            {lvl: 3, icon: "😐", name: t("item.energy3")},
+            {lvl: 2, icon: "🥱", name: t("item.energy2")},
+            {lvl: 1, icon: "😴", name: t("item.energy1")},
+        ] as const;
+        const maxCount = Math.max(1, ...Object.values(flow.distribution));
+        const bars = levels.map(({lvl, icon, name}) => {
+            const count = flow.distribution[lvl as 1 | 2 | 3 | 4 | 5];
+            const pct = Math.round((count / flow.totalWithEnergy) * 100);
+            const barWidth = Math.round((count / maxCount) * 100);
+            return `<div class="lc-checkin__energy-bar-row"><span class="lc-checkin__energy-bar-label">${icon} ${escapeHtml(name)}</span><div class="lc-checkin__energy-bar-track"><div class="lc-checkin__energy-bar-fill" style="width: ${barWidth}%"></div></div><span class="lc-checkin__energy-bar-val">${count} <small>(${pct}%)</small></span></div>`;
+        }).join("");
+        return `<div class="lc-checkin__energy-flow-card" data-energy-flow-card><div class="lc-checkin__energy-flow-header"><div><strong>${escapeHtml(t("review.energyAvg"))}：<em class="lc-checkin__energy-score">${flow.averageEnergy !== undefined ? flow.averageEnergy : "-"}</em> / 5.0</strong><small>${escapeHtml(t("review.energyCount"))}：${flow.totalWithEnergy}</small></div></div><div class="lc-checkin__energy-bars">${bars}</div></div>`;
+    };
+
     const content = workspace === "records" ? renderRecords() : workspace === "analysis"
         ? `<p class="review-scope-note">${t("review.analysisScope")}</p><div class="lc-checkin__review-sections">
             ${fold("trend", t("review.foldTrend"), renderTrends)}
             ${fold("itemCompare", t("review.itemCompareTitle"), renderItemCompare)}
             ${assistantEntry}
             ${fold("heatmap", t("review.heatmapTitle"), renderHeatmap)}
+            ${fold("energyFlow", t("review.energyFlowTitle"), renderEnergyFlow)}
             ${fold("strength", t("review.foldStrength"), renderStrength)}
             ${fold("balance", t("review.balanceTitle"), renderBalance)}
             ${fold("achievements", t("review.foldAchievements"), renderAwards)}

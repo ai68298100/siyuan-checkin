@@ -1136,6 +1136,7 @@ function normalizeEvent(value: unknown): CheckinEvent | undefined {
         note: typeof value.note === "string" ? value.note : undefined,
         externalRef: typeof value.externalRef === "string" ? value.externalRef : undefined,
         attachment: normalizeAttachmentDataUrl(value.attachment),
+        ...(Number.isInteger(Number(value.energy)) && Number(value.energy) >= 1 && Number(value.energy) <= 5 ? {energy: Number(value.energy) as 1 | 2 | 3 | 4 | 5} : {}),
         /* D-216：kind 只接受精确词表，缺省不物化（checkin 语义由 isSkipEvent 统一判定）。 */
         kind: value.kind === "skip" || value.kind === "checkin" ? value.kind : undefined,
     };

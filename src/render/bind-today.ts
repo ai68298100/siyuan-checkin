@@ -86,7 +86,7 @@ export interface BindTodayHost {
     /** T-1621：按所属表面登记打卡后焦点恢复目标。 */
     setPendingFocusItem?(root: HTMLElement, itemId: string): void;
     enqueueMutation<T>(operation: () => Promise<T>): Promise<T>;
-    recordEvent(item: CheckinItem, value: number, moment: {occurredAt: string; localDate: string}, expectedRevisionFingerprint?: string, note?: string, attachment?: string): Promise<unknown>;
+    recordEvent(item: CheckinItem, value: number, moment: {occurredAt: string; localDate: string}, expectedRevisionFingerprint?: string, note?: string, attachment?: string, externalRef?: string, energy?: 1 | 2 | 3 | 4 | 5): Promise<unknown>;
     toggleItem(itemId: string, moment: {occurredAt: string; localDate: string}, desiredComplete: boolean, expectedRevisionFingerprint?: string, eventsToUndo?: CheckinEvent[]): Promise<unknown>;
     findFocusAdapter(item: CheckinItem, date?: Date, adapterId?: string): unknown;
     startFocus(itemId: string, adapterId?: string): Promise<boolean>;
@@ -540,6 +540,9 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
                 const recordWithDetails = async (value: number): Promise<void> => {
                     const note = element.querySelector<HTMLInputElement>(".lc-checkin__record-note")?.value;
                     const attachment = pendingAttachments.get(itemId);
+                    const energyEl = element.querySelector<HTMLInputElement>("input[data-energy]:checked");
+                    const energyVal = energyEl ? Number(energyEl.value) : undefined;
+                    const energy = energyVal && energyVal >= 1 && energyVal <= 5 ? (energyVal as 1 | 2 | 3 | 4 | 5) : undefined;
                     if (host.setPendingFocusItem) host.setPendingFocusItem(root, item.id);
                     host.pulseHaptic();
                     /* T-1795：写失败保留草稿现场——附件放回 pendingAttachments、精确面板
@@ -551,7 +554,7 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
                     };
                     await host.enqueueMutation(async () => {
                         try {
-                            const recorded = await host.recordEvent(item, value, moment, expectedRevisionFingerprint, note, attachment);
+                            const recorded = await host.recordEvent(item, value, moment, expectedRevisionFingerprint, note, attachment, undefined, energy);
                             if (!recorded) {
                                 /* A second queued binary submit can arrive after the first
                                    one has completed.  That is an intentional no-op, not a

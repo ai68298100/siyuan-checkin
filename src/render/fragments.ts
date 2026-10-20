@@ -300,6 +300,10 @@ export function renderItemView(item: CheckinItem, date: Date, ctx: TodayItemCont
                 ${isBinary ? "" : `<label><span>${t(canFocus ? manualLabelKey : "item.thisRecord")}</span><input class="lc-checkin__amount" type="number" inputmode="decimal" min="${inputStep}" step="${inputStep}" value="${formatNumber(recordStep)}" aria-label="${t("item.exactThis", {unit})}" /></label>
                 <span>${escapeHtml(unit)}</span>`}
                 <input class="lc-checkin__record-note" type="text" maxlength="2000" placeholder="${t("item.notePlaceholder")}" aria-label="${t("item.noteAria")}" />
+                <div class="lc-checkin__energy-selector" role="radiogroup" aria-label="${t("item.energyLabel")}" title="${t("item.energyHint")}">
+                    <span class="lc-checkin__energy-title">${t("item.energyLabel")}</span>
+                    <div class="lc-checkin__energy-options">${([1, 2, 3, 4, 5] as const).map((lvl) => `<label class="lc-checkin__energy-option"><input type="radio" name="energy-${escapeHtml(item.id)}" value="${lvl}" data-energy="${lvl}" /><span title="${t(`item.energy${lvl}`)}">${lvl === 1 ? "😴" : lvl === 2 ? "🥱" : lvl === 3 ? "😐" : lvl === 4 ? "😊" : "🚀"}<small>${lvl}</small></span></label>`).join("")}</div>
+                </div>
                 <label class="lc-checkin__attach-button" data-attach-button title="${t("item.photo")}"><input type="file" data-attach-file aria-label="${t("item.photo")}" accept="image/png,image/jpeg,image/webp,image/gif" />${uiIcon("camera")}</label>
                 <button class="lc-checkin__record-button" type="button" data-action="record">${isBinary ? t(atMost ? "item.recordLapse" : "item.checkin") : t("item.record")}</button>
             </div>`}

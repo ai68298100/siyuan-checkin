@@ -1,3 +1,9 @@
+# D-524：T-1872 主观心流与精力自评数据事实与交叉看板落地（2026-10-20）
+
+- **数据模型设计与向前兼容**：`CheckinEvent` 增加可选字段 `energy?: 1 | 2 | 3 | 4 | 5`；`normalizeEvent` 严格校验必须为 1~5 的整数，0/6/超限/非数字自动安全过滤为 `undefined`，历史无此字段的备份完全不受影响，保持数据层零破坏与零迁移负担。
+- **输入交互极简零摩擦**：主按钮快速打卡（点击完成）与芯片快速增量（`quickSteps`）完全保持 0 摩擦（`energy` 缺省为 `undefined`）；仅在展开详细面板（`data-exact-entry`）中呈现精致的 5 档单选选项（😴 1 枯竭 / 🥱 2 疲劳 / 😐 3 平稳 / 😊 4 充沛 / 🚀 5 心流），用户可选择性标注。
+- **回顾页精力与心流分布看板**：`analytics.ts` 输出 `summarizeEnergyFlow`，`review.ts` 挂载 `energyFlow` 折叠卡片，清晰呈现平均精力评分（x.x / 5.0）、自评样本数以及 5 档精力的横向柱状占比分布，无数据时诚实给出空态引导提示。
+
 # D-523：2026-10 竞品深度对标与体验演进规划决策（2026-10-20）
 
 - **背景与调研基线**：在 v18.19.0 发布后，对标开源标杆（Loop Habit Tracker、Table Habit、Habitica）、主流商业工具（TickTick、Everyday、Streaks、Atoms）与笔记生态（Obsidian Contribution Graph/Tracker）。

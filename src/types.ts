@@ -118,6 +118,8 @@ export interface CheckinEvent {
     /** Optional photo attachment as a data URL (\u2264 ~500KB binary). */
     attachment?: string;
     externalRef?: string;
+    /** T-1872：可选的心流与精力自评档位（1:枯竭 / 2:疲劳 / 3:平稳 / 4:充沛 / 5:心流）。完全可选，未填为 undefined。 */
+    energy?: 1 | 2 | 3 | 4 | 5;
     /** D-216/T-1220：跳过是一等记录态。缺省与 "checkin" 同义（历史数据零迁移）。 */
     kind?: "checkin" | "skip";
 }

@@ -35,6 +35,30 @@ export interface QuotaSummary {
     current?: ReturnType<typeof evaluateQuotaSchedule>;
 }
 
+export interface EnergyFlowSummary {
+    totalWithEnergy: number;
+    distribution: Record<1 | 2 | 3 | 4 | 5, number>;
+    averageEnergy?: number;
+}
+
+export function summarizeEnergyFlow(events: readonly CheckinEvent[]): EnergyFlowSummary {
+    const distribution: Record<1 | 2 | 3 | 4 | 5, number> = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0};
+    let totalWithEnergy = 0;
+    let sumEnergy = 0;
+    for (const event of events) {
+        if (event.energy && Number.isInteger(event.energy) && event.energy >= 1 && event.energy <= 5) {
+            distribution[event.energy] += 1;
+            totalWithEnergy += 1;
+            sumEnergy += event.energy;
+        }
+    }
+    return {
+        totalWithEnergy,
+        distribution,
+        averageEnergy: totalWithEnergy > 0 ? Math.round((sumEnergy / totalWithEnergy) * 10) / 10 : undefined,
+    };
+}
+
 export interface SummaryContext {
     range: SummaryRange;
     startDate: string;
@@ -43,6 +67,7 @@ export interface SummaryContext {
     totalEvents: number;
     completedItems: number;
     scheduledItems: number;
+    energyFlow?: EnergyFlowSummary;
 }
 
 export function getDateRange(range: SummaryRange, date = new Date()): DateRange {
@@ -212,6 +237,7 @@ function buildSummaryForBounds(store: CheckinStore, range: SummaryRange, bounds:
         totalEvents: events.length,
         completedItems: items.filter((item) => item.completedDays > 0 || Boolean(item.quota?.completedPeriods)).length,
         scheduledItems: items.filter((item) => item.scheduledDays > 0 || Boolean(item.quota?.elapsedPeriods)).length,
+        energyFlow: summarizeEnergyFlow(events),
     };
 }
 

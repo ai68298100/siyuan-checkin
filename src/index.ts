@@ -8823,7 +8823,7 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
         await this.recordEvent(item, remaining, moment, expectedRevisionFingerprint);
     }
 
-    private async recordEvent(item: CheckinItem, value: number, moment: ActionMoment, expectedRevisionFingerprint?: string, note?: string, attachment?: string, externalRef?: string): Promise<CheckinEvent | undefined> {
+    private async recordEvent(item: CheckinItem, value: number, moment: ActionMoment, expectedRevisionFingerprint?: string, note?: string, attachment?: string, externalRef?: string, energy?: 1 | 2 | 3 | 4 | 5): Promise<CheckinEvent | undefined> {
         const current = getActiveItemById(this.store, item.id);
         const actionDate = calendarDateFromKey(moment.localDate);
         const revision = current ? getItemRevisionForDate(current, actionDate) : undefined;
@@ -8861,7 +8861,7 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
         }
         const previous = this.store;
         const source: CheckinEvent["source"] = externalRef?.startsWith("agent:") ? "api" : "manual";
-        const event = this.makeEvent(current, value, source, revision.unit, note?.trim() || undefined, externalRef, moment, attachment);
+        const event = this.makeEvent(current, value, source, revision.unit, note?.trim() || undefined, externalRef, moment, attachment, energy);
         const next = appendEvent(this.store, event);
         if (next === this.store) return undefined;
         this.store = next;
@@ -8976,8 +8976,8 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
         return stopFocusFor(this as unknown as FocusAdapterHost);
     }
 
-    private makeEvent(item: CheckinItem, value: number, source: CheckinEvent["source"], unit: string, note?: string, externalRef?: string, moment = captureActionMoment(), attachment?: string): CheckinEvent {
-        return makeEventValue(item, value, source, unit, note, externalRef, moment, attachment);
+    private makeEvent(item: CheckinItem, value: number, source: CheckinEvent["source"], unit: string, note?: string, externalRef?: string, moment = captureActionMoment(), attachment?: string, energy?: 1 | 2 | 3 | 4 | 5): CheckinEvent {
+        return makeEventValue(item, value, source, unit, note, externalRef, moment, attachment, energy);
     }
 
     private cloneItem(item: CheckinItem): CheckinItem {

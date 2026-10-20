@@ -1,3 +1,22 @@
+# 2026-10-20 打卡主观心流与精力轻量自评及分析看板落地（T-1872，D-524）
+
+**v18.19.0+ 持续演进——⚡ 习惯状态维度扩展与交叉分析闭环**：
+1. **数据模型扩展与向前兼容**：
+   - 在 `src/types.ts` 中增补 `CheckinEvent.energy?: 1 | 2 | 3 | 4 | 5`；
+   - `model.ts` 中的 `normalizeEvent` 严格校验 1~5 整数，超限或非法类型自动过滤；
+   - `model-helpers.ts` 中的 `makeEventValue` 与 `index.ts` 中的 `recordEvent` / `makeEvent` 增加 `energy` 支持；
+   - 历史旧备份与旧事件完全不受影响，保持数据层零迁移开销。
+2. **Today 展开面板自评交互**：
+   - 在 `src/render/fragments.ts` 的精确记录面板中增设心流/精力自评单选组合（😴 1 枯竭 / 🥱 2 疲劳 / 😐 3 平稳 / 😊 4 充沛 / 🚀 5 心流）；
+   - 主按钮快速打卡继续保持 0 摩擦，不打断常规节奏；
+   - `bind-today.ts` 读取选中状态并传入 `host.recordEvent` 持久化入库。
+3. **回顾页精力与心流分布看板**：
+   - 在 `src/analytics.ts` 落地 `summarizeEnergyFlow`，并在 `SummaryContext` 中输出 `energyFlow`；
+   - 在 `src/render/review.ts` 的 `analysis` 分析工作区增设 `energyFlow` 折叠卡片，清晰呈现平均精力得分、记录样本数与 5 档精力的横向柱状占比图，无数据时给出诚实空态说明。
+4. **守门与验证**：
+   - 新增 `tests/record-energy-flow.test.cjs` 纳入 `test:v18`（全 28 项全通）；
+   - `node tests/css-hygiene.test.cjs`（0 死类，667 KiB 生产产物）、`node tests/review-presentation.test.cjs`、`pnpm run test:v18`、`pnpm run check`、`pnpm run build:check` 全绿。
+
 # 2026-10-20 竞品深度对标与新阶段待办规划（T-1872～T-1878，D-523）
 
 **v18.19.0 发布后——🎯 同类产品深度对标与新里程碑规划落地**：

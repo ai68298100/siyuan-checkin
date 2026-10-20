@@ -26,7 +26,7 @@ assert.match(
 const indexSource = fs.readFileSync(path.join(sourceRoot, "index.ts"), "utf8");
 assert.match(
     indexSource,
-    /private async recordEvent\(item: CheckinItem, value: number, moment: ActionMoment, expectedRevisionFingerprint\?: string, note\?: string, attachment\?: string, externalRef\?: string\): Promise<CheckinEvent \| undefined>/,
+    /private async recordEvent\(item: CheckinItem, value: number, moment: ActionMoment, expectedRevisionFingerprint\?: string, note\?: string, attachment\?: string, externalRef\?: string(?:, energy\?: 1 \| 2 \| 3 \| 4 \| 5)?\): Promise<CheckinEvent \| undefined>/,
     "T-1786: recordEvent accepts externalRef parameter",
 );
 assert.match(

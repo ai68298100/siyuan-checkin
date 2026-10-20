@@ -82,8 +82,9 @@ export function cloneItemForDateValue(item: CheckinItem, date: Date): CheckinIte
     };
 }
 
-export function makeEventValue(item: CheckinItem, value: number, source: CheckinEvent["source"], unit: string, note?: string, externalRef?: string, moment = captureActionMoment(), attachment?: string): CheckinEvent {
+export function makeEventValue(item: CheckinItem, value: number, source: CheckinEvent["source"], unit: string, note?: string, externalRef?: string, moment = captureActionMoment(), attachment?: string, energy?: 1 | 2 | 3 | 4 | 5): CheckinEvent {
     const safeValue = Number(value);
+    const validEnergy = energy && Number.isInteger(energy) && energy >= 1 && energy <= 5 ? energy : undefined;
     return {
         id: makeId("event"),
         itemId: item.id,
@@ -95,6 +96,7 @@ export function makeEventValue(item: CheckinItem, value: number, source: Checkin
         note,
         externalRef,
         attachment: normalizeAttachmentDataUrl(attachment),
+        ...(validEnergy ? {energy: validEnergy} : {}),
     };
 }
 
