@@ -47,6 +47,8 @@
     .lc-checkin.lc-checkin--today {
         .lc-checkin__exact-entry:not([hidden]) { display: grid; grid-template-columns: minmax(0, 1fr) 44px 72px; padding: 8px; gap: 6px; }
         .lc-checkin__exact-entry > label:not(.lc-checkin__attach-button) { grid-column: span 2; }
+        .lc-checkin__exact-entry .lc-checkin__quick-note-chips,
+        .lc-checkin__exact-entry .lc-checkin__energy-selector { grid-column: 1 / -1; }
         .lc-checkin__exact-entry input.lc-checkin__record-note { width: 100%; min-width: 0; }
         .lc-checkin__focus-timer { grid-template-columns: minmax(0, 1fr) auto; gap: 8px 12px; bottom: 8px; }
         .lc-checkin__focus-time { font-size: 26px; }

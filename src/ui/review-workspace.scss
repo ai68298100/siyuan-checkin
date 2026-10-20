@@ -957,6 +957,57 @@
         margin-inline: auto;
     }
 
+    /* T-1879：分析看板多维度筛选与下钻 */
+    .lc-checkin__analysis-filter-bar {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px 12px;
+        width: 100%;
+        box-sizing: border-box;
+        padding: 6px 12px;
+        border-radius: var(--lc-checkin-radius-sm);
+        background: var(--lc-checkin-surface);
+        border: 1px solid var(--lc-checkin-border);
+        font-size: 12px;
+    }
+    .lc-checkin__analysis-filter-field {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--lc-checkin-muted);
+        select {
+            min-height: 28px;
+            padding: 2px 8px;
+            border-radius: var(--lc-checkin-radius-sm);
+            border: 1px solid var(--lc-checkin-border);
+            background: var(--lc-checkin-bg);
+            color: var(--lc-checkin-text);
+            font-size: 12px;
+        }
+    }
+    .lc-checkin__analysis-filter-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: var(--lc-checkin-accent-soft);
+        color: var(--lc-checkin-accent-text);
+        font-size: 11px;
+        font-weight: 600;
+        margin-left: auto;
+    }
+    .lc-checkin__energy-flow-tag {
+        display: inline-block;
+        margin-left: 8px;
+        padding: 1px 6px;
+        border-radius: 4px;
+        background: var(--lc-checkin-accent-soft);
+        color: var(--lc-checkin-accent-text);
+        font-size: 11px;
+        font-weight: 600;
+    }
+
     [data-review-workspace-panel="analysis"] .review-analysis-trend {
         display: flex;
         align-items: center;

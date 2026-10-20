@@ -1,3 +1,20 @@
+# 2026-10-21 分析看板多维度下钻筛选与快捷打卡情境标签落地（T-1879, T-1880，D-531, D-532）
+
+**v18.20.0+ 持续演进——🔍 分析工作区多维度聚焦与情境打卡零摩擦**：
+1. **回顾分析看板多维度筛选与趋势下钻联动（T-1879，D-531，对标 TickTick / Everyday）**：
+   - 协议与上下文：在 `ReviewRootContext` 与 `ReviewViewContext` 增设 `analysisFilterGroupId?: string` 与 `analysisFilterItemId?: string`；
+   - 筛选栏组件：在分析看板顶部渲染 `.lc-checkin__analysis-filter-bar`，提供“全部分组 / 分组选择”与“全部项目 / 项目选择”下拉筛选，以及“重置聚焦”快捷恢复按钮；
+   - 交叉看板数据联动：精力心流分布（`summarizeEnergyFlow`）及看板趋势图表实时消费经过当前分组或项目过滤后的事件子集；无数据时显示精准目标提示（如 `"{target} 在该时间段内尚未记录精力自评数据"`），杜绝全局数字误导；
+   - 交互闭环：`bind-page-navigation.ts` 监听筛选变动与重置动作，同 root 局部更新并刷新，保持既有折叠与滚动状态。
+2. **展开面板快捷打卡情境标签推荐与一键注入（T-1880，D-532，对标 Streaks / Atoms）**：
+   - 交互增强：在精确打卡展开面板（`data-exact-entry`）提供 5 档快捷情境标签芯片（🌅晨间打卡 / 🎯深度专注 / 🏃运动流汗 / 💪超额突破 / ☕轻松达成）；
+   - 智能标签注入与反选：点击标签动态向备注输入框追加 `#标签`，再次点击自动剥离，并实时同步 `is-active` 样式与 `aria-pressed` 属性；
+   - 键盘打卡加速：在备注输入框监听 Enter 回车键直接触发主打卡保存，提升多维度情境打卡效率。
+3. **守门与验证**：
+   - 新增 `tests/review-analysis-filter.test.cjs` 与 `tests/quick-note-chips.test.cjs` 全部纳入 `test:v18`（全 36 项全通）；
+   - `node tests/css-hygiene.test.cjs`（833 class tokens，0 死类，676.5 KiB < 680 KiB 预算）；
+   - `pnpm run check`（TypeScript 零错误）、`pnpm run build:check`（生产打包成功）、`pnpm test`（150+ 测试全绿）。
+
 # 2026-10-20 建议采纳直通、复盘证据钻取与微触感动效深度落地（T-1876, T-1877, T-1878，D-528, D-529, D-530）
 
 **v18.20.0+ 持续演进——💡 闭环建议采纳、样本量守门与轻量物理动效**：

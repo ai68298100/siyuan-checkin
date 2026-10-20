@@ -299,6 +299,13 @@ export function renderItemView(item: CheckinItem, date: Date, ctx: TodayItemCont
             ${ctx.bulkMode || !canRecordDetails ? "" : `<div class="lc-checkin__exact-entry" data-exact-entry${exactExpanded ? "" : " hidden"}>
                 ${isBinary ? "" : `<label><span>${t(canFocus ? manualLabelKey : "item.thisRecord")}</span><input class="lc-checkin__amount" type="number" inputmode="decimal" min="${inputStep}" step="${inputStep}" value="${formatNumber(recordStep)}" aria-label="${t("item.exactThis", {unit})}" /></label>
                 <span>${escapeHtml(unit)}</span>`}
+                <div class="lc-checkin__quick-note-chips" role="group" aria-label="${escapeHtml(t("item.quickNotesAria"))}">
+                    <button class="lc-checkin__quick-note-chip" type="button" data-quick-note="morning" data-quick-text="#${escapeHtml(t("item.quickTagMorning"))}"><span>🌅</span><small>${escapeHtml(t("item.quickTagMorning"))}</small></button>
+                    <button class="lc-checkin__quick-note-chip" type="button" data-quick-note="focus" data-quick-text="#${escapeHtml(t("item.quickTagFocus"))}"><span>🎯</span><small>${escapeHtml(t("item.quickTagFocus"))}</small></button>
+                    <button class="lc-checkin__quick-note-chip" type="button" data-quick-note="workout" data-quick-text="#${escapeHtml(t("item.quickTagWorkout"))}"><span>🏃</span><small>${escapeHtml(t("item.quickTagWorkout"))}</small></button>
+                    <button class="lc-checkin__quick-note-chip" type="button" data-quick-note="breakthrough" data-quick-text="#${escapeHtml(t("item.quickTagBreakthrough"))}"><span>💪</span><small>${escapeHtml(t("item.quickTagBreakthrough"))}</small></button>
+                    <button class="lc-checkin__quick-note-chip" type="button" data-quick-note="peaceful" data-quick-text="#${escapeHtml(t("item.quickTagPeaceful"))}"><span>☕</span><small>${escapeHtml(t("item.quickTagPeaceful"))}</small></button>
+                </div>
                 <input class="lc-checkin__record-note" type="text" maxlength="2000" placeholder="${t("item.notePlaceholder")}" aria-label="${t("item.noteAria")}" />
                 <div class="lc-checkin__energy-selector" role="radiogroup" aria-label="${t("item.energyLabel")}" title="${t("item.energyHint")}">
                     <span class="lc-checkin__energy-title">${t("item.energyLabel")}</span>

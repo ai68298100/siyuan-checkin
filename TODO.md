@@ -1,13 +1,13 @@
 # TODO
 
-## 当前统一状态（2026-10-20）
+## 当前统一状态（2026-10-21）
 
 - 当前版本升级为 **v18.19.0**（多桶备份版本化、写入幂等事实对账与全表面视觉系统收口里程碑）。
 - 核心交付：多桶备份版本化 Envelope 协议与原子回滚（T-1787/T-1862）；辅助存储桶三分类架构与生命周期治理（T-1860/T-1861）；跨入口写入幂等去重与破戒事实对账收敛（T-1786）；顶栏图标消失与后台暴力重绘防御治理（D-522）；五级按钮、表单输入、长表单分节、导航溢出指引与宿主容器三档密度收口（T-1817/T-1818/T-1819/T-1820/T-1821/T-1824）。
-- 竞品深度调研落地（Loop / Table Habit / Habitica / TickTick / Obsidian / Streaks / Atoms 对标），提炼并登记新一阶段演进任务（T-1872～T-1878）。
+- 竞品深度调研落地（Loop / Table Habit / Habitica / TickTick / Obsidian / Streaks / Atoms 对标），提炼并登记新一阶段演进任务（T-1872～T-1880）。
 - 本文件中历史版本号属于任务登记时的历史基线，保留用于追溯；新任务统一以源码、`PROGRESS.md`、`BLOCKERS.md` 和 `docs/releases/` 的最新版本为准。
 
-## 2026-10 竞品深度对标与体验演进待办（T-1872～T-1878，D-523）
+## 2026-10 竞品深度对标与体验演进待办（T-1872～T-1880，D-523）
 
 - [x] T-1872 打卡主观心流与精力轻量自评及交叉分析（P1，已交付 2026-10-20，D-524，对标 TickTick / Atoms）——在精确录入面板（Exact Entry）提供可选的 1~5 档心流/精力自评（⚡ 1:枯竭/2:疲劳/3:平稳/4:充沛/5:心流，完全可选，主按钮一键打卡不受影响）；事件数据结构增加可选 `energy?: 1 | 2 | 3 | 4 | 5` 字段，严格校验非法值，支持向前兼容与导入导出；回顾页增加“心流与精力分布”交叉分析看板卡片，直观展现平均分、样本数与精力柱状占比。守门 `tests/record-energy-flow.test.cjs` 纳入 `test:v18`；`check` / `test:v18` / `build:check` 全绿。
 - [x] T-1873 习惯稳固度 Sigmoid 饱和成长曲线与阶段化成熟模型（P1，已交付 2026-10-20，D-525，对标 Table Habit / 掌控习惯）——在 `habit-score.ts` 落地逻辑斯蒂饱和函数 `computeHabitSaturation`，实现 0 天为 0 分、33 天（半程拐点）为 50 分、66 天达标为 100 分及 1.5 倍超额封顶（99天）；将习惯生命周期划分为萌芽期（1~21天）、爬坡期（22~45天）与扎根期（46~66天+），并提供心理学科学指导建议；在洞察页渲染自适应饱和稳固度横幅。守门 `tests/habit-saturation-curve.test.cjs` 纳入 `test:v18`；`check` / `test:v18` / `build:check` 全绿。
@@ -16,6 +16,8 @@
 - [x] T-1876 智能体习惯进化建议一键采纳与规则修订直通（P1，已交付 2026-10-20，D-528，受控智能闭环，对标 M4 智能进化）——行动建议卡（Coaching Suggestions）与项目规则修订时间线（Revision Timeline）直接打通；建议卡附带“采纳建议”按钮（连续跳过或强度下滑时采纳“由每日 1 次转为每周 4 次弹性配额”或目标微调）；点击后直接向项目追加写入一条自明日生效的有效修订（CheckinItemRevision），无需用户重新手动编辑长表单。严谨守门：已归档/同值周配额/二值项目非 1 严格拒绝，绝不追溯改写已发生历史事实。守门 `tests/agent-suggestion-adopt.test.cjs` 纳入 `test:v18`；`check` / `test:v18` / `build:check` 全绿。
 - [x] T-1877 周复盘卡片证据链一键钻取与样本量守门（P2，已交付 2026-10-20，D-529，复盘信任度，对标 M2 证据工作台）——建议卡与复盘指标点击可展开具体的支持证据（支撑该建议的历史事件、时间区间与对比差值）；严谨样本量门禁（`COACHING_EVIDENCE_MIN_DAYS = 7`），当计划机会日历史数据不足 7 天时，明确展示“样本积累中”，不给出可能误导的强断言；提供近 7 机会日逐日事实状态钻取行，支持纯键盘焦点与无障碍属性。守门 `tests/review-evidence-drilldown.test.cjs` 纳入 `test:v18`；`check` / `test:v18` / `build:check` 全绿。
 - [x] T-1878 移动端/桌面端卡片微动效与触觉反馈深度调优（P2，已交付 2026-10-20，D-530，交互质感，对标 Streaks / Everyday）——打卡完成时呈现微妙的微收缩微回弹（Micro-bounce：`scale(1) → 0.985 → 1.008 → 1`，260ms），移动端触发轻柔振动；在 `@media (prefers-reduced-motion)` 和插件设置中开启减少动效时彻底 0ms 纯平切，保障无障碍合规。守门 `tests/card-micro-motion.test.cjs` 纳入 `test:v18`；`check` / `test:v18` / `build:check` 全绿。
+- [x] T-1879 回顾分析看板多维度筛选与趋势下钻联动（P1，已交付 2026-10-21，D-531，对标 TickTick / Everyday）——在回顾分析工作区（`workspace === "analysis"`）挂载轻量筛选栏（`.lc-checkin__analysis-filter-bar`），支持按“全部分组 / 特定分组”和“全部项目 / 特定项目”快速聚焦并提供“重置聚焦”快捷动作；`ReviewRootContext` 与 `ReviewViewContext` 增设 `analysisFilterGroupId` 与 `analysisFilterItemId`；精力心流分布（`summarizeEnergyFlow`）及看板数据与所选范围联动统计，过滤为空时诚实展示“{target} 在该时间段内尚未记录精力自评数据”；交互绑定在 `bind-page-navigation.ts` 闭环。守门 `tests/review-analysis-filter.test.cjs` 纳入 `test:v18`；`check` / `test:v18` / `build:check` 全绿。
+- [x] T-1880 展开面板快捷备注标签推荐与一键注入（P2，已交付 2026-10-21，D-532，对标 Streaks / Atoms）——在精确打卡展开面板（`data-exact-entry`）提供 5 档快捷情境标签芯片（🌅晨间打卡 / 🎯深度专注 / 🏃运动流汗 / 💪超额突破 / ☕轻松达成），点击支持动态在备注输入框中追加或反选剥离 `#标签`，实时同步 `is-active` 样式与 `aria-pressed` 属性，并在输入框按下 Enter 键直接触发主打卡保存，提升多维度情境打卡录入效率。守门 `tests/quick-note-chips.test.cjs` 纳入 `test:v18`；`check` / `test:v18` / `build:check` 全绿。
 
 ## 2026-10-20 发布 v18.19.0（R-RELEASE-18.19.0）
 

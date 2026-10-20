@@ -3,7 +3,7 @@ import {t, getPluginLocale} from "../i18n";
 import {dateKey, getEventDateKey, getEventsInDateRange, getEventsForDate, getItemRevisionForDate, isSkipEvent, getItemById, isComplete, isItemAvailableOnDate, isScheduledToday} from "../model";
 import {calendarDateFromKey, escapeHtml, formatHistoryDate, formatNumber, renderRecordNote, renderIconMarkup, safeAttachmentUrl} from "../shared";
 import {filterHistoryRecords, type HistorySortOrder, type HistoryChannelFilter, type HistoryMeteringFilter} from "../features/history-filter";
-import {buildCustomSummaryContext, buildSummaryContext, type SummaryRange, type ItemSummary, type SummaryContext} from "../analytics";
+import {buildCustomSummaryContext, buildSummaryContext, summarizeEnergyFlow, type SummaryRange, type ItemSummary, type SummaryContext} from "../analytics";
 import {buildReviewComparison, getPreviousReviewRange} from "../features/review-comparison";
 import {summarizeProjectDraft} from "../features/project-draft";
 import {renderReviewCompareSection, renderReviewCompareItems} from "./review-compare";
@@ -91,6 +91,10 @@ export interface ReviewViewContext {
     /** T-1875：矩阵补卡点选草稿 */
     matrixDraftStates?: ReadonlyMap<string, MatrixTriState>;
     matrixPanelOpen?: boolean;
+    /** T-1879：分析看板分组过滤（空表示全部） */
+    analysisFilterGroupId?: string;
+    /** T-1879：分析看板项目过滤（空表示全部） */
+    analysisFilterItemId?: string;
     /** T-1517 横向比较选中的项目（会话态，2~4 个；可选：旧桩按空处理）。 */
     itemCompareSelection?: ReadonlySet<string>;
     /** T-1578 比较器候选搜索词（会话态；可选：旧桩按无过滤处理）。 */
@@ -698,11 +702,44 @@ export function renderReviewView(ctx: ReviewViewContext): string {
         return `<ol class="lc-checkin__lifelog-timeline" role="list">${rows}</ol>`;
     };
 
-    /* T-1872：心流与精力自评分布看板（对标 TickTick/Atoms） */
+    /* T-1879：分析看板多维度筛选与下钻 */
+    const filterGroupId = ctx.analysisFilterGroupId || "";
+    const filterItemId = ctx.analysisFilterItemId || "";
+    const activeItems = ctx.store.items.filter(i => !i.archived);
+    const availableGroups = [...new Set(activeItems.map(i => i.group || t("review.ungrouped")).filter(Boolean))].sort();
+    const candidateGroupItems = filterGroupId
+        ? activeItems.filter(i => (i.group || t("review.ungrouped")) === filterGroupId)
+        : activeItems;
+    const hasAnalysisFilter = Boolean(filterGroupId || filterItemId);
+    const focusedItem = filterItemId ? getItemById(ctx.store, filterItemId) : undefined;
+    const focusedLabel = focusedItem ? focusedItem.name : filterGroupId ? filterGroupId : "";
+
+    const groupOptions = [`<option value="" ${filterGroupId ? "" : "selected"}>${escapeHtml(t("review.analysisFilterAllGroups"))}</option>`]
+        .concat(availableGroups.map(grp => `<option value="${escapeHtml(grp)}" ${filterGroupId === grp ? "selected" : ""}>${escapeHtml(grp)}</option>`))
+        .join("");
+    const itemOptions = [`<option value="" ${filterItemId ? "" : "selected"}>${escapeHtml(t("review.analysisFilterAllItems"))}</option>`]
+        .concat(candidateGroupItems.map(item => `<option value="${escapeHtml(item.id)}" ${filterItemId === item.id ? "selected" : ""}>${escapeHtml(item.name)}</option>`))
+        .join("");
+
+    const analysisFilterBar = `<div class="lc-checkin__analysis-filter-bar" role="search" aria-label="${t("review.analysisFilterBarAria")}">
+        <label class="lc-checkin__analysis-filter-field"><span>${t("review.analysisFilterGroup")}</span><select data-action="analysis-filter-group">${groupOptions}</select></label>
+        <label class="lc-checkin__analysis-filter-field"><span>${t("review.analysisFilterItem")}</span><select data-action="analysis-filter-item">${itemOptions}</select></label>
+        ${hasAnalysisFilter ? `<button type="button" class="lc-checkin__text-button" data-action="clear-analysis-filter">${t("review.analysisFilterReset")}</button><span class="lc-checkin__analysis-filter-badge">${t("review.analysisFilteredNote", {target: focusedLabel})}</span>` : ""}
+    </div>`;
+
+    /* T-1872 / T-1879：心流与精力自评分布看板（支持多维筛选下钻） */
     const renderEnergyFlow = (): string => {
-        const flow = summary.energyFlow;
+        let flow = summary.energyFlow;
+        if (filterItemId) {
+            const itemEvents = ctx.store.events.filter(e => e.itemId === filterItemId);
+            flow = summarizeEnergyFlow(itemEvents);
+        } else if (filterGroupId) {
+            const groupItemIds = new Set(candidateGroupItems.map(i => i.id));
+            const groupEvents = ctx.store.events.filter(e => groupItemIds.has(e.itemId));
+            flow = summarizeEnergyFlow(groupEvents);
+        }
         if (!flow || flow.totalWithEnergy === 0) {
-            return `<div class="lc-checkin__energy-flow-card"><p class="review-scope-note">${escapeHtml(t("review.energyEmpty"))}</p></div>`;
+            return `<div class="lc-checkin__energy-flow-card"><p class="review-scope-note">${hasAnalysisFilter ? escapeHtml(t("review.energyFilteredEmpty", {target: focusedLabel})) : escapeHtml(t("review.energyEmpty"))}</p></div>`;
         }
         const levels = [
             {lvl: 5, icon: "🚀", name: t("item.energy5")},
@@ -718,11 +755,11 @@ export function renderReviewView(ctx: ReviewViewContext): string {
             const barWidth = Math.round((count / maxCount) * 100);
             return `<div class="lc-checkin__energy-bar-row"><span class="lc-checkin__energy-bar-label">${icon} ${escapeHtml(name)}</span><div class="lc-checkin__energy-bar-track"><div class="lc-checkin__energy-bar-fill" style="width: ${barWidth}%"></div></div><span class="lc-checkin__energy-bar-val">${count} <small>(${pct}%)</small></span></div>`;
         }).join("");
-        return `<div class="lc-checkin__energy-flow-card" data-energy-flow-card><div class="lc-checkin__energy-flow-header"><div><strong>${escapeHtml(t("review.energyAvg"))}：<em class="lc-checkin__energy-score">${flow.averageEnergy !== undefined ? flow.averageEnergy : "-"}</em> / 5.0</strong><small>${escapeHtml(t("review.energyCount"))}：${flow.totalWithEnergy}</small></div></div><div class="lc-checkin__energy-bars">${bars}</div></div>`;
+        return `<div class="lc-checkin__energy-flow-card" data-energy-flow-card><div class="lc-checkin__energy-flow-header"><div><strong>${escapeHtml(t("review.energyAvg"))}：<em class="lc-checkin__energy-score">${flow.averageEnergy !== undefined ? flow.averageEnergy : "-"}</em> / 5.0</strong><small>${escapeHtml(t("review.energyCount"))}：${flow.totalWithEnergy}</small>${hasAnalysisFilter ? `<span class="lc-checkin__energy-flow-tag">🎯 ${escapeHtml(focusedLabel)}</span>` : ""}</div></div><div class="lc-checkin__energy-bars">${bars}</div></div>`;
     };
 
     const content = workspace === "records" ? renderRecords() : workspace === "analysis"
-        ? `<p class="review-scope-note">${t("review.analysisScope")}</p><div class="lc-checkin__review-sections">
+        ? `<p class="review-scope-note">${t("review.analysisScope")}</p>${analysisFilterBar}<div class="lc-checkin__review-sections">
             ${fold("trend", t("review.foldTrend"), renderTrends)}
             ${fold("itemCompare", t("review.itemCompareTitle"), renderItemCompare)}
             ${assistantEntry}

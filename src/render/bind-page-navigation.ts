@@ -259,7 +259,7 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         if (!drafts || !drafts.size) return;
         button.disabled = true;
         button.setAttribute("aria-busy", "true");
-        void host.enqueueMutation?.(async () => {
+        const runner = async () => {
             try {
                 const count = await host.recordMatrixBackfill?.(reviewValue("historyItemId", host.historyItemId), drafts);
                 if (!isCurrentSurface()) return;
@@ -272,7 +272,12 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
                 button.removeAttribute("aria-busy");
                 showMessage(t("review.matrixFailed"));
             }
-        });
+        };
+        if (host.enqueueMutation) {
+            void host.enqueueMutation(runner);
+        } else {
+            void runner();
+        }
     });
     const rhythm = root.querySelector<HTMLElement>(".review-rhythm-days");
     if (rhythm && !initializedRhythmScrollers.has(rhythm)) {
@@ -640,6 +645,23 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         writeReviewValue("historyBatchPreviewOpen", false);
         writeReviewValue("editingHistoryNoteId", undefined);
         renderReviewPreservingView("[data-history-item]");
+    });
+    /* T-1879：分析看板多维度筛选与趋势下钻联动 */
+    root.querySelector<HTMLSelectElement>("[data-action='analysis-filter-group']")?.addEventListener("change", (event) => {
+        const val = (event.currentTarget as HTMLSelectElement).value;
+        writeReviewValue("analysisFilterGroupId", val || undefined);
+        writeReviewValue("analysisFilterItemId", undefined);
+        renderReviewPreservingView("[data-action='analysis-filter-group']");
+    });
+    root.querySelector<HTMLSelectElement>("[data-action='analysis-filter-item']")?.addEventListener("change", (event) => {
+        const val = (event.currentTarget as HTMLSelectElement).value;
+        writeReviewValue("analysisFilterItemId", val || undefined);
+        renderReviewPreservingView("[data-action='analysis-filter-item']");
+    });
+    root.querySelector<HTMLElement>("[data-action='clear-analysis-filter']")?.addEventListener("click", () => {
+        writeReviewValue("analysisFilterGroupId", undefined);
+        writeReviewValue("analysisFilterItemId", undefined);
+        renderReviewPreservingView(".lc-checkin__analysis-filter-bar");
     });
     root.querySelectorAll<HTMLElement>("[data-history-page]").forEach((button) => button.addEventListener("click", () => {
         const page = Number(button.dataset.historyPage);

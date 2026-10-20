@@ -500,6 +500,54 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
             event.preventDefault();
             element.querySelector<HTMLButtonElement>("[data-action='record']")?.click();
         });
+        const noteInput = element.querySelector<HTMLInputElement>(".lc-checkin__record-note");
+        const quickChips = element.querySelectorAll<HTMLButtonElement>("[data-quick-note]");
+        const syncChipsState = () => {
+            if (!noteInput) return;
+            const text = noteInput.value;
+            quickChips.forEach((chip) => {
+                const tag = chip.dataset.quickText;
+                const active = Boolean(tag && text.includes(tag));
+                chip.classList.toggle("is-active", active);
+                chip.setAttribute("aria-pressed", String(active));
+            });
+        };
+        quickChips.forEach((chip) => {
+            chip.addEventListener("click", () => {
+                if (!noteInput) return;
+                const tag = chip.dataset.quickText;
+                if (!tag) return;
+                const cur = noteInput.value.trim();
+                if (!cur) {
+                    noteInput.value = tag;
+                } else {
+                    const tokens = cur.split(/\s+/);
+                    const idx = tokens.indexOf(tag);
+                    if (idx >= 0) {
+                        tokens.splice(idx, 1);
+                        noteInput.value = tokens.join(" ");
+                    } else {
+                        tokens.push(tag);
+                        noteInput.value = tokens.join(" ");
+                    }
+                }
+                syncChipsState();
+                if (typeof noteInput.dispatchEvent === "function") {
+                    noteInput.dispatchEvent(new Event("input", {bubbles: true}));
+                }
+                if (typeof noteInput.focus === "function") {
+                    noteInput.focus();
+                }
+            });
+        });
+        if (typeof noteInput?.addEventListener === "function") {
+            noteInput.addEventListener("input", syncChipsState);
+            noteInput.addEventListener("keydown", (event) => {
+                if (event.key !== "Enter") return;
+                event.preventDefault();
+                element.querySelector<HTMLButtonElement>("[data-action='record']")?.click();
+            });
+        }
         element.querySelector<HTMLInputElement>("[data-attach-file]")?.addEventListener("change", (event) => {
             const input = event.currentTarget as HTMLInputElement;
             const file = input.files?.[0];

@@ -56,6 +56,10 @@ export interface ReviewRootContext {
     matrixDraftStates?: Map<string, import("../features/batch-backfill").MatrixTriState>;
     /** T-1875：矩阵补卡面板是否展开 */
     matrixPanelOpen?: boolean;
+    /** T-1879：分析看板分组过滤（空表示全部） */
+    analysisFilterGroupId?: string;
+    /** T-1879：分析看板项目过滤（空表示全部） */
+    analysisFilterItemId?: string;
 }
 
 export interface RootContext {
