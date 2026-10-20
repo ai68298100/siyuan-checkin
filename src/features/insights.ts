@@ -1,7 +1,7 @@
 import {dateKey, evaluateDayCompletion, getEventDateKey, getItemDirectionForDate, getEventsForItem, getItemRevisionForDate, isItemAvailableOnDate, isScheduledToday, isSkipEvent} from "../model";
 import {daysBetweenHalfOpen, isValidDateKey} from "../date-keys";
 import {evaluateQuotaSchedule, periodKeyForSchedule} from "../rules";
-import {buildHabitScoreSeries, collectHabitScoreDays, scheduleFrequency} from "./habit-score";
+import {buildHabitScoreSeries, collectHabitScoreDays, computeHabitSaturation, scheduleFrequency, type HabitSaturationResult} from "./habit-score";
 import type {CheckinEvent, CheckinItem, CheckinKind, CheckinSchedule, CheckinStore} from "../types";
 
 export type HabitDayStatus = "complete" | "partial" | "missed" | "pending" | "off" | "unavailable";
@@ -75,6 +75,8 @@ export interface HabitInsights {
     recentSkipDays: number;
     /** T-1241：习惯成熟度百分比——sigmoid(计划机会日)，以 66 天参考线为半程（mhabit 成熟曲线的参考实现）。 */
     maturity: number;
+    /** T-1873：习惯稳固度饱和成长分析（饱和分、成熟度三阶段、阶段进度与科学指导键） */
+    saturation?: HabitSaturationResult;
     /** T-1240：窗口内超额日（完成量 ≥ 目标 150% 的数值型天数）。 */
     overachievedDays: number;
     /** T-1227：30 天强度分数现值与相对两周前的变化（数据不足时为 null）。 */
@@ -226,6 +228,7 @@ export function buildHabitInsights(store: CheckinStore, itemId: string, options:
         streakScope: "window",
         recentSkipDays,
         maturity,
+        saturation: computeHabitSaturation(countsForDays(days).completedDays, 66),
         overachievedDays,
         strengthScore,
         strengthDelta,

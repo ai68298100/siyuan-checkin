@@ -36,6 +36,67 @@ export interface HabitScorePoint {
     score: number;
 }
 
+export type HabitMaturityStage = "seed" | "climb" | "root";
+
+export interface HabitSaturationResult {
+    /** 有效坚持天数（超额封顶 1.5 倍） */
+    effectiveDays: number;
+    /** 目标基准天数（默认 66 天） */
+    targetDays: number;
+    /** 饱和稳固度得分（0~100 整数） */
+    saturationScore: number;
+    /** 当前成熟度阶段（seed: 萌芽 / climb: 爬坡 / root: 扎根） */
+    stage: HabitMaturityStage;
+    /** 阶段百分比进度 [0, 100] */
+    stageProgress: number;
+    /** 阶段指导文案键名 */
+    stageHintKey: string;
+}
+
+/** T-1873：基于逻辑斯蒂饱和函数 y = 1/(1+exp(-0.4*x)) 计算习惯稳固度与三阶段成熟度 */
+export function computeHabitSaturation(
+    completedDays: number,
+    targetDays = 66
+): HabitSaturationResult {
+    const validTarget = Math.max(7, targetDays);
+    const cappedDays = Math.min(validTarget * 1.5, Math.max(0, completedDays));
+    const ratio = cappedDays / validTarget;
+
+    const sigmoid = (t: number) => 1 / (1 + Math.exp(-t));
+    const sigMin = sigmoid(-3);
+    const sigMax = sigmoid(3);
+    const t = 6 * Math.min(1.5, ratio) - 3;
+    const rawScore = 100 * ((sigmoid(t) - sigMin) / (sigMax - sigMin));
+    const saturationScore = Math.min(100, Math.max(0, Math.round(rawScore)));
+
+    let stage: HabitMaturityStage = "seed";
+    let stageProgress = 0;
+    let stageHintKey = "habit.stageSeedHint";
+
+    if (completedDays >= 46 || ratio >= 0.68) {
+        stage = "root";
+        stageProgress = Math.min(100, Math.round(((completedDays - 46) / (validTarget - 46)) * 100));
+        stageHintKey = "habit.stageRootHint";
+    } else if (completedDays >= 22 || ratio >= 0.33) {
+        stage = "climb";
+        stageProgress = Math.min(100, Math.round(((completedDays - 22) / 24) * 100));
+        stageHintKey = "habit.stageClimbHint";
+    } else {
+        stage = "seed";
+        stageProgress = Math.min(100, Math.round((completedDays / 21) * 100));
+        stageHintKey = "habit.stageSeedHint";
+    }
+
+    return {
+        effectiveDays: cappedDays,
+        targetDays: validTarget,
+        saturationScore,
+        stage,
+        stageProgress: Math.max(0, stageProgress),
+        stageHintKey,
+    };
+}
+
 export interface HabitScoreOptions {
     /** 起始分（0~100，默认 0）；续算时可传前一段最后一天的分值。 */
     initial?: number;
