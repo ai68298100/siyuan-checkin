@@ -162,10 +162,10 @@ export function renderCheckinBlocksIn(protyleElement: HTMLElement, deps: BlockRe
                             if (timer) clearTimeout(timer);
                         })
                         .then(() => {
-                            /* 解析完成时 root 可能已被宿主移除，或所属观察器已经 dispose。 */
-                            if (!isActive()) return;
                             /* 若块配置在解析期间已改变，丢弃陈旧结果。 */
                             if (lastRenderedConfig.get(block) !== configText) return;
+                            /* 解析完成时 root 可能已被宿主移除，或所属观察器已经 dispose。 */
+                            if (!isActive()) return;
                             renderCheckinBlocksIn(protyleElement, deps, {force: true, isActive: options.isActive});
                         })
                         .catch(() => {
