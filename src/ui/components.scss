@@ -87,6 +87,12 @@
     --lc-checkin-control-height: var(--lc-checkin-normal-min-target);
 }
 
+/* T-1895: 思源 v3.8.8+ 官方桌面紧凑模式自适应 (:root[data-ui-density="compact"]) */
+:root[data-ui-density="compact"] :is(.lc-checkin-tab-host, .lc-checkin-dialog-host) {
+    --lc-checkin-density-scale: 0.9;
+    --lc-checkin-control-height: var(--lc-checkin-compact-min-target);
+}
+
 :is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) {
     --lc-checkin-density-scale: 1.1;
     --lc-checkin-control-height: var(--lc-checkin-touch-min-target);

@@ -1,3 +1,13 @@
+# D-547：T-1895 思源 v3.8.8+ 官方桌面紧凑模式自适应（2026-10-22）
+
+- **双层紧凑机制协同**：除插件自身内部对 `.lc-checkin-dock-host` 自动紧凑外，全面响应思源官方全局紧凑选择器 `:root[data-ui-density="compact"]`，分屏 Tab 与弹窗自动同步降维缩放至 0.9，高度收窄至 30px，与思源系统视觉节奏严密对齐。
+
+# D-548：T-1896 思源官方插件生命周期（Petal Lifecycle）契约加固（2026-10-22）
+
+- **对齐官方生命周期签名**：`onDataChanged(data?, reason?)` 完整捕获外部传参，重写生命周期保障多窗口数据变更时不被思源粗暴整包重载（避免丢失会话中草稿）；
+- **清零已弃用接口**：确保全仓 0 引用思源 v3.8.8 正式移除的 `Protyle.updateTransaction`，坚持使用标准的 `/api/block/appendBlock` 与 `/api/block/deleteBlock`；
+- **自驱清理与预算闭环**：卸载阶段由插件自身完全清理自定义定时器与 window 监听，存储落盘严格限定在 4.5s 预算内，在官方 5s 强制超时前安全着陆。
+
 # D-544：T-1892 Today 行动轨迹抽屉展开状态会话保持（2026-10-22）
 
 - **抽屉状态会话记忆**：在 `TodayRootContext` 增设 `todayLifelogFoldOpen`，在 `[data-today-lifelog-fold]` 派发 `toggle` 时实时记录，解决打卡刷新后抽屉被强制关闭的问题，保护用户的心流连续性。

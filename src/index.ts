@@ -2782,7 +2782,8 @@ this.scheduleMidnightRefresh();
         this.renderBlocksUnsubscribers.push(() => deferredSweeps.forEach((timer) => window.clearTimeout(timer)));
     }
 
-    async onDataChanged() {
+    /* T-1896：对齐思源官方 onDataChanged(data, reason) 完整参数契约 */
+    async onDataChanged(data?: unknown, reason?: string) {
         await this.reconcileStore();
         if (!this.acceptingOperations || this.initializationState !== "ready" || !this.storageReady) return;
         let shouldRepairSuggestionWorkflow = false;
