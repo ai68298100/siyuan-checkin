@@ -1,3 +1,21 @@
+# 2026-10-22 LifeLog 撤销清理闭环、一键日记批量同步与即时预览落地（T-1886, T-1887, T-1888，D-538, D-539, D-540）
+
+**v18.20.0+ 持续演进——🧹 撤销联动清理、批量同步补写与所见即所得预览**：
+1. **撤销打卡联动清理日记 LifeLog 块（T-1886，D-538，对标 M1 日常闭环）**：
+   - 块 ID 内存追踪：`recentLifelogBlocks` 映射在 `appendLifelogToJournal` 成功时捕获内核分配的段落 `createdBlockId`；
+   - 撤销联动删除：用户撤销（`undoRecentRecord`）时，自动向内核发送 `/api/block/deleteBlock` 精确物理删除日记中的对应段落，杜绝脏记录残留；并在 `auditEntries` 中登记 `lifelog-journal-undo` 审计记录。
+2. **一键批量同步今日打卡至日记 LifeLog（T-1887，D-539，对标 M1 批量补写）**：
+   - 落地 `syncTodayCheckinsToLifelogJournal`：读取今日所有已完成事实与跳过记录，时间升序排列；
+   - 前置去重防双计：通过 SQL 预扫描目标容器已有行，已存在的行跳过，未入账的行批量追加；
+   - 设置页一键操作：笔记输出分组提供“立即同步至日记”动作按钮，并弹出双语计数反馈。
+3. **设置页日记 LifeLog 即时预览与测试通道（T-1888，D-540，对标 M1 交互透明）**：
+   - 纯函数 `previewTodayLifelogMarkdown`：零写入排版生成今日打卡 LifeLog 文本；
+   - 设置页 `data-output-preview="lifelog"` 就地折叠展开，支持用户配置分节标题后所见即所得。
+4. **守门与验证**：
+   - 新增 `tests/lifelog-advanced-sync.test.cjs` 纳入 `test:v18`（全 42 项全通）；
+   - CSS 卫生检查通过（835 class tokens，0 死类，677 KiB < 680 KiB 预算）；
+   - `pnpm run check`（TypeScript 零错误）、`pnpm run build:check` 全绿通过。
+
 # 2026-10-22 LifeLog 深度联动优化与双向互操作增强落地（T-1885，D-537）
 
 **v18.20.0+ 持续演进——🔄 Marker 互操作规范、全事件时间轴融合与日记结构化分节**：

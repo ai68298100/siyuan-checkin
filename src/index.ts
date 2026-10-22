@@ -69,7 +69,7 @@ import {JOURNAL_BUILTIN_TEMPLATES, JOURNAL_DATA_NAME, buildJournalEntryMarkdown,
 import {collectNoteBindings, groupBindingTargets, mergeBindingHealth, resolveBindingDocument, bindingTargetLabel, type BindingBlockMetadata} from "./features/note-bindings";
 import {openJournalDialogFor, bindJournalBuilder, bindDocumentTargetPickerFor, type DocumentTargetChoice} from "./render/journal-dialog";
 import {SireaderFocusTracker, buildSireaderExternalRef, type SireaderLifecycleType, type SireaderSegment} from "./features/sireader-adapter";
-import {formatLifelogEntry, formatTimeOnly} from "./features/lifelog-append";
+import {formatLifelogEntry, formatTimeOnly, previewTodayLifelogMarkdown} from "./features/lifelog-append";
 import {CHECKIN_TEMPLATES, TEMPLATE_PACKS, templateName, templateNameAliases} from "./catalog";
 import {buildTemplatePackApplicationPlan} from "./features/template-packs";
 import {SiplayerPlaybackTracker, buildSiplayerExternalRef, detectSiplayerController, extractSiplayerMediaTitle, type SiplayerSegment} from "./features/siplayer-adapter";
@@ -467,6 +467,7 @@ export default class CheckinPlugin extends Plugin {
     diaryReport = {...DEFAULT_VIEW_PREFERENCES.diaryReport};
     /* T-1884 打卡实时追加至日记 LifeLog（opt-in 默认关）。 */
     lifelogJournal = {...DEFAULT_VIEW_PREFERENCES.lifelogJournal};
+    private recentLifelogBlocks = new Map<string, string>();
     /* T-1353 摘要驻留（opt-in 默认关）。 */
     summaryResident = {...DEFAULT_VIEW_PREFERENCES.summaryResident};
     /* T-1384 思阅联动（opt-in 默认关）。 */
@@ -820,9 +821,15 @@ export default class CheckinPlugin extends Plugin {
     }
 
     /* T-1548：输出内容预览——写入前零写入地生成将追加的 Markdown（与写入同一构建路径）。 */
-    private previewOutputMarkdown(channel: "diary" | "summary"): string | undefined {
+    private previewOutputMarkdown(channel: "diary" | "summary" | "lifelog"): string | undefined {
         if (channel === "diary") return `${this.buildCurrentReportMarkdown()}\n`;
-        return this.buildSummaryResidentMarkdown(dateKey(currentCalendarDate()));
+        if (channel === "summary") return this.buildSummaryResidentMarkdown(dateKey(currentCalendarDate()));
+        const todayKey = dateKey(currentCalendarDate());
+        const todayEvents = getEventsInDateRange(this.store, todayKey, todayKey)
+            .filter((e) => this.lifelogJournal.includeSkip || e.kind !== "skip")
+            .sort((a, b) => a.occurredAt.localeCompare(b.occurredAt));
+        const itemNames = new Map(this.store.items.map((i) => [i.id, i.name]));
+        return previewTodayLifelogMarkdown(todayEvents, itemNames, this.lifelogJournal.sectionHeader);
     }
 
     /* T-1353 摘要驻留：每日首次打卡后旁路追加当天汇总单行（opt-in 默认关）。
@@ -5687,6 +5694,11 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
             const group = button.dataset.overviewJump || "";
             root.querySelector<HTMLButtonElement>(`[data-settings-nav="${group}"]`)?.click();
         }));
+        root.querySelector<HTMLElement>("[data-action='sync-today-lifelog']")?.addEventListener("click", () => {
+            runSettingsAction(root.querySelector<HTMLElement>("[data-action='sync-today-lifelog']")!, async () => {
+                await this.syncTodayCheckinsToLifelogJournal();
+            });
+        });
         root.querySelector<HTMLElement>("[data-overview-new-item]")?.addEventListener("click", () => {
             this.showEditor(undefined, undefined, root);
         });
@@ -5697,7 +5709,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
         });
         /* T-1548：输出内容预览——零写入生成将追加的 Markdown 并就地展开；取消/重渲染即收起。 */
         root.querySelectorAll<HTMLElement>("[data-output-preview-generate]").forEach((button) => button.addEventListener("click", () => {
-            const channel = button.dataset.outputPreviewGenerate as "diary" | "summary";
+            const channel = button.dataset.outputPreviewGenerate as "diary" | "summary" | "lifelog";
             const markdown = this.previewOutputMarkdown(channel);
             const body = root.querySelector<HTMLElement>(`[data-output-preview-body="${channel}"]`);
             const container = root.querySelector<HTMLElement>(`[data-output-preview="${channel}"]`);
@@ -9114,11 +9126,24 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
             this.recentRecordTimer = undefined;
         }
         const event = getEventById(this.store, recent.eventId);
-        if (!event) {
-            this.renderBackgroundUpdate();
-            return;
-        }
-        const moment = captureActionMoment();
+    if (!event) {
+        this.renderBackgroundUpdate();
+        return;
+    }
+    /* T-1886：撤销打卡时联动清理当日日记中刚刚追加的 LifeLog 块 */
+    const lifelogBlockId = this.recentLifelogBlocks.get(event.id);
+    if (lifelogBlockId) {
+        this.recentLifelogBlocks.delete(event.id);
+        void this.kernelPost("/api/block/deleteBlock", {id: lifelogBlockId}).then(() => {
+            this.auditEntries = appendStoreAudit(this.auditEntries, {
+                type: "anchor",
+                at: new Date().toISOString(),
+                details: {channel: "lifelog-journal-undo", blockId: lifelogBlockId, eventId: event.id},
+            });
+            this.scheduleAuditPersist();
+        }).catch(() => undefined);
+    }
+    const moment = captureActionMoment();
         await this.enqueueMutation(async () => {
             const previous = this.store;
             const next = removeEvents(this.store, [event], moment.occurredAt);
@@ -9380,20 +9405,103 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
                     if (newId) parentID = String(newId);
                 }
             }
-            await this.kernelPost("/api/block/appendBlock", {
+            const appendRes = await this.kernelPost("/api/block/appendBlock", {
                 data: `${line}\n`,
                 dataType: "markdown",
                 parentID,
-            });
+            }) as {data?: Array<{doOperations?: Array<{id?: string}>}>};
+            const createdBlockId = Array.isArray(appendRes?.data) ? appendRes.data[0]?.doOperations?.[0]?.id : undefined;
+            if (createdBlockId) {
+                this.recentLifelogBlocks.set(event.id, String(createdBlockId));
+            }
             this.auditEntries = appendStoreAudit(this.auditEntries, {
                 type: "anchor",
                 at: new Date().toISOString(),
-                details: {channel: "lifelog-journal", docId: target.docId, line, parentID},
+                details: {channel: "lifelog-journal", docId: target.docId, line, parentID, createdBlockId},
             });
             this.scheduleAuditPersist();
         } catch {
             // 旁路操作安全降级，不阻断主打卡流程
         }
+    }
+
+    /* T-1887：一键将今日全部打卡/跳过记录同步至日记 LifeLog */
+    private async syncTodayCheckinsToLifelogJournal(): Promise<{total: number; synced: number; docName: string}> {
+        if (this.disposed || this.disposing || !this.acceptingOperations) return {total: 0, synced: 0, docName: ""};
+        const todayKey = dateKey(currentCalendarDate());
+        const target = await this.resolveJournalTarget();
+        if (!target.docId) {
+            showMessage(t("msg.diaryNotBound"));
+            return {total: 0, synced: 0, docName: ""};
+        }
+        const todayEvents = getEventsInDateRange(this.store, todayKey, todayKey)
+            .filter((e) => this.lifelogJournal.includeSkip || e.kind !== "skip")
+            .sort((a, b) => a.occurredAt.localeCompare(b.occurredAt));
+        if (!todayEvents.length) {
+            showMessage(t("set.lifelogNoEventsToday"));
+            return {total: 0, synced: 0, docName: target.docName};
+        }
+        const itemNames = new Map(this.store.items.map((i) => [i.id, i.name]));
+        let parentID = target.docId;
+        const header = this.lifelogJournal.sectionHeader?.trim();
+        if (header) {
+            const escapedHeader = header.replace(/'/g, "''");
+            const found = await this.kernelPost("/api/query/sql", {
+                stmt: `SELECT id FROM blocks WHERE root_id = '${target.docId.replace(/'/g, "''")}' AND type = 'h' AND (content = '${escapedHeader}' OR content LIKE '%${escapedHeader}%') ORDER BY id ASC LIMIT 1`,
+            }).catch(() => undefined);
+            const rows = Array.isArray((found as {data?: unknown[]})?.data) ? (found as {data: Array<{id?: string}>}).data : [];
+            if (rows.length && rows[0].id) {
+                parentID = String(rows[0].id);
+            } else {
+                const createdHeader = await this.kernelPost("/api/block/appendBlock", {
+                    data: `### ${header}\n`,
+                    dataType: "markdown",
+                    parentID: target.docId,
+                }).catch(() => undefined);
+                const newId = Array.isArray((createdHeader as {data?: Array<{doOperations?: Array<{id?: string}>}>})?.data)
+                    ? (createdHeader as {data: Array<{doOperations?: Array<{id?: string}>}>}).data[0]?.doOperations?.[0]?.id
+                    : undefined;
+                if (newId) parentID = String(newId);
+            }
+        }
+        const existingBlocks = await this.kernelPost("/api/query/sql", {
+            stmt: `SELECT content FROM blocks WHERE root_id = '${target.docId.replace(/'/g, "''")}' LIMIT 500`,
+        }).catch(() => undefined);
+        const existingContents = new Set(
+            (Array.isArray((existingBlocks as {data?: unknown[]})?.data) ? (existingBlocks as {data: Array<{content?: string}>}).data : [])
+                .map((r) => (r.content || "").trim())
+                .filter(Boolean),
+        );
+
+        let synced = 0;
+        for (const event of todayEvents) {
+            const itemName = itemNames.get(event.itemId) || "";
+            if (!itemName) continue;
+            const timeStr = formatTimeOnly(event.occurredAt);
+            const line = formatLifelogEntry({
+                timeStr,
+                itemName,
+                value: event.value,
+                unit: event.unit,
+                kind: event.kind,
+                note: event.note,
+                energy: event.energy,
+            });
+            if (existingContents.has(line)) continue;
+            const appendRes = await this.kernelPost("/api/block/appendBlock", {
+                data: `${line}\n`,
+                dataType: "markdown",
+                parentID,
+            }) as {data?: Array<{doOperations?: Array<{id?: string}>}>};
+            const createdBlockId = Array.isArray(appendRes?.data) ? appendRes.data[0]?.doOperations?.[0]?.id : undefined;
+            if (createdBlockId) {
+                this.recentLifelogBlocks.set(event.id, String(createdBlockId));
+            }
+            existingContents.add(line);
+            synced += 1;
+        }
+        showMessage(t("set.lifelogSyncDone", {total: todayEvents.length, synced}));
+        return {total: todayEvents.length, synced, docName: target.docName};
     }
 
     private async writebackNoteAnchor(item: CheckinItem, info: {state: "done" | "skip" | "unskip"; value?: number; unit?: string}): Promise<void> {

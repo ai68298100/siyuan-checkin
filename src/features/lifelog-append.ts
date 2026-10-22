@@ -53,3 +53,32 @@ export function formatTimeOnly(isoOrMs: string | number): string {
     const minutes = String(date.getMinutes()).padStart(2, "0");
     return `${hours}:${minutes}`;
 }
+
+/** 预览生成今日全部打卡/跳过事件的 LifeLog Markdown 时间线文本 */
+export function previewTodayLifelogMarkdown(
+    events: readonly {occurredAt: string; value: number; unit?: string; kind?: "checkin" | "skip"; note?: string; energy?: 1 | 2 | 3 | 4 | 5; itemId: string}[],
+    itemNames: ReadonlyMap<string, string>,
+    sectionHeader?: string,
+): string {
+    if (!events.length) return "今日暂无打卡事实。";
+    const lines: string[] = [];
+    if (sectionHeader?.trim()) {
+        lines.push(`### ${sectionHeader.trim()}`);
+    }
+    const sorted = [...events].sort((a, b) => a.occurredAt.localeCompare(b.occurredAt));
+    for (const event of sorted) {
+        const itemName = itemNames.get(event.itemId);
+        if (!itemName) continue;
+        const timeStr = formatTimeOnly(event.occurredAt);
+        lines.push(formatLifelogEntry({
+            timeStr,
+            itemName,
+            value: event.value,
+            unit: event.unit,
+            kind: event.kind,
+            note: event.note,
+            energy: event.energy,
+        }));
+    }
+    return lines.join("\n");
+}
