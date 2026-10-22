@@ -1,3 +1,22 @@
+# 2026-10-22 LifeLog 深度联动优化与双向互操作增强落地（T-1885，D-537）
+
+**v18.20.0+ 持续演进——🔄 Marker 互操作规范、全事件时间轴融合与日记结构化分节**：
+1. **Marker 语法双向兼容重构（`src/features/lifelog-append.ts`）**：
+   - 彻底解决项目名包含单位导致外部 Marker 识别失败的问题，严格输出 `HH:mm 项目名：数值单位 备注 ⚡精力`；
+   - 保证冒号前为纯净的项目名称，100% 兼容 `parseYeguifMarker` 以及第三方 LifeLog 插件的反向解析与项目映射。
+2. **Review 全量打卡事实时间轴融合（`src/features/lifelog-timeline.ts` + `review.ts`）**：
+   - 突破此前仅展示 `yeguif` 单一来源的限制，将包括 `manual`、`sireader`、`siplayer`、`weread` 等在内的全量打卡事件统一融入 LifeLog 时间轴；
+   - 增设 `durationLabel`，支持二值完成、分钟时长、数值单位与跳过状态在时间线徽标上的精准展示；
+   - 支持与分析看板的筛选聚焦（T-1879）无缝联动。
+3. **日记结构化分节追加（`src/index.ts` + `src/render/settings.ts`）**：
+   - `lifelogJournal` 增设 `sectionHeader`（分节标题）偏好；
+   - 追加日记时通过 SQL 智能定位文档中匹配的标题块作为 `parentID`，若尚不存在该标题则自动创建并下挂段落，未配置时回退至文档末尾；
+   - 设置页增设分节标题配置项，界面友好可控。
+4. **守门与验证**：
+   - 新增 `tests/lifelog-integration-enhanced.test.cjs` 纳入 `test:v18`（全 41 项全通）；
+   - CSS 卫生检查通过（835 class tokens，0 死类，677 KiB < 680 KiB 预算）；
+   - `pnpm run check`（TypeScript 零错误）、`pnpm run build:check` 全绿通过。
+
 # 2026-10-22 思阅/思播新版本深度联动升级与打卡实时追加日记 LifeLog 落地（T-1882, T-1883, T-1884，D-534, D-535, D-536）
 
 **v18.20.0+ 持续演进——📖 电子书深度感知、🎬 媒体事件驱动与 📓 日记时间线无缝闭环**：

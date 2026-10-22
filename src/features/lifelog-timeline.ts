@@ -10,11 +10,13 @@ export interface LifelogTimelineEntry {
     type: string;
     /** 冒号后的备注（可空）。 */
     text: string;
-    /** 结算时长分钟数（≤0 或非数归零——首条无前置时长的记录不产出，此处兜底）。 */
+    /** 结算时长分钟数（≤0 或非数归零）。 */
     minutes: number;
     itemName: string;
     /** 类型→6 色板索引（-1=空类型中性色；确定性哈希，同类型恒同色）。 */
     colorIndex: number;
+    source?: string;
+    durationLabel?: string;
 }
 
 export interface LifelogTimelineRawEvent {
@@ -22,32 +24,44 @@ export interface LifelogTimelineRawEvent {
     value: number;
     note?: string;
     itemId: string;
+    source?: string;
+    unit?: string;
+    kind?: "checkin" | "skip";
 }
 
 export function buildLifelogTimeline(events: readonly LifelogTimelineRawEvent[], itemNames: ReadonlyMap<string, string>): LifelogTimelineEntry[] {
-    return events
-        .map((event) => {
-            const date = new Date(event.occurredAt);
-            if (!(date instanceof Date) || Number.isNaN(date.getTime())) return undefined;
-            const note = typeof event.note === "string" ? event.note : "";
-            const colon = note.search(/[：:]/);
-            const type = (colon >= 0 ? note.slice(0, colon) : note).trim().slice(0, 60);
-            const text = (colon >= 0 ? note.slice(colon + 1) : "").trim().slice(0, 300);
-            const minutes = Number.isFinite(event.value) && event.value > 0 ? Math.round(event.value) : 0;
-            const hh = String(date.getHours()).padStart(2, "0");
-            const mm = String(date.getMinutes()).padStart(2, "0");
-            return {
-                occurredAt: event.occurredAt,
-                time: `${hh}:${mm}`,
-                type,
-                text,
-                minutes,
-                itemName: itemNames.get(event.itemId) || "",
-                colorIndex: lifelogTypeColorIndex(type),
-            };
-        })
-        .filter((entry): entry is LifelogTimelineEntry => Boolean(entry))
-        .sort((left, right) => left.occurredAt.localeCompare(right.occurredAt) || left.time.localeCompare(right.time));
+    const list: LifelogTimelineEntry[] = [];
+    for (const event of events) {
+        const date = new Date(event.occurredAt);
+        if (!(date instanceof Date) || Number.isNaN(date.getTime())) continue;
+        const itemName = itemNames.get(event.itemId) || "";
+        const note = typeof event.note === "string" ? event.note.trim() : "";
+        const colon = note.search(/[：:]/);
+        const noteType = (colon >= 0 ? note.slice(0, colon) : note).trim().slice(0, 60);
+        const text = (colon >= 0 ? note.slice(colon + 1) : "").trim().slice(0, 300);
+        const type = noteType || itemName;
+        const minutes = Number.isFinite(event.value) && event.value > 0 ? Math.round(event.value) : 0;
+        const isSkip = event.kind === "skip";
+        const durationLabel = isSkip
+            ? "跳过"
+            : (event.unit && event.unit !== "分钟" && event.unit !== "min" && event.source !== "yeguif"
+                ? `${event.value}${event.unit}`
+                : (minutes > 0 ? `${minutes} 分钟` : "完成"));
+        const hh = String(date.getHours()).padStart(2, "0");
+        const mm = String(date.getMinutes()).padStart(2, "0");
+        list.push({
+            occurredAt: event.occurredAt,
+            time: `${hh}:${mm}`,
+            type,
+            text,
+            minutes,
+            itemName,
+            colorIndex: lifelogTypeColorIndex(type),
+            ...(event.source ? {source: event.source} : {}),
+            durationLabel,
+        });
+    }
+    return list.sort((left, right) => left.occurredAt.localeCompare(right.occurredAt) || left.time.localeCompare(right.time));
 }
 
 /** 类型→6 色板索引（31 进制确定性哈希；同类型恒同色，未知/空类型=-1 中性）。 */

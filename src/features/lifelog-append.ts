@@ -21,19 +21,28 @@ export interface LifelogFormatInput {
  */
 export function formatLifelogEntry(input: LifelogFormatInput): string {
     const isSkip = input.kind === "skip";
-    const statusPart = isSkip
-        ? " (跳过)"
-        : (input.value !== undefined && input.value > 0 && input.unit && input.unit !== "次"
-            ? ` (${input.value}${input.unit})`
-            : "");
+    const valuePart = !isSkip && input.value !== undefined && input.value > 0 && input.unit && input.unit !== "次"
+        ? `${input.value}${input.unit}`
+        : "";
     const noteClean = (input.note || "").trim();
-    const notePart = noteClean
-        ? `：${noteClean}`
-        : (isSkip ? "：主动跳过" : "：完成");
+    const parts: string[] = [];
+    if (isSkip) {
+        parts.push("(跳过)");
+    } else if (valuePart) {
+        parts.push(valuePart);
+    }
+    if (noteClean) {
+        parts.push(noteClean);
+    } else if (isSkip) {
+        parts.push("主动跳过");
+    } else if (!valuePart) {
+        parts.push("完成");
+    }
     const energyPart = input.energy && input.energy >= 1 && input.energy <= 5
         ? ` ⚡${input.energy}`
         : "";
-    return `${input.timeStr} ${input.itemName}${statusPart}${notePart}${energyPart}`;
+    const content = parts.join(" ");
+    return `${input.timeStr} ${input.itemName}：${content}${energyPart}`;
 }
 
 /** 从 ISO 8601 或时间戳毫秒提取宿主本地 HH:mm 格式时间 */

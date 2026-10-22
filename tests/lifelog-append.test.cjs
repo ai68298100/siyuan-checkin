@@ -9,15 +9,23 @@ const path = require("node:path");
 
 console.log("Starting lifelog-append tests...");
 
+const os = require("node:os");
 const ts = require("typescript");
 
 const root = path.join(__dirname, "..");
-const src = fs.readFileSync(path.join(root, "src", "features", "lifelog-append.ts"), "utf8");
-const jsCode = ts.transpileModule(src, {compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS}}).outputText;
-const moduleFn = new Function("module", "exports", jsCode);
-const mod = {exports: {}};
-moduleFn(mod, mod.exports);
-const {formatLifelogEntry, formatTimeOnly} = mod.exports;
+const dir = fs.mkdtempSync(path.join(os.tmpdir(), "lc-lifelog-test-"));
+fs.mkdirSync(path.join(dir, "src", "features"), {recursive: true});
+const compilerOptions = {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS};
+const transpile = (relative) => {
+    const source = fs.readFileSync(path.join(root, relative), "utf8");
+    fs.writeFileSync(path.join(dir, relative.replace(/\.ts$/, ".js")), ts.transpileModule(source, {compilerOptions}).outputText);
+};
+transpile("src/date-keys.ts");
+transpile("src/features/lifelog-append.ts");
+transpile("src/features/yeguif-adapter.ts");
+
+const {formatLifelogEntry, formatTimeOnly} = require(path.join(dir, "src", "features", "lifelog-append.js"));
+const {parseYeguifMarker} = require(path.join(dir, "src", "features", "yeguif-adapter.js"));
 
 /* ---------------------------------------------------------
    一、纯函数格式化逻辑验证
@@ -41,7 +49,7 @@ const res2 = formatLifelogEntry({
     note: "#深度专注 算法题",
     energy: 5,
 });
-assert.equal(res2, "10:15 编程学习 (45分钟)：#深度专注 算法题 ⚡5");
+assert.equal(res2, "10:15 编程学习：45分钟 #深度专注 算法题 ⚡5");
 
 // 3. 次数单位（次）不冗余输出 (1次)
 const res3 = formatLifelogEntry({
@@ -61,7 +69,7 @@ const res4 = formatLifelogEntry({
     kind: "skip",
     note: "#主动休息 今天太累早睡",
 });
-assert.equal(res4, "21:00 晚间阅读 (跳过)：#主动休息 今天太累早睡");
+assert.equal(res4, "21:00 晚间阅读：(跳过) #主动休息 今天太累早睡");
 
 // 5. 跳过事件（无备注）
 const res5 = formatLifelogEntry({
@@ -69,7 +77,18 @@ const res5 = formatLifelogEntry({
     itemName: "俯卧撑",
     kind: "skip",
 });
-assert.equal(res5, "22:00 俯卧撑 (跳过)：主动跳过");
+assert.equal(res5, "22:00 俯卧撑：(跳过) 主动跳过");
+
+// 6. 叶归 Marker 兼容性双向断言
+const parsedMarker2 = parseYeguifMarker("20261022120000-abcdefg1", res2);
+assert.ok(parsedMarker2, "LifeLog entry must be parsed successfully by parseYeguifMarker");
+assert.equal(parsedMarker2.type, "编程学习");
+assert.equal(parsedMarker2.text, "45分钟 #深度专注 算法题 ⚡5");
+
+const parsedMarker4 = parseYeguifMarker("20261022120000-abcdefg2", res4);
+assert.ok(parsedMarker4, "LifeLog skip entry must be parsed successfully by parseYeguifMarker");
+assert.equal(parsedMarker4.type, "晚间阅读");
+assert.equal(parsedMarker4.text, "(跳过) #主动休息 今天太累早睡");
 
 // 6. formatTimeOnly
 assert.match(formatTimeOnly(new Date("2026-10-22T08:30:00")), /^\d{2}:\d{2}$/);
@@ -85,8 +104,8 @@ const srcSettings = fs.readFileSync(path.join(root, "src", "render", "settings.t
 const srcI18n = fs.readFileSync(path.join(root, "src", "i18n.ts"), "utf8");
 
 // 1. view-preferences 字段与归一化
-assert.ok(srcViewPref.includes("lifelogJournal: {enabled: boolean; includeSkip: boolean};"), "CheckinViewPreferences must include lifelogJournal");
-assert.ok(srcViewPref.includes("lifelogJournal: {enabled: false, includeSkip: true}"), "DEFAULT_VIEW_PREFERENCES must set default lifelogJournal");
+assert.ok(srcViewPref.includes("lifelogJournal: {enabled: boolean; includeSkip: boolean; sectionHeader: string};"), "CheckinViewPreferences must include lifelogJournal");
+assert.ok(srcViewPref.includes("lifelogJournal: {enabled: false, includeSkip: true, sectionHeader: \"\"}"), "DEFAULT_VIEW_PREFERENCES must set default lifelogJournal");
 assert.ok(srcViewPref.includes("const lifelogJournal = {"), "normalizeViewPreferences must normalize lifelogJournal");
 
 // 2. index.ts 属性与调用

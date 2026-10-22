@@ -693,12 +693,18 @@ export function renderReviewView(ctx: ReviewViewContext): string {
         return `<div class="lc-checkin__weekly-review" data-weekly-key="${escapeHtml(weekKey)}">${facts}<label class="lc-checkin__weekly-field"><span>${escapeHtml(t("review.weeklyStepFriction"))}</span><textarea data-weekly-friction rows="2" placeholder="${escapeHtml(t("review.weeklyFrictionPlaceholder"))}">${escapeHtml(draft?.friction || "")}</textarea></label><label class="lc-checkin__weekly-field"><span>${escapeHtml(t("review.weeklyStepAdjust"))}</span><textarea data-weekly-adjustment rows="2" placeholder="${escapeHtml(t("review.weeklyAdjustPlaceholder"))}">${escapeHtml(draft?.adjustment || "")}</textarea><small>${escapeHtml(t("review.weeklyAdjustHint"))}</small></label><div class="lc-checkin__weekly-actions"><button class="lc-checkin__text-button" type="button" data-weekly-save>${t("review.weeklySave")}</button><button class="lc-checkin__text-button" type="button" data-weekly-export>${t("review.weeklyExport")}</button><button class="lc-checkin__text-button" type="button" data-weekly-ai-copy aria-label="${escapeHtml(t("review.weeklyAiCopyAria"))}" title="${escapeHtml(t("review.weeklyAiCopy"))}">${t("review.weeklyAiCopy")}</button><button class="lc-checkin__text-button" type="button" data-weekly-clear>${t("review.weeklyClear")}</button><span class="lc-checkin__weekly-status" data-weekly-status role="status"></span></div></div>`;
     };
 
-    /* T-1541 LifeLog 时间轴：yeguif 事件纵向串联（类型色点+时长），纯渲染零写入；
-       无 yeguif 事件时显示空说明（不隐藏折叠区，保持入口可发现）。 */
+    /* T-1541 / T-1884 LifeLog 时间轴：yeguif 及全部打卡事件纵向串联（类型色点+时长），纯渲染零写入；
+       无记录时显示空说明（不隐藏折叠区，保持入口可发现）。 */
     const renderLifelog = (): string => {
-        const entries = ctx.lifelogTimeline || [];
+        let entries = ctx.lifelogTimeline || [];
+        if (filterItemId) {
+            entries = entries.filter(e => e.itemName === focusedLabel || e.type === focusedLabel);
+        }
         if (!entries.length) return `<p class="review-scope-note">${escapeHtml(t("review.lifelogEmpty"))}</p>`;
-        const rows = entries.map((entry) => `<li class="lc-checkin__lifelog-row" data-lifelog-color="${entry.colorIndex}"><time>${escapeHtml(entry.time)}</time><div><strong>${escapeHtml(entry.type || entry.itemName)}</strong>${entry.text ? `<span>${escapeHtml(entry.text)}</span>` : ""}${entry.itemName ? `<small>${escapeHtml(entry.itemName)}</small>` : ""}</div><span class="lc-checkin__lifelog-duration">${escapeHtml(t("review.lifelogMinutes", {n: entry.minutes}))}</span></li>`).join("");
+        const rows = entries.map((entry) => {
+            const badgeText = entry.durationLabel || t("review.lifelogMinutes", {n: entry.minutes});
+            return `<li class="lc-checkin__lifelog-row" data-lifelog-color="${entry.colorIndex}"><time>${escapeHtml(entry.time)}</time><div><strong>${escapeHtml(entry.type || entry.itemName)}</strong>${entry.text ? `<span>${escapeHtml(entry.text)}</span>` : ""}${entry.itemName && entry.itemName !== entry.type ? `<small>${escapeHtml(entry.itemName)}</small>` : ""}</div><span class="lc-checkin__lifelog-duration">${escapeHtml(badgeText)}</span></li>`;
+        }).join("");
         return `<ol class="lc-checkin__lifelog-timeline" role="list">${rows}</ol>`;
     };
 

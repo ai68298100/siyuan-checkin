@@ -5667,6 +5667,12 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
             });
             this.render();
         });
+        root.querySelector<HTMLInputElement>("[data-setting='lifelog-journal-header']")?.addEventListener("change", (event) => {
+            const target = event.currentTarget as HTMLInputElement;
+            this.applyPreference(() => {
+                this.lifelogJournal.sectionHeader = target.value.trim().slice(0, 40);
+            });
+        });
         /* T-1352 日记集成：开关即存即生效；docId 保存时校验；未启用时写入入口禁用。 */
         /* T-1552：日记报告的启停开关退役——手动报告不需要门槛；
            diaryReport.enabled 字段仅为兼容保留，读写路径都不再消费。 */
@@ -7633,11 +7639,18 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
             trustThresholds: ([
                 {source: "weread", itemId: this.wereadIntegration?.itemId, value: this.wereadIntegration?.thresholdMinutes},
             ] as Array<{source: string; itemId?: string; value?: number}>).filter((entry): entry is {source: string; itemId: string; value: number} => Boolean(entry.itemId) && typeof entry.value === "number" && entry.value > 0),
-            /* T-1541 LifeLog 时间轴投影：区间内 yeguif 事件（时长已在 value），解析排序在纯函数。 */
+            /* T-1541 / T-1884 LifeLog 时间轴投影：融合区间内 yeguif 与全部打卡事实。 */
             lifelogTimeline: buildLifelogTimeline(
                 getEventsInDateRange(this.store, context.startDate, dateKey(new Date(calendarDateFromKey(context.endDate).getTime() + 86_400_000)))
-                    .filter((event) => event.source === "yeguif")
-                    .map((event) => ({occurredAt: event.occurredAt, value: event.value, note: event.note, itemId: event.itemId})),
+                    .map((event) => ({
+                        occurredAt: event.occurredAt,
+                        value: event.value,
+                        unit: event.unit,
+                        kind: event.kind,
+                        source: event.source,
+                        note: event.note,
+                        itemId: event.itemId,
+                    })),
                 new Map(this.store.items.map((entry) => [entry.id, entry.name])),
             ),
             analyticsSnapshot: snapshot,
@@ -9345,15 +9358,37 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
                 note: event.note,
                 energy: event.energy,
             });
+            let parentID = target.docId;
+            const header = this.lifelogJournal.sectionHeader?.trim();
+            if (header) {
+                const escapedHeader = header.replace(/'/g, "''");
+                const found = await this.kernelPost("/api/query/sql", {
+                    stmt: `SELECT id FROM blocks WHERE root_id = '${target.docId.replace(/'/g, "''")}' AND type = 'h' AND (content = '${escapedHeader}' OR content LIKE '%${escapedHeader}%') ORDER BY id ASC LIMIT 1`,
+                }).catch(() => undefined);
+                const rows = Array.isArray((found as {data?: unknown[]})?.data) ? (found as {data: Array<{id?: string}>}).data : [];
+                if (rows.length && rows[0].id) {
+                    parentID = String(rows[0].id);
+                } else {
+                    const createdHeader = await this.kernelPost("/api/block/appendBlock", {
+                        data: `### ${header}\n`,
+                        dataType: "markdown",
+                        parentID: target.docId,
+                    }).catch(() => undefined);
+                    const newId = Array.isArray((createdHeader as {data?: Array<{doOperations?: Array<{id?: string}>}>})?.data)
+                        ? (createdHeader as {data: Array<{doOperations?: Array<{id?: string}>}>}).data[0]?.doOperations?.[0]?.id
+                        : undefined;
+                    if (newId) parentID = String(newId);
+                }
+            }
             await this.kernelPost("/api/block/appendBlock", {
                 data: `${line}\n`,
                 dataType: "markdown",
-                parentID: target.docId,
+                parentID,
             });
             this.auditEntries = appendStoreAudit(this.auditEntries, {
                 type: "anchor",
                 at: new Date().toISOString(),
-                details: {channel: "lifelog-journal", docId: target.docId, line},
+                details: {channel: "lifelog-journal", docId: target.docId, line, parentID},
             });
             this.scheduleAuditPersist();
         } catch {
