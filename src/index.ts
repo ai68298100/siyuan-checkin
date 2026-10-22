@@ -244,6 +244,7 @@ interface RecentRecord {
     /** T-1776：回执直达所写事实——来源标注与行内事实详情按事件呈现。 */
     source?: CheckinEvent["source"];
     localDate?: string;
+    lifelogSynced?: boolean;
 }
 
 interface LockManagerLike {
@@ -7480,6 +7481,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
             firstSuccessSkipped: isFirstSuccessSuppressed(this.firstSuccessState),
             quickEntryNlp: this.quickEntryNlp,
             quickEntryCancelled: [...(today?.quickEntryCancelled ?? this.quickEntryCancelled)],
+            todayLifelogFoldOpen: today?.todayLifelogFoldOpen,
         });
     }
 
@@ -9094,6 +9096,7 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
             /* T-1776：回执携带事件身份事实——来源标注与"查看此记录"按本事件呈现。 */
             source: event.source,
             localDate: event.localDate,
+            lifelogSynced: this.lifelogJournal.enabled && (!isSkipEvent(event) || this.lifelogJournal.includeSkip),
             /* R-18.5（D-263 收尾）：连击命中里程碑 → 庆祝升级为里程碑级（其余为日常轻反馈）。 */
             ...(STREAK_MILESTONES.includes(currentStreak) ? {milestone: currentStreak} : {}),
         });

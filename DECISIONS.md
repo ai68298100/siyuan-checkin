@@ -1,3 +1,15 @@
+# D-544：T-1892 Today 行动轨迹抽屉展开状态会话保持（2026-10-22）
+
+- **抽屉状态会话记忆**：在 `TodayRootContext` 增设 `todayLifelogFoldOpen`，在 `[data-today-lifelog-fold]` 派发 `toggle` 时实时记录，解决打卡刷新后抽屉被强制关闭的问题，保护用户的心流连续性。
+
+# D-545：T-1893 成功回执与事实面板展示日记同步信号（2026-10-22）
+
+- **落盘可见性**：在 `RecentRecordView` 扩充 `lifelogSynced`，开启日记同步后在完成 Toast 回显 `📓 已同步日记` 徽章，并在事实面板注明同步状态，极大增强物理落盘的确定感。
+
+# D-546：T-1894 Review 回顾页 LifeLog 时间轴按日卡片化分组（2026-10-22）
+
+- **长周期结构化**：在周复盘与月复盘中，`renderLifelog` 按日期自动分桶输出 `.lc-checkin__lifelog-day-group` 卡片流，并赋予 `data-lifelog-date` 属性，与历史日历快速钻取无缝打通。
+
 # D-541：T-1889 打卡照片附件智能同步至日记 LifeLog（2026-10-22）
 
 - **图文混排时间线**：当打卡带有图片附件时，`formatLifelogMarkdownBlock` 在 LifeLog 纯文本时间线后追加标准 Markdown 图片语法，实现真正图文并茂的日记归档体验；

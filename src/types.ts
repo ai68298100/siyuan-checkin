@@ -236,4 +236,5 @@ export interface TodayRootContext {
     pendingAttachments: Map<string, string>;
     quickEntryCancelled: Set<string>;
     priorityReminderExpanded: boolean;
+    todayLifelogFoldOpen?: boolean;
 }

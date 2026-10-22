@@ -688,4 +688,8 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
     root.querySelectorAll<HTMLElement>("[data-action='open-daily-note']").forEach((button) => button.addEventListener("click", () => {
         void host.openDailyNote?.(root);
     }));
+    root.querySelector<HTMLDetailsElement>("[data-today-lifelog-fold]")?.addEventListener("toggle", (event) => {
+        const isOpen = (event.currentTarget as HTMLDetailsElement).open;
+        if (todayState) todayState.todayLifelogFoldOpen = isOpen;
+    });
 }

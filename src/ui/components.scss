@@ -11396,4 +11396,28 @@ dialog.lc-checkin.lc-checkin__avatar-editor {
     display: flex;
     justify-content: flex-end;
 }
+.lc-checkin__lifelog-timeline-container {
+    display: grid;
+    gap: 16px;
+}
+.lc-checkin__lifelog-day-group {
+    display: grid;
+    gap: 8px;
+}
+.lc-checkin__lifelog-day-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 4px;
+    border-bottom: 1px dashed var(--lc-checkin-border);
+}
+.lc-checkin__lifelog-day-badge {
+    font-size: 12px;
+    font-weight: 650;
+    color: var(--lc-checkin-text);
+}
+.lc-checkin__lifelog-day-count {
+    font-size: 11px;
+    color: var(--lc-checkin-muted);
+}
 @include meta.load-css("./reminder-density");

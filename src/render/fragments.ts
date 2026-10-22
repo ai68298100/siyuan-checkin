@@ -66,6 +66,7 @@ export interface TodayViewContext extends TodayItemContext {
     /** T-1496：快速录入提示开关与当前会话内取消的解析片段。 */
     quickEntryNlp?: boolean;
     quickEntryCancelled?: readonly string[];
+    todayLifelogFoldOpen?: boolean;
 }
 
 export type SaveState = "idle" | "saving" | "error";
@@ -89,24 +90,29 @@ export interface RecentRecordView {
     eventId?: string;
     source?: CheckinEvent["source"];
     localDate?: string;
+    lifelogSynced?: boolean;
 }
 
 export function renderRecentRecordView(record: RecentRecordView | undefined, event: CheckinEvent | undefined, reducedMotion: boolean): string {
     if (!record) return "";
     const sourceLabel = record.source && record.source !== "manual" ? `<em class="lc-checkin__milestone-tag">${escapeHtml(t(`source.${record.source}`) || record.source)}</em>` : "";
+    const lifelogLabel = record.lifelogSynced ? `<em class="lc-checkin__milestone-tag">📓 ${escapeHtml(t("today.lifelogSyncedBadge"))}</em>` : "";
     let detailsPanel = "";
     let detailsToggle = "";
     if (record.eventId && event) {
         const details = buildRecordDetails(event, {});
-        const rows = details.rows.map((row) => {
+        const detailRows = details.rows.map((row) => {
             const valueText = row.isKey ? escapeHtml(t(row.text, row.params)) : row.labelKey === "review.detailsRow.time" ? escapeHtml(new Date(row.text).toLocaleString(getPluginLocale(), {year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit"})) : escapeHtml(row.text);
             return `<div class="lc-checkin__record-details-row"><span>${escapeHtml(t(row.labelKey))}</span><span${row.unknown ? ' class="is-unknown"' : ""}>${valueText}</span></div>`;
-        }).join("");
-        detailsPanel = `<div class="lc-checkin__record-details" data-record-details-panel="${escapeHtml(record.eventId)}" hidden role="group" aria-label="${escapeHtml(t("review.detailsPanelAria"))}">${rows}</div>`;
+        });
+        if (record.lifelogSynced) {
+            detailRows.push(`<div class="lc-checkin__record-details-row"><span>${escapeHtml(t("today.lifelogSyncStatusLabel"))}</span><span>${escapeHtml(t("today.lifelogSynced"))}</span></div>`);
+        }
+        detailsPanel = `<div class="lc-checkin__record-details" data-record-details-panel="${escapeHtml(record.eventId)}" hidden role="group" aria-label="${escapeHtml(t("review.detailsPanelAria"))}">${detailRows.join("")}</div>`;
         detailsToggle = `<button type="button" class="lc-checkin__text-button" data-action="toggle-record-details" data-record-details-toggle="${escapeHtml(record.eventId)}" aria-expanded="false">${t("today.viewRecord")}</button>`;
     }
     return `<div class="lc-checkin__recent-record${record.milestone ? " is-milestone" : ""}" data-reduced-motion="${reducedMotion}" role="status" aria-live="polite">
-            <span><i>✓</i><strong>${escapeHtml(record.message)}</strong>${record.milestone ? `<em class="lc-checkin__milestone-tag">🎉 ${t("today.streakMilestone", {n: record.milestone})}</em>` : ""}${sourceLabel}<small>${t("today.progressNow", {value: escapeHtml(formatNumber(record.progress)), target: escapeHtml(formatNumber(record.target)), unit: escapeHtml(record.unit)})}</small></span>
+            <span><i>✓</i><strong>${escapeHtml(record.message)}</strong>${record.milestone ? `<em class="lc-checkin__milestone-tag">🎉 ${t("today.streakMilestone", {n: record.milestone})}</em>` : ""}${sourceLabel}${lifelogLabel}<small>${t("today.progressNow", {value: escapeHtml(formatNumber(record.progress)), target: escapeHtml(formatNumber(record.target)), unit: escapeHtml(record.unit)})}</small></span>
             <span class="lc-checkin__recent-record-actions">${detailsToggle}<button type="button" data-action="undo-record">${t("today.undoRecord")}</button></span>
             ${detailsPanel}
         </div>`;
@@ -697,13 +703,13 @@ export function renderTodayView(ctx: TodayViewContext): string {
                 <button class="lc-checkin__text-button" type="button" data-action="bulk-exit">${t("today.bulkExit")}</button>
             </div>` : ""}
             ${ctx.celebration ? `<div class="lc-checkin__celebration" role="status"><span class="lc-checkin__celebration-icon" aria-hidden="true">🎉</span><span>${escapeHtml(t("today.focusCelebration", {message: ctx.celebration.message, name: ctx.celebration.itemName}))}</span></div>` : ""}
-            <main class="lc-checkin__list">${list}${renderOffScheduleSection(collectOffScheduleItems(ctx.store, now))}${occasionIsToday ? "" : occasionBanner}${renderTodayLifelogTimelineView(ctx.store, now)}${renderThisDayHistoryView(ctx.store, ctx.occasionStore, now)}${renderWeekLoadView(ctx.store, now)}</main>
+            <main class="lc-checkin__list">${list}${renderOffScheduleSection(collectOffScheduleItems(ctx.store, now))}${occasionIsToday ? "" : occasionBanner}${renderTodayLifelogTimelineView(ctx.store, now, ctx.todayLifelogFoldOpen)}${renderThisDayHistoryView(ctx.store, ctx.occasionStore, now)}${renderWeekLoadView(ctx.store, now)}</main>
             ${recentRecord}
         </div>`;
 }
 
 /** T-1890：Today 首页“今日行动轨迹 (LifeLog)”折叠时间轴 */
-export function renderTodayLifelogTimelineView(store: CheckinStore, now: Date): string {
+export function renderTodayLifelogTimelineView(store: CheckinStore, now: Date, open = false): string {
     const todayKey = dateKey(now);
     const itemNames = new Map(store.items.map((i) => [i.id, i.name]));
     const todayEvents = store.events.filter((e) => e.localDate === todayKey);
@@ -713,7 +719,7 @@ export function renderTodayLifelogTimelineView(store: CheckinStore, now: Date): 
         const badgeText = entry.durationLabel || `${entry.minutes} 分钟`;
         return `<li class="lc-checkin__lifelog-row" data-lifelog-color="${entry.colorIndex}"><time>${escapeHtml(entry.time)}</time><div><strong>${escapeHtml(entry.type || entry.itemName)}</strong>${entry.text ? `<span>${renderLifelogTextWithTags(entry.text)}</span>` : ""}</div><span class="lc-checkin__lifelog-duration">${escapeHtml(badgeText)}</span></li>`;
     }).join("");
-    return `<details class="lc-checkin__today-lifelog-fold" data-today-lifelog-fold>
+    return `<details class="lc-checkin__today-lifelog-fold" data-today-lifelog-fold${open ? " open" : ""}>
         <summary><span>📅 ${t("today.lifelogTimelineTitle", {n: timeline.length})}</span><span class="lc-checkin__fold-chevron" aria-hidden="true">⌄</span></summary>
         <div class="lc-checkin__today-lifelog-content">
             <ol class="lc-checkin__lifelog-timeline" role="list">${rows}</ol>

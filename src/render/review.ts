@@ -694,7 +694,7 @@ export function renderReviewView(ctx: ReviewViewContext): string {
         return `<div class="lc-checkin__weekly-review" data-weekly-key="${escapeHtml(weekKey)}">${facts}<label class="lc-checkin__weekly-field"><span>${escapeHtml(t("review.weeklyStepFriction"))}</span><textarea data-weekly-friction rows="2" placeholder="${escapeHtml(t("review.weeklyFrictionPlaceholder"))}">${escapeHtml(draft?.friction || "")}</textarea></label><label class="lc-checkin__weekly-field"><span>${escapeHtml(t("review.weeklyStepAdjust"))}</span><textarea data-weekly-adjustment rows="2" placeholder="${escapeHtml(t("review.weeklyAdjustPlaceholder"))}">${escapeHtml(draft?.adjustment || "")}</textarea><small>${escapeHtml(t("review.weeklyAdjustHint"))}</small></label><div class="lc-checkin__weekly-actions"><button class="lc-checkin__text-button" type="button" data-weekly-save>${t("review.weeklySave")}</button><button class="lc-checkin__text-button" type="button" data-weekly-export>${t("review.weeklyExport")}</button><button class="lc-checkin__text-button" type="button" data-weekly-ai-copy aria-label="${escapeHtml(t("review.weeklyAiCopyAria"))}" title="${escapeHtml(t("review.weeklyAiCopy"))}">${t("review.weeklyAiCopy")}</button><button class="lc-checkin__text-button" type="button" data-weekly-clear>${t("review.weeklyClear")}</button><span class="lc-checkin__weekly-status" data-weekly-status role="status"></span></div></div>`;
     };
 
-    /* T-1541 / T-1884 LifeLog 时间轴：yeguif 及全部打卡事件纵向串联（类型色点+时长），纯渲染零写入；
+    /* T-1541 / T-1884 / T-1894 LifeLog 时间轴：全量打卡事件按日期分组纵向串联（类型色点+时长），纯渲染零写入；
        无记录时显示空说明（不隐藏折叠区，保持入口可发现）。 */
     const renderLifelog = (): string => {
         let entries = ctx.lifelogTimeline || [];
@@ -702,11 +702,23 @@ export function renderReviewView(ctx: ReviewViewContext): string {
             entries = entries.filter(e => e.itemName === focusedLabel || e.type === focusedLabel);
         }
         if (!entries.length) return `<p class="review-scope-note">${escapeHtml(t("review.lifelogEmpty"))}</p>`;
-        const rows = entries.map((entry) => {
-            const badgeText = entry.durationLabel || t("review.lifelogMinutes", {n: entry.minutes});
-            return `<li class="lc-checkin__lifelog-row" data-lifelog-color="${entry.colorIndex}"><time>${escapeHtml(entry.time)}</time><div><strong>${escapeHtml(entry.type || entry.itemName)}</strong>${entry.text ? `<span>${renderLifelogTextWithTags(entry.text)}</span>` : ""}${entry.itemName && entry.itemName !== entry.type ? `<small>${escapeHtml(entry.itemName)}</small>` : ""}</div><span class="lc-checkin__lifelog-duration">${escapeHtml(badgeText)}</span></li>`;
+
+        const daysMap = new Map<string, typeof entries>();
+        for (const entry of entries) {
+            const dateStr = entry.occurredAt.slice(0, 10);
+            if (!daysMap.has(dateStr)) daysMap.set(dateStr, []);
+            daysMap.get(dateStr)!.push(entry);
+        }
+
+        const daySections = [...daysMap.entries()].map(([dateStr, dayEntries]) => {
+            const rows = dayEntries.map((entry) => {
+                const badgeText = entry.durationLabel || t("review.lifelogMinutes", {n: entry.minutes});
+                return `<li class="lc-checkin__lifelog-row" data-lifelog-color="${entry.colorIndex}"><time>${escapeHtml(entry.time)}</time><div><strong>${escapeHtml(entry.type || entry.itemName)}</strong>${entry.text ? `<span>${renderLifelogTextWithTags(entry.text)}</span>` : ""}${entry.itemName && entry.itemName !== entry.type ? `<small>${escapeHtml(entry.itemName)}</small>` : ""}</div><span class="lc-checkin__lifelog-duration">${escapeHtml(badgeText)}</span></li>`;
+            }).join("");
+            return `<div class="lc-checkin__lifelog-day-group" data-lifelog-date="${escapeHtml(dateStr)}"><div class="lc-checkin__lifelog-day-header"><span class="lc-checkin__lifelog-day-badge">📅 ${escapeHtml(dateStr)}</span><small class="lc-checkin__lifelog-day-count">${t("review.lifelogDayRecords", {n: dayEntries.length})}</small></div><ol class="lc-checkin__lifelog-timeline" role="list">${rows}</ol></div>`;
         }).join("");
-        return `<ol class="lc-checkin__lifelog-timeline" role="list">${rows}</ol>`;
+
+        return `<div class="lc-checkin__lifelog-timeline-container">${daySections}</div>`;
     };
 
     /* T-1879：分析看板多维度筛选与下钻 */

@@ -1,3 +1,20 @@
+# 2026-10-22 Today 轨迹会话保持、Toast 同步徽标与时间轴按日卡片化分组落地（T-1892, T-1893, T-1894，D-544, D-545, D-546）
+
+**v18.20.0+ 持续演进——🧭 展开状态记忆、可观测信号与日期结构化长周期复盘**：
+1. **Today 行动轨迹抽屉展开状态会话保持（T-1892，D-544）**：
+   - 会话状态持久化：`TodayRootContext` 增加 `todayLifelogFoldOpen?: boolean;`，在 `bind-today.ts` 监听 `toggle` 事件，重绘与页面切换保持展开意图；
+   - 空态引导：今日无记录时友好引导。
+2. **成功回执（Toast）可观测性增强（T-1893，D-545）**：
+   - 物理落盘信号：`RecentRecordView` 增加 `lifelogSynced?: boolean`，开启同步时 Toast 实时回显 `📓 已同步日记` 徽标；
+   - 详情面板直达：事实详情面板中增设“日记状态：已作为 LifeLog 时间线追加”。
+3. **Review LifeLog 时间轴按日期分组卡片化与日历联动（T-1894，D-546）**：
+   - 结构化卡片流：重构 `renderLifelog`，突破平铺混杂局限，自动按日分桶输出 `.lc-checkin__lifelog-day-group`；
+   - 携带 `data-lifelog-date` 属性，与月历和热力图快速钻取无缝联动。
+4. **守门与验证**：
+   - 新增 `tests/lifelog-observability-experience.test.cjs` 纳入 `test:v18`（全 44 项全通）；
+   - CSS 卫生检查通过（835 class tokens，0 死类，677 KiB < 680 KiB 预算）；
+   - `pnpm run check`（TypeScript 零错误）、`pnpm run build:check` 全绿通过。
+
 # 2026-10-22 LifeLog 图文附件同步、Today 首页行动轨迹与标签微徽标视觉升级（T-1889, T-1890, T-1891，D-541, D-542, D-543）
 
 **v18.20.0+ 持续演进——🖼️ 图文并茂日记、📅 首页行动流与 🏷️ 标签视觉分层**：
