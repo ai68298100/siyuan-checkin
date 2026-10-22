@@ -11359,4 +11359,41 @@ dialog.lc-checkin.lc-checkin__avatar-editor {
 }
 
 .lc-checkin--today .lc-checkin__item-topline .lc-checkin__streak-badge { height: 28px; min-height: 28px; line-height: 28px; }
+.lc-checkin__lifelog-tag-chip {
+    display: inline-block;
+    padding: 0 5px;
+    margin: 0 2px;
+    border-radius: 4px;
+    background: var(--lc-checkin-accent-soft);
+    color: var(--lc-checkin-accent-text);
+    font-size: 11px;
+    font-weight: 550;
+    vertical-align: baseline;
+}
+.lc-checkin__today-lifelog-fold {
+    margin-top: 10px;
+    border: 1px solid var(--lc-checkin-border);
+    border-radius: 10px;
+    background: var(--lc-checkin-surface);
+    padding: 8px 12px;
+    summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--lc-checkin-text);
+    }
+}
+.lc-checkin__today-lifelog-content {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--lc-checkin-border);
+}
+.lc-checkin__today-lifelog-actions {
+    margin-top: 8px;
+    display: flex;
+    justify-content: flex-end;
+}
 @include meta.load-css("./reminder-density");

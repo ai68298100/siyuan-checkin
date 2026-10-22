@@ -43,6 +43,7 @@ export interface BindTodayHost {
     reviewFoldTouched: boolean;
     focusTimerRoot?: HTMLElement;
     pendingAttachments: Map<string, string>;
+    openDailyNote?(root?: HTMLElement): Promise<void> | void;
     bindDialogClose(root: HTMLElement): void;
     bindItemDrag(root: HTMLElement): void;
     bindQuickKeyboard(root: HTMLElement): void;
@@ -683,5 +684,8 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
         const occurrenceDate = row?.dataset.occasionDate || "";
         const item = host.occasionStore.occasions.find((candidate) => candidate.id === id);
         if (item) runExclusiveAction(button, () => host.enqueueMutation(() => host.setOccasionCompleted(id, occurrenceDate, !isOccasionCompleted(item, occurrenceDate), root)), row, "button[data-action='toggle-occasion']");
+    }));
+    root.querySelectorAll<HTMLElement>("[data-action='open-daily-note']").forEach((button) => button.addEventListener("click", () => {
+        void host.openDailyNote?.(root);
     }));
 }

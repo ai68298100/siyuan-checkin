@@ -15,6 +15,7 @@ import {buildBatchBackfillPreview, buildMatrixMonthCalendar, planMatrixBatchComm
 import {buildItemDenominatorDetail, buildRangeDayCounts} from "../features/stat-denominators";
 import {buildItemTrendSeries, groupItemTrendsByUnit} from "../features/item-trend-compare";
 import {weeklyReviewDraftFor, buildWeeklyReviewMarkdown, type WeeklyReviewDraft} from "../features/weekly-review";
+import {renderLifelogTextWithTags} from "../features/lifelog-timeline";
 import {renderUpcomingOccasionsView} from "./fragments";
 import type {CheckinEvent, CheckinStore} from "../types";
 import type {OccasionStore} from "../occasions";
@@ -703,7 +704,7 @@ export function renderReviewView(ctx: ReviewViewContext): string {
         if (!entries.length) return `<p class="review-scope-note">${escapeHtml(t("review.lifelogEmpty"))}</p>`;
         const rows = entries.map((entry) => {
             const badgeText = entry.durationLabel || t("review.lifelogMinutes", {n: entry.minutes});
-            return `<li class="lc-checkin__lifelog-row" data-lifelog-color="${entry.colorIndex}"><time>${escapeHtml(entry.time)}</time><div><strong>${escapeHtml(entry.type || entry.itemName)}</strong>${entry.text ? `<span>${escapeHtml(entry.text)}</span>` : ""}${entry.itemName && entry.itemName !== entry.type ? `<small>${escapeHtml(entry.itemName)}</small>` : ""}</div><span class="lc-checkin__lifelog-duration">${escapeHtml(badgeText)}</span></li>`;
+            return `<li class="lc-checkin__lifelog-row" data-lifelog-color="${entry.colorIndex}"><time>${escapeHtml(entry.time)}</time><div><strong>${escapeHtml(entry.type || entry.itemName)}</strong>${entry.text ? `<span>${renderLifelogTextWithTags(entry.text)}</span>` : ""}${entry.itemName && entry.itemName !== entry.type ? `<small>${escapeHtml(entry.itemName)}</small>` : ""}</div><span class="lc-checkin__lifelog-duration">${escapeHtml(badgeText)}</span></li>`;
         }).join("");
         return `<ol class="lc-checkin__lifelog-timeline" role="list">${rows}</ol>`;
     };

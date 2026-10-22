@@ -8,6 +8,7 @@ export interface LifelogFormatInput {
     kind?: "checkin" | "skip";
     note?: string;
     energy?: 1 | 2 | 3 | 4 | 5;
+    attachment?: string;
     style?: "standard" | "compact";
 }
 
@@ -43,6 +44,19 @@ export function formatLifelogEntry(input: LifelogFormatInput): string {
         : "";
     const content = parts.join(" ");
     return `${input.timeStr} ${input.itemName}：${content}${energyPart}`;
+}
+
+/** 生成写入思源块的完整 Markdown，若包含合法图片附件则追加 Markdown 图片语法 */
+export function formatLifelogMarkdownBlock(input: LifelogFormatInput): string {
+    const mainLine = formatLifelogEntry(input);
+    if (!input.attachment || typeof input.attachment !== "string") {
+        return `${mainLine}\n`;
+    }
+    const safeUrl = input.attachment.trim();
+    if (safeUrl.startsWith("data:image/") || safeUrl.startsWith("http://") || safeUrl.startsWith("https://") || safeUrl.startsWith("assets/")) {
+        return `${mainLine}\n\n![${input.itemName}](${safeUrl})\n`;
+    }
+    return `${mainLine}\n`;
 }
 
 /** 从 ISO 8601 或时间戳毫秒提取宿主本地 HH:mm 格式时间 */

@@ -21,6 +21,7 @@ const transpile = (relative) => {
     fs.writeFileSync(path.join(dir, relative.replace(/\.ts$/, ".js")), ts.transpileModule(source, {compilerOptions}).outputText);
 };
 
+fs.writeFileSync(path.join(dir, "src", "shared.js"), "module.exports = { escapeHtml: s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;').replace(/'/g, '&#39;') };");
 transpile("src/date-keys.ts");
 transpile("src/features/lifelog-append.ts");
 transpile("src/features/lifelog-timeline.ts");

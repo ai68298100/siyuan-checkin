@@ -4,10 +4,10 @@
 
 - 当前版本升级为 **v18.19.0**（多桶备份版本化、写入幂等事实对账与全表面视觉系统收口里程碑）。
 - 核心交付：多桶备份版本化 Envelope 协议与原子回滚（T-1787/T-1862）；辅助存储桶三分类架构与生命周期治理（T-1860/T-1861）；跨入口写入幂等去重与破戒事实对账收敛（T-1786）；顶栏图标消失与后台暴力重绘防御治理（D-522）；五级按钮、表单输入、长表单分节、导航溢出指引与宿主容器三档密度收口（T-1817/T-1818/T-1819/T-1820/T-1821/T-1824）。
-- 竞品深度调研落地（Loop / Table Habit / Habitica / TickTick / Obsidian / Streaks / Atoms 对标），提炼并登记新一阶段演进任务（T-1872～T-1888）。
+- 竞品深度调研落地（Loop / Table Habit / Habitica / TickTick / Obsidian / Streaks / Atoms 对标），提炼并登记新一阶段演进任务（T-1872～T-1891）。
 - 本文件中历史版本号属于任务登记时的历史基线，保留用于追溯；新任务统一以源码、`PROGRESS.md`、`BLOCKERS.md` 和 `docs/releases/` 的最新版本为准。
 
-## 2026-10 竞品深度对标与体验演进待办（T-1872～T-1888，D-523）
+## 2026-10 竞品深度对标与体验演进待办（T-1872～T-1891，D-523）
 
 - [x] T-1872 打卡主观心流与精力轻量自评及交叉分析（P1，已交付 2026-10-20，D-524，对标 TickTick / Atoms）——在精确录入面板（Exact Entry）提供可选的 1~5 档心流/精力自评（⚡ 1:枯竭/2:疲劳/3:平稳/4:充沛/5:心流，完全可选，主按钮一键打卡不受影响）；事件数据结构增加可选 `energy?: 1 | 2 | 3 | 4 | 5` 字段，严格校验非法值，支持向前兼容与导入导出；回顾页增加“心流与精力分布”交叉分析看板卡片，直观展现平均分、样本数与精力柱状占比。守门 `tests/record-energy-flow.test.cjs` 纳入 `test:v18`；`check` / `test:v18` / `build:check` 全绿。
 - [x] T-1873 习惯稳固度 Sigmoid 饱和成长曲线与阶段化成熟模型（P1，已交付 2026-10-20，D-525，对标 Table Habit / 掌控习惯）——在 `habit-score.ts` 落地逻辑斯蒂饱和函数 `computeHabitSaturation`，实现 0 天为 0 分、33 天（半程拐点）为 50 分、66 天达标为 100 分及 1.5 倍超额封顶（99天）；将习惯生命周期划分为萌芽期（1~21天）、爬坡期（22~45天）与扎根期（46~66天+），并提供心理学科学指导建议；在洞察页渲染自适应饱和稳固度横幅。守门 `tests/habit-saturation-curve.test.cjs` 纳入 `test:v18`；`check` / `test:v18` / `build:check` 全绿。
@@ -26,6 +26,9 @@
 - [x] T-1886 撤销打卡联动清理日记 LifeLog 块（P1，已交付 2026-10-22，D-538，对标 M1 日常闭环与数据洁癖治理）——在 `recentLifelogBlocks` 中精确捕获 `appendBlock` 返回的段落块 ID；当用户在同一会话撤销该记录（`undoRecentRecord`）时，自动调用 `/api/block/deleteBlock` 将日记中刚刚误记的 LifeLog 行精确删除，并在 `auditEntries` 中登记 `lifelog-journal-undo`，彻底杜绝撤销打卡后日记中留下孤儿脏记录。守门 `tests/lifelog-advanced-sync.test.cjs` 纳入 `test:v18`；`check` / `test:v18` / `build:check` 全绿。
 - [x] T-1887 一键批量同步今日打卡至日记 LifeLog（P1，已交付 2026-10-22，D-539，对标 M1 日常闭环与批量补写）——落地 `syncTodayCheckinsToLifelogJournal`，支持在设置页笔记输出中一键将今天全部有效打卡与跳过事实按时间顺序批量格式化并追加至日记，结合 SQL 前置内容扫描实现自动精准去重，满足移动端补记后回到电脑批量归档的真实诉求。守门 `tests/lifelog-advanced-sync.test.cjs` 纳入 `test:v18`；`check` / `test:v18` / `build:check` 全绿。
 - [x] T-1888 设置页日记 LifeLog 即时预览与测试通道（P2，已交付 2026-10-22，D-540，对标 M1 交互透明与所见即所得）——在 `lifelog-append.ts` 纯函数模块实现 `previewTodayLifelogMarkdown`，设置页增设 `data-output-preview="lifelog"` 折叠面板与 `[预览]` 按钮，零写入实时生成今日打卡排版预览，所见即所得。守门 `tests/lifelog-advanced-sync.test.cjs` 纳入 `test:v18`；`check` / `test:v18` / `build:check` 全绿。
+- [x] T-1889 打卡照片附件智能同步至日记 LifeLog（P1，已交付 2026-10-22，D-541，对标 M1 图文并茂日记）——在 `lifelog-append.ts` 落地 `formatLifelogMarkdownBlock`，当打卡事件附带合法图片附件（`data:image/`、`assets/` 或 HTTPS 链接）时，自动在 LifeLog 时间线段落下追加标准 Markdown 图片语法 `![项目名](URL)`，让思源日记真正做到打卡即日记、图文并茂展示。守门 `tests/lifelog-visual-experience.test.cjs` 纳入 `test:v18`；`check` / `test:v18` / `build:check` 全绿。
+- [x] T-1890 Today 页面增设“今日行动轨迹 (LifeLog)”轻量抽屉与日记直达跳转（P1，已交付 2026-10-22，D-542，对标 M1 首页闭环与笔记回溯）——在 `fragments.ts` 落地 `renderTodayLifelogTimelineView`，在 Today 首页末尾挂载“📅 今日行动轨迹”折叠抽屉，按时钟先后顺序呈现当日所有已完成的行动流与状态徽标；抽屉内附设“打开今日日记文档”按钮（`data-action="open-daily-note"`），点击直接调用思源公开 `openTab` 打开对应日记，打通从打卡到日记查阅的 0 距离跳转。守门 `tests/lifelog-visual-experience.test.cjs` 纳入 `test:v18`；`check` / `test:v18` / `build:check` 全绿。
+- [x] T-1891 Review 时间轴智能解析 #标签 为精美微徽标（P2，已交付 2026-10-22，D-543，对标 M2 视觉质感与信息分层）——在 `lifelog-timeline.ts` 落地 `renderLifelogTextWithTags` 纯函数，将备注文本中的 `#标签` 语法智能解析并渲染为高对比度微胶囊徽章（`.lc-checkin__lifelog-tag-chip`），其余文字安全 HTML 转义，显著提升 Review 时间轴与 Today 行动轨迹的信息视觉层级。守门 `tests/lifelog-visual-experience.test.cjs` 纳入 `test:v18`；`check` / `test:v18` / `build:check` 全绿。
 
 ## 2026-10-20 发布 v18.19.0（R-RELEASE-18.19.0）
 

@@ -1,3 +1,18 @@
+# 2026-10-22 LifeLog 图文附件同步、Today 首页行动轨迹与标签微徽标视觉升级（T-1889, T-1890, T-1891，D-541, D-542, D-543）
+
+**v18.20.0+ 持续演进——🖼️ 图文并茂日记、📅 首页行动流与 🏷️ 标签视觉分层**：
+1. **打卡照片附件智能同步至日记 LifeLog（T-1889，D-541）**：
+   - 纯函数 `formatLifelogMarkdownBlock`：当事件包含合法 `attachment`（data:image/、assets/ 或 https://）时，自动生成图文结合的 Markdown 段落，使得思源日记中的时间线图文并茂呈现。
+2. **Today 首页增设“今日行动轨迹 (LifeLog)”折叠抽屉与日记直达（T-1890，D-542）**：
+   - 首页时间线呈现：在 Today 页面底部通过 `renderTodayLifelogTimelineView` 挂载“📅 今日行动轨迹 ({n})”折叠抽屉，按时钟先后展现今日已完成打卡事实；
+   - 0 距离直达日记：抽屉内提供“打开今日日记文档”按钮（`data-action="open-daily-note"`），通过思源官方 `openTab` 直接打开对应日记文档。
+3. **Review 时间轴智能解析 #标签 为精美微徽标（T-1891，D-543）**：
+   - 纯函数 `renderLifelogTextWithTags`：使用 Unicode 正则将备注中的 `#标签` 识别为高可见度紫罗兰微胶囊（`.lc-checkin__lifelog-tag-chip`），其余文字安全转义，显著提升行动时间轴的信息层级美感。
+4. **守门与验证**：
+   - 新增 `tests/lifelog-visual-experience.test.cjs` 纳入 `test:v18`（全 43 项全通）；
+   - CSS 卫生检查通过（835 class tokens，0 死类，677 KiB < 680 KiB 预算）；
+   - `pnpm run check`（TypeScript 零错误）、`pnpm run build:check` 全绿通过。
+
 # 2026-10-22 LifeLog 撤销清理闭环、一键日记批量同步与即时预览落地（T-1886, T-1887, T-1888，D-538, D-539, D-540）
 
 **v18.20.0+ 持续演进——🧹 撤销联动清理、批量同步补写与所见即所得预览**：

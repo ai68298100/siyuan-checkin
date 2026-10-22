@@ -69,7 +69,7 @@ import {JOURNAL_BUILTIN_TEMPLATES, JOURNAL_DATA_NAME, buildJournalEntryMarkdown,
 import {collectNoteBindings, groupBindingTargets, mergeBindingHealth, resolveBindingDocument, bindingTargetLabel, type BindingBlockMetadata} from "./features/note-bindings";
 import {openJournalDialogFor, bindJournalBuilder, bindDocumentTargetPickerFor, type DocumentTargetChoice} from "./render/journal-dialog";
 import {SireaderFocusTracker, buildSireaderExternalRef, type SireaderLifecycleType, type SireaderSegment} from "./features/sireader-adapter";
-import {formatLifelogEntry, formatTimeOnly, previewTodayLifelogMarkdown} from "./features/lifelog-append";
+import {formatLifelogEntry, formatLifelogMarkdownBlock, formatTimeOnly, previewTodayLifelogMarkdown} from "./features/lifelog-append";
 import {CHECKIN_TEMPLATES, TEMPLATE_PACKS, templateName, templateNameAliases} from "./catalog";
 import {buildTemplatePackApplicationPlan} from "./features/template-packs";
 import {SiplayerPlaybackTracker, buildSiplayerExternalRef, detectSiplayerController, extractSiplayerMediaTitle, type SiplayerSegment} from "./features/siplayer-adapter";
@@ -9383,6 +9383,16 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
                 note: event.note,
                 energy: event.energy,
             });
+            const blockMarkdown = formatLifelogMarkdownBlock({
+                timeStr,
+                itemName: item.name,
+                value: event.value,
+                unit: event.unit,
+                kind: event.kind,
+                note: event.note,
+                energy: event.energy,
+                attachment: event.attachment,
+            });
             let parentID = target.docId;
             const header = this.lifelogJournal.sectionHeader?.trim();
             if (header) {
@@ -9406,7 +9416,7 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
                 }
             }
             const appendRes = await this.kernelPost("/api/block/appendBlock", {
-                data: `${line}\n`,
+                data: blockMarkdown,
                 dataType: "markdown",
                 parentID,
             }) as {data?: Array<{doOperations?: Array<{id?: string}>}>};
@@ -9502,6 +9512,20 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
         }
         showMessage(t("set.lifelogSyncDone", {total: todayEvents.length, synced}));
         return {total: todayEvents.length, synced, docName: target.docName};
+    }
+
+    /* T-1890：打开当日日记文档（openTab 公开通道） */
+    async openDailyNote(_root?: HTMLElement): Promise<void> {
+        try {
+            const target = await this.resolveJournalTarget();
+            if (target.docId) {
+                await openTab({app: this.app as never, doc: {id: target.docId}});
+            } else {
+                showMessage(t("msg.diaryNotBound"));
+            }
+        } catch (error) {
+            showMessage(t("msg.diaryOpenFail", {reason: safeUserErrorDetail(error)}));
+        }
     }
 
     private async writebackNoteAnchor(item: CheckinItem, info: {state: "done" | "skip" | "unskip"; value?: number; unit?: string}): Promise<void> {

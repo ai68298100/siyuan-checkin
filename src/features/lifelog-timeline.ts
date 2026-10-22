@@ -2,6 +2,8 @@
    数据源=既有 yeguif 事件（source="yeguif"，note=`类型：备注`，value=结算分钟数）。
    无时钟：时间读数来自事件自身的 ISO 串，不引用当前时刻。 */
 
+import {escapeHtml} from "../shared";
+
 export interface LifelogTimelineEntry {
     occurredAt: string;
     /** HH:MM（本地时区，取自事件 occurredAt）。 */
@@ -71,4 +73,16 @@ export function lifelogTypeColorIndex(type: string): number {
     let hash = 0;
     for (let index = 0; index < safe.length; index += 1) hash = (hash * 31 + safe.charCodeAt(index)) >>> 0;
     return hash % 6;
+}
+
+/** T-1891：将 LifeLog 备注文本中的 #标签 智能渲染为微胶囊徽标，其余安全转义 */
+export function renderLifelogTextWithTags(text: string): string {
+    if (!text || typeof text !== "string") return "";
+    const parts = text.split(/(#[\p{L}\p{N}_-]+)/u);
+    return parts.map((part) => {
+        if (/^#[\p{L}\p{N}_-]+$/u.test(part)) {
+            return `<span class="lc-checkin__lifelog-tag-chip">${escapeHtml(part)}</span>`;
+        }
+        return escapeHtml(part);
+    }).join("");
 }

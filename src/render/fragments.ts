@@ -21,6 +21,7 @@ import {buildRecordTrust} from "../features/record-trust";
 import {buildCheckinLogHierarchy, type CheckinLogDay} from "../features/checkin-log-hierarchy";
 import {projectReminderCenter, type ReminderUserAction} from "../reminders";
 import {applyQuickEntryCancellations, parseQuickEntryText, resolveQuickEntryRecordTarget, type QuickEntryParseResult} from "../features/quick-entry-nlp";
+import {buildLifelogTimeline, renderLifelogTextWithTags} from "../features/lifelog-timeline";
 import type {TodayGroupMode} from "../view-preferences";
 import type {CheckinEvent, CheckinItem, CheckinItemSortMode, CheckinPriority, CheckinStore, CheckinTimeSlot} from "../types";
 import type {OccasionStore} from "../occasions";
@@ -696,9 +697,29 @@ export function renderTodayView(ctx: TodayViewContext): string {
                 <button class="lc-checkin__text-button" type="button" data-action="bulk-exit">${t("today.bulkExit")}</button>
             </div>` : ""}
             ${ctx.celebration ? `<div class="lc-checkin__celebration" role="status"><span class="lc-checkin__celebration-icon" aria-hidden="true">🎉</span><span>${escapeHtml(t("today.focusCelebration", {message: ctx.celebration.message, name: ctx.celebration.itemName}))}</span></div>` : ""}
-            <main class="lc-checkin__list">${list}${renderOffScheduleSection(collectOffScheduleItems(ctx.store, now))}${occasionIsToday ? "" : occasionBanner}${renderThisDayHistoryView(ctx.store, ctx.occasionStore, now)}${renderWeekLoadView(ctx.store, now)}</main>
+            <main class="lc-checkin__list">${list}${renderOffScheduleSection(collectOffScheduleItems(ctx.store, now))}${occasionIsToday ? "" : occasionBanner}${renderTodayLifelogTimelineView(ctx.store, now)}${renderThisDayHistoryView(ctx.store, ctx.occasionStore, now)}${renderWeekLoadView(ctx.store, now)}</main>
             ${recentRecord}
         </div>`;
+}
+
+/** T-1890：Today 首页“今日行动轨迹 (LifeLog)”折叠时间轴 */
+export function renderTodayLifelogTimelineView(store: CheckinStore, now: Date): string {
+    const todayKey = dateKey(now);
+    const itemNames = new Map(store.items.map((i) => [i.id, i.name]));
+    const todayEvents = store.events.filter((e) => e.localDate === todayKey);
+    const timeline = buildLifelogTimeline(todayEvents, itemNames);
+    if (!timeline.length) return "";
+    const rows = timeline.map((entry) => {
+        const badgeText = entry.durationLabel || `${entry.minutes} 分钟`;
+        return `<li class="lc-checkin__lifelog-row" data-lifelog-color="${entry.colorIndex}"><time>${escapeHtml(entry.time)}</time><div><strong>${escapeHtml(entry.type || entry.itemName)}</strong>${entry.text ? `<span>${renderLifelogTextWithTags(entry.text)}</span>` : ""}</div><span class="lc-checkin__lifelog-duration">${escapeHtml(badgeText)}</span></li>`;
+    }).join("");
+    return `<details class="lc-checkin__today-lifelog-fold" data-today-lifelog-fold>
+        <summary><span>📅 ${t("today.lifelogTimelineTitle", {n: timeline.length})}</span><span class="lc-checkin__fold-chevron" aria-hidden="true">⌄</span></summary>
+        <div class="lc-checkin__today-lifelog-content">
+            <ol class="lc-checkin__lifelog-timeline" role="list">${rows}</ol>
+            <div class="lc-checkin__today-lifelog-actions"><button type="button" class="lc-checkin__text-button" data-action="open-daily-note">${t("today.openDailyNote")}</button></div>
+        </div>
+    </details>`;
 }
 
 /** T-1772（D-343）：今日页"其他活跃项目"管理分节——只列不在今日排期内的活跃项目，
