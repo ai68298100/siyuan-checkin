@@ -68,10 +68,11 @@ import {buildCorrelationInsights as computeCorrelationInsights, type Correlation
 import {JOURNAL_BUILTIN_TEMPLATES, JOURNAL_DATA_NAME, buildJournalEntryMarkdown, buildJournalEventNote, buildJournalLookupQuery, normalizeCustomJournalTemplates, normalizeJournalIntegration, parseCustomJournalTemplatesText, resolveJournalTemplate, serializeCustomJournalTemplatesText, type JournalIntegration, type JournalTemplateDef, type ResolvedJournalTemplate} from "./features/journal-templates";
 import {collectNoteBindings, groupBindingTargets, mergeBindingHealth, resolveBindingDocument, bindingTargetLabel, type BindingBlockMetadata} from "./features/note-bindings";
 import {openJournalDialogFor, bindJournalBuilder, bindDocumentTargetPickerFor, type DocumentTargetChoice} from "./render/journal-dialog";
-import {SireaderFocusTracker, buildSireaderExternalRef, type SireaderLifecycleType} from "./features/sireader-adapter";
+import {SireaderFocusTracker, buildSireaderExternalRef, type SireaderLifecycleType, type SireaderSegment} from "./features/sireader-adapter";
+import {formatLifelogEntry, formatTimeOnly} from "./features/lifelog-append";
 import {CHECKIN_TEMPLATES, TEMPLATE_PACKS, templateName, templateNameAliases} from "./catalog";
 import {buildTemplatePackApplicationPlan} from "./features/template-packs";
-import {SiplayerPlaybackTracker, buildSiplayerExternalRef, detectSiplayerController} from "./features/siplayer-adapter";
+import {SiplayerPlaybackTracker, buildSiplayerExternalRef, detectSiplayerController, extractSiplayerMediaTitle, type SiplayerSegment} from "./features/siplayer-adapter";
 import {HEALTH_INGEST_INTERVAL_MS, HEALTH_INBOX_MAX_ROWS, parseHealthInboxLine, parseHealthInboxRows, addHealthMetricBinding, normalizeHealthInboxPreference, getHealthInboxFingerprint, type HealthInboxMetric} from "./features/health-inbox";
 import {isTemplateLinkagePlan, type LinkageBindingState} from "./features/template-linkage";
 import {WEREAD_GATEWAY_URL, WEREAD_INGEST_INTERVAL_MS, buildWereadBookmarkListRequest, buildWereadBookProgressRequest, buildWereadExternalRef, buildWereadFinishRef, buildWereadNotesRef, buildWereadNotebooksRequest, buildWereadReadDetailRequest, buildWereadReviewListRequest, buildWereadShelfRequest, ingestWereadReadDetail, isWereadApiKey, parseWereadBookProgress, parseWereadFinishedBooks, parseWereadHighlightTally, parseWereadNotebookPage, parseWereadReviewTally, settleWereadNotes, wereadFinishRefPrefix, wereadUpgradeBlocked} from "./features/weread-adapter";
@@ -464,6 +465,8 @@ export default class CheckinPlugin extends Plugin {
     reportSource = "";
     /* T-1352 日记集成（opt-in 默认关）。 */
     diaryReport = {...DEFAULT_VIEW_PREFERENCES.diaryReport};
+    /* T-1884 打卡实时追加至日记 LifeLog（opt-in 默认关）。 */
+    lifelogJournal = {...DEFAULT_VIEW_PREFERENCES.lifelogJournal};
     /* T-1353 摘要驻留（opt-in 默认关）。 */
     summaryResident = {...DEFAULT_VIEW_PREFERENCES.summaryResident};
     /* T-1384 思阅联动（opt-in 默认关）。 */
@@ -512,12 +515,30 @@ export default class CheckinPlugin extends Plugin {
     siplayerIntegration = {...DEFAULT_VIEW_PREFERENCES.siplayerIntegration};
     private siplayerTracker?: SiplayerPlaybackTracker;
     private siplayerTimer?: number;
+    private readonly handleSiplayerMediaChanged = () => {
+        if (!this.disposed && !this.disposing && this.siplayerIntegration.enabled) {
+            this.tickSiplayerSampler();
+        }
+    };
+    private readonly handleSiplayerPlayerDestroy = () => {
+        if (!this.disposed && !this.disposing && this.siplayerIntegration.enabled) {
+            this.tickSiplayerSampler();
+        }
+    };
     private readonly handleSireaderLifecycle = (event: Event) => {
-        /* 事件名为 reader:open/focus/blur/close；剥离前缀映射为生命周期动作。 */
+        /* 支持 reader:open/focus/blur/close 及移动端 reader:mobile-open/mobile-close */
         const raw = (event as CustomEvent).type;
-        const type = (["reader:open", "reader:focus", "reader:blur", "reader:close"] as const).find((name) => name === raw);
-        if (!type) return;
-        this.ingestSireaderLifecycle(type.replace("reader:", "") as SireaderLifecycleType, Date.now());
+        const validTypes = ["reader:open", "reader:focus", "reader:blur", "reader:close", "reader:mobile-open", "reader:mobile-close"] as const;
+        const matched = validTypes.find((name) => name === raw);
+        if (!matched) return;
+        const type = matched.replace("reader:", "") as SireaderLifecycleType;
+        const bookUrl = (event as CustomEvent)?.detail?.bookUrl;
+        this.ingestSireaderLifecycle(type, Date.now(), typeof bookUrl === "string" ? bookUrl : undefined);
+    };
+    private readonly handleSireaderApiReady = () => {
+        if (!this.disposed && !this.disposing) {
+            this.renderBackgroundUpdate();
+        }
     };
     private summaryResidentInFlight = false;
     /* T-1465（D-273）问卷日记：自建模板与写入目标存独立 journal.json（不进 view-preferences，避免加载器级联）。 */
@@ -1190,14 +1211,18 @@ export default class CheckinPlugin extends Plugin {
         }
     }
 
-    /* T-1385 思播联动：有界采样器轮询思播 controller（实验路径，opt-in 默认关）。
-       只读 isPlaying 判定播放态并累计墙上时间；不读 currentTime（seek/变速不可信）。 */
+    /* T-1385 / T-1883 思播联动：事件驱动 + 有界采样器（实验路径，opt-in 默认关）。
+       监听 mediaChanged 与 playerDestroy 事件，支持获取当前播放媒体标题。 */
     private startSiplayerSampler(): void {
+        window.addEventListener("mediaChanged", this.handleSiplayerMediaChanged);
+        window.addEventListener("playerDestroy", this.handleSiplayerPlayerDestroy);
         if (this.siplayerTimer !== undefined) return;
         this.siplayerTimer = window.setInterval(() => this.tickSiplayerSampler(), 15_000);
     }
 
     private stopSiplayerSampler(): void {
+        window.removeEventListener("mediaChanged", this.handleSiplayerMediaChanged);
+        window.removeEventListener("playerDestroy", this.handleSiplayerPlayerDestroy);
         if (this.siplayerTimer !== undefined) {
             window.clearInterval(this.siplayerTimer);
             this.siplayerTimer = undefined;
@@ -1214,10 +1239,14 @@ export default class CheckinPlugin extends Plugin {
     private tickSiplayerSampler(): void {
         const governance = this.siplayerIntegration;
         if (!governance.enabled || !governance.itemId || this.disposed || this.disposing || !this.acceptingOperations) return;
-        const controller = (window as unknown as {siyuanMediaPlayer?: {controller?: {isPlaying?: () => boolean}}}).siyuanMediaPlayer?.controller;
+        const controller = (window as unknown as {siyuanMediaPlayer?: {controller?: {isPlaying?: () => boolean; getCurrentMedia?: () => unknown}}}).siyuanMediaPlayer?.controller;
         let playing = false;
+        let mediaTitle: string | undefined;
         try {
             playing = typeof controller?.isPlaying === "function" ? controller.isPlaying() === true : false;
+            if (typeof controller?.getCurrentMedia === "function") {
+                mediaTitle = extractSiplayerMediaTitle(controller.getCurrentMedia());
+            }
         } catch {
             playing = false;
         }
@@ -1233,12 +1262,12 @@ export default class CheckinPlugin extends Plugin {
         }
         const tracker = this.siplayerTracker;
         const sampledAtMs = Date.now();
-        const segments = tracker.sample(playing, sampledAtMs);
+        const segments = tracker.sample(playing, sampledAtMs, mediaTitle);
         if (segments.length) void this.writeSiplayerSegments(segments, governance.itemId, sampledAtMs);
     }
 
     /* Each completed playback session yields one tombstone-protected event per local day. */
-    private async writeSiplayerSegments(segments: ReadonlyArray<{localDate: string; minutes: number; startedAtMs: number}>, expectedItemId: string, sampledAtMs: number): Promise<void> {
+    private async writeSiplayerSegments(segments: ReadonlyArray<SiplayerSegment>, expectedItemId: string, sampledAtMs: number): Promise<void> {
         const governance = this.siplayerIntegration;
         if (!governance.enabled || !governance.itemId || governance.itemId !== expectedItemId) return;
         if (!this.hasMinuteTarget(governance.itemId)) return;
@@ -1251,10 +1280,11 @@ export default class CheckinPlugin extends Plugin {
                 || this.store.eventTombstones.some((tombstone) => tombstone.itemId === governance.itemId && tombstone.source === "siplayer" && tombstone.externalRef === externalRef)) continue;
             const fingerprint = this.revisionFingerprint(item, calendarDateFromKey(segment.localDate));
             const moment = {occurredAt: new Date(sampledAtMs).toISOString(), localDate: segment.localDate};
+            const note = segment.mediaTitle ? `#思播播放 《${segment.mediaTitle}》` : undefined;
             const recorded = await this.enqueueMutation(() => {
                 /* 配置可能在采样/排队期间被停用或换绑；旧会话不得把迟到片段写入新配置。 */
                 if (this.siplayerIntegration !== governance || !governance.enabled || governance.itemId !== expectedItemId) return Promise.resolve(undefined);
-                return this.recordExternalEvent({itemId: governance.itemId, value: segment.minutes, source: "siplayer", externalRef}, moment, fingerprint);
+                return this.recordExternalEvent({itemId: governance.itemId, value: segment.minutes, source: "siplayer", externalRef, ...(note ? {note} : {})}, moment, fingerprint);
             });
             if (recorded) {
                 this.invalidateSummary();
@@ -1263,18 +1293,20 @@ export default class CheckinPlugin extends Plugin {
         }
     }
 
-    /* T-1384 思阅联动：生命周期事件 → 焦点片段 → 每段独立写入（opt-in 默认关）。
-       监听思阅公开事件 reader:open/focus/blur/close；无事件信号时不做任何事。 */
+    /* T-1384 / T-1882 思阅联动：生命周期事件 → 焦点片段 → 每段独立写入（opt-in 默认关）。
+       监听思阅公开事件 reader:open/focus/blur/close/mobile-open/mobile-close 及 sireader:api-ready。 */
     private bindSireaderListeners(): void {
-        for (const type of ["reader:open", "reader:focus", "reader:blur", "reader:close"]) {
+        for (const type of ["reader:open", "reader:focus", "reader:blur", "reader:close", "reader:mobile-open", "reader:mobile-close"]) {
             window.addEventListener(type, this.handleSireaderLifecycle);
         }
+        window.addEventListener("sireader:api-ready", this.handleSireaderApiReady);
     }
 
     private unbindSireaderListeners(): void {
-        for (const type of ["reader:open", "reader:focus", "reader:blur", "reader:close"]) {
+        for (const type of ["reader:open", "reader:focus", "reader:blur", "reader:close", "reader:mobile-open", "reader:mobile-close"]) {
             window.removeEventListener(type, this.handleSireaderLifecycle);
         }
+        window.removeEventListener("sireader:api-ready", this.handleSireaderApiReady);
         /* 重载/卸载：在飞焦点区间直接丢弃（fail-closed 少记）；已写入当日由 externalRef 幂等兜底。 */
         this.resetSireaderTracker();
     }
@@ -1285,7 +1317,7 @@ export default class CheckinPlugin extends Plugin {
         this.sireaderTracker = undefined;
     }
 
-    private ingestSireaderLifecycle(type: SireaderLifecycleType, atMs: number): void {
+    private ingestSireaderLifecycle(type: SireaderLifecycleType, atMs: number, bookUrl?: string): void {
         const governance = this.sireaderIntegration;
         if (!governance.enabled || !governance.itemId || this.disposed || this.disposing || !this.acceptingOperations) return;
         if (!this.sireaderTracker) {
@@ -1299,12 +1331,12 @@ export default class CheckinPlugin extends Plugin {
         }
         const tracker = this.sireaderTracker;
         const sessionStartedAt = tracker.sessionStartedAt;
-        const segments = tracker.handle(type, atMs);
+        const segments = tracker.handle(type, atMs, bookUrl);
         if (segments.length && sessionStartedAt !== undefined) void this.writeSireaderSegments(segments, governance.itemId, sessionStartedAt, atMs);
     }
 
     /* A focus session yields one event per local day. Identity uses exact start time and day. */
-    private async writeSireaderSegments(segments: ReadonlyArray<{localDate: string; minutes: number}>, expectedItemId: string, sessionStartedAt: number, endedAt: number): Promise<void> {
+    private async writeSireaderSegments(segments: ReadonlyArray<SireaderSegment>, expectedItemId: string, sessionStartedAt: number, endedAt: number): Promise<void> {
         const governance = this.sireaderIntegration;
         if (!governance.enabled || !governance.itemId || governance.itemId !== expectedItemId) return;
         if (!this.hasMinuteTarget(governance.itemId)) return;
@@ -1317,9 +1349,10 @@ export default class CheckinPlugin extends Plugin {
                 || this.store.eventTombstones.some((tombstone) => tombstone.itemId === governance.itemId && tombstone.source === "sireader" && tombstone.externalRef === externalRef)) continue;
             const fingerprint = this.revisionFingerprint(item, calendarDateFromKey(segment.localDate));
             const moment = {occurredAt: new Date(endedAt).toISOString(), localDate: segment.localDate};
+            const note = segment.bookTitle ? `#思阅阅读 《${segment.bookTitle}》` : undefined;
             const recorded = await this.enqueueMutation(() => {
                 if (this.sireaderIntegration !== governance || !governance.enabled || governance.itemId !== expectedItemId) return Promise.resolve(undefined);
-                return this.recordExternalEvent({itemId: governance.itemId, value: segment.minutes, source: "sireader", externalRef}, moment, fingerprint);
+                return this.recordExternalEvent({itemId: governance.itemId, value: segment.minutes, source: "sireader", externalRef, ...(note ? {note} : {})}, moment, fingerprint);
             });
             if (recorded) {
                 this.invalidateSummary();
@@ -5219,6 +5252,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
             avatar: this.avatar,
             avatarImage: this.avatarImage,
             diaryReport: {...this.diaryReport},
+            lifelogJournal: {...this.lifelogJournal},
             summaryResident: {...this.summaryResident},
             sireaderIntegration: {...this.sireaderIntegration},
             siplayerIntegration: {...this.siplayerIntegration},
@@ -5614,6 +5648,23 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
             this.applyPreference(() => {
                 this.focusTimerProvider = "builtin";
             }, () => showMessage(t("set.tomatoFallbackSaved")));
+            this.render();
+        });
+        /* T-1884 打卡实时追加至日记 LifeLog */
+        root.querySelector<HTMLInputElement>("[data-setting='lifelog-journal']")?.addEventListener("change", (event) => {
+            const target = event.currentTarget as HTMLInputElement;
+            this.applyPreference(() => {
+                this.lifelogJournal.enabled = target.checked;
+                const subRow = root.querySelector<HTMLElement>("[data-lifelog-journal-sub]");
+                if (subRow) subRow.hidden = !target.checked;
+            });
+            this.render();
+        });
+        root.querySelector<HTMLInputElement>("[data-setting='lifelog-journal-skip']")?.addEventListener("change", (event) => {
+            const target = event.currentTarget as HTMLInputElement;
+            this.applyPreference(() => {
+                this.lifelogJournal.includeSkip = target.checked;
+            });
             this.render();
         });
         /* T-1352 日记集成：开关即存即生效；docId 保存时校验；未启用时写入入口禁用。 */
@@ -8030,6 +8081,7 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
             this.broadcast({type: "event-recorded", item: current, event});
             this.broadcast({type: "analytics-updated", analyticsAsOf: event.localDate});
             void this.writebackNoteAnchor(current, {state: "skip"});
+            void this.appendLifelogToJournal(current, event);
             if (current.noteAnchor?.appendNotes && note?.trim()) {
                 void this.appendNoteToAnchor(current, buildAnchorNoteMarkdown({date: event.localDate, itemName: current.name, stateText: t("anchor.stateSkip"), note: note.trim()}));
             }
@@ -8997,6 +9049,7 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
         this.broadcast({type: "event-recorded", item: current, event});
         this.broadcast({type: "analytics-updated", analyticsAsOf: event.localDate});
         void this.writebackNoteAnchor(current, {state: "done", value, unit: revision.unit});
+        void this.appendLifelogToJournal(current, event);
         void this.writeSummaryResidentForDate(event.localDate);
         if (current.noteAnchor?.appendNotes && event.note) {
             void this.appendNoteToAnchor(current, buildAnchorNoteMarkdown({date: event.localDate, itemName: current.name, stateText: t("anchor.stateDone"), note: event.note}));
@@ -9273,6 +9326,39 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
         ]).finally(() => {
             if (timer) clearTimeout(timer);
         });
+    }
+
+    /* T-1884：打卡/跳过事件实时以 LifeLog 格式追加至日记文档（opt-in）。 */
+    private async appendLifelogToJournal(item: CheckinItem, event: CheckinEvent): Promise<void> {
+        if (!this.lifelogJournal.enabled || this.disposed || this.disposing || !this.acceptingOperations) return;
+        if (event.kind === "skip" && !this.lifelogJournal.includeSkip) return;
+        try {
+            const target = await this.resolveJournalTarget();
+            if (!target.docId) return;
+            const timeStr = formatTimeOnly(event.occurredAt);
+            const line = formatLifelogEntry({
+                timeStr,
+                itemName: item.name,
+                value: event.value,
+                unit: event.unit,
+                kind: event.kind,
+                note: event.note,
+                energy: event.energy,
+            });
+            await this.kernelPost("/api/block/appendBlock", {
+                data: `${line}\n`,
+                dataType: "markdown",
+                parentID: target.docId,
+            });
+            this.auditEntries = appendStoreAudit(this.auditEntries, {
+                type: "anchor",
+                at: new Date().toISOString(),
+                details: {channel: "lifelog-journal", docId: target.docId, line},
+            });
+            this.scheduleAuditPersist();
+        } catch {
+            // 旁路操作安全降级，不阻断主打卡流程
+        }
     }
 
     private async writebackNoteAnchor(item: CheckinItem, info: {state: "done" | "skip" | "unskip"; value?: number; unit?: string}): Promise<void> {
@@ -9655,6 +9741,7 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
         this.reportSections = {...preferences.reportSections};
         this.reportSource = preferences.reportSource;
         this.diaryReport = {...preferences.diaryReport};
+        this.lifelogJournal = {...preferences.lifelogJournal};
         this.summaryResident = {...preferences.summaryResident};
         this.sireaderIntegration = {...preferences.sireaderIntegration, enabled: preferences.sireaderIntegration.enabled && this.hasMinuteTarget(preferences.sireaderIntegration.itemId)};
         this.siplayerIntegration = {...preferences.siplayerIntegration, enabled: preferences.siplayerIntegration.enabled && this.hasMinuteTarget(preferences.siplayerIntegration.itemId)};
@@ -9778,6 +9865,7 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
             dailyReminder: {...this.dailyReminder},
             occasionRemindOnce: this.occasionRemindOnce,
             diaryReport: {...this.diaryReport},
+            lifelogJournal: {...this.lifelogJournal},
             summaryResident: {...this.summaryResident},
             sireaderIntegration: {...this.sireaderIntegration},
             siplayerIntegration: {...this.siplayerIntegration},

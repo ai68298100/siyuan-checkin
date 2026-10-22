@@ -1,3 +1,41 @@
+# 2026-10-22 思阅/思播新版本深度联动升级与打卡实时追加日记 LifeLog 落地（T-1882, T-1883, T-1884，D-534, D-535, D-536）
+
+**v18.20.0+ 持续演进——📖 电子书深度感知、🎬 媒体事件驱动与 📓 日记时间线无缝闭环**：
+1. **思阅适配器 v2.5.6 深度联动升级（T-1882，D-534，对标 M3 生态连接）**：
+   - 移动端全覆盖：增加对思阅 `reader:mobile-open` 与 `reader:mobile-close` 事件处理，移动端阅读计时打卡零死角；
+   - 书名智能提取：`extractSireaderBookTitle` 自动从 `bookUrl` 提取书名并在打卡事件附带 `#思阅阅读 《书名》` 备注；
+   - 即时就绪监听：监听 `sireader:api-ready`，插件启动即刻感知连接就绪。
+2. **思播适配器 v2.0.9 事件驱动与媒体标题接入（T-1883，D-535，对标 M3 生态连接）**：
+   - 事件驱动结算：监听思播 `mediaChanged` 与 `playerDestroy` 事件，播放器销毁或换集即时完成片段结算；
+   - 媒体标题入账：`extractSiplayerMediaTitle` 从 `controller.getCurrentMedia()` 提炼视频/音频标题，写入 `#思播播放 《标题》` 备注；
+   - 轮询降频：销毁或暂停状态停止高频轮询，消除后台无意义 CPU 负担。
+3. **打卡/跳过记录实时以 LifeLog 规范追加到思源当日日记（T-1884，D-536，对标 M1 日常闭环与 M2 笔记证据）**：
+   - 标准格式化：纯函数 `formatLifelogEntry` 统一输出 `HH:mm 项目名 (数值单位)：备注 ⚡精力` 标准时间线格式；
+   - 异步写入通道：持久化成功后通过 `resolveJournalTarget` 定位当日日记文档，向末尾调用 `/api/block/appendBlock` 追加 Markdown 段落，旁路尽力而为安全降级，不阻断主打卡；
+   - 设置偏好管理：`CheckinViewPreferences` 增设 `lifelogJournal: {enabled, includeSkip}` 独立开关，支持在设置页笔记分组一键启停。
+4. **守门与验证**：
+   - 新增 `tests/sireader-mobile-enhancement.test.cjs`、`tests/siplayer-event-driven.test.cjs` 与 `tests/lifelog-append.test.cjs` 全部纳入 `test:v18`（全 40 项全通）；
+   - CSS 卫生检查通过（835 class tokens，0 死类，677 KiB < 680 KiB 预算）；
+   - `pnpm run check`（TypeScript 零错误）、`pnpm run build:check` 全绿通过。
+
+# 2026-10-21 跳过理由与阻力归因轻量记录及复盘看板落地（T-1881，D-533）
+
+**v18.20.0+ 持续演进——🛑 阻力洞察、弹性跳过与科学归因闭环**：
+1. **纯函数算法层（`src/analytics.ts`）**：
+   - `detectFrictionCategory`：基于情境关键词正则分析（时间冲突/身体不适/环境受限/主动休息/日程顺延/其他）对跳过备注进行分类归因；
+   - `summarizeSkipFriction`：聚合跳过总数、具名归因记录数、六大维度分布与首要阻力来源 `topFriction`；
+   - `SummaryContext` 增设 `skipFriction`，由 `buildSummaryForBounds` 计算输出。
+2. **交互层（`src/render/today-bindings.ts` + `components.scss`）**：
+   - 在卡片右键菜单中增设快捷跳过选项（`data-menu-action="skip-quick"`），点击免 prompt 确认直接携带 `#时间冲突`、`#身体不适`、`#主动休息` 等标准化原因跳过；
+   - 原生 `skip` 自定义输入与留空跳过完整保留。
+3. **呈现层（`src/render/review.ts`）**：
+   - 分析工作区挂载 `.lc-checkin__energy-flow-card[data-skip-friction-card]` 跳过阻力分布折叠卡片；
+   - 横向柱状图展示各阻力占比，与分组/项目多维聚焦筛选无缝联动。
+4. **守门与验证**：
+   - 新增 `tests/skip-friction-analysis.test.cjs` 纳入 `test:v18`（全 37 项全通）；
+   - `node tests/css-hygiene.test.cjs`（0 死类，677 KiB < 680 KiB 预算）；
+   - `pnpm run check`（TypeScript 零错误）、`pnpm run build:check` 全绿通过。
+
 # 2026-10-21 分析看板多维度下钻筛选与快捷打卡情境标签落地（T-1879, T-1880，D-531, D-532）
 
 **v18.20.0+ 持续演进——🔍 分析工作区多维度聚焦与情境打卡零摩擦**：

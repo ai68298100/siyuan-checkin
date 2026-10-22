@@ -14,6 +14,31 @@ export interface SiplayerSegment {
     localDate: string;
     minutes: number;
     startedAtMs: number;
+    mediaTitle?: string;
+}
+
+export function extractSiplayerMediaTitle(media?: unknown): string | undefined {
+    if (!media || typeof media !== "object") return undefined;
+    const item = media as {title?: unknown; name?: unknown; url?: unknown};
+    if (typeof item.title === "string" && item.title.trim()) {
+        return item.title.trim().slice(0, 80);
+    }
+    if (typeof item.name === "string" && item.name.trim()) {
+        return item.name.trim().slice(0, 80);
+    }
+    if (typeof item.url === "string" && item.url.trim()) {
+        try {
+            const clean = item.url.split("?")[0].split("#")[0];
+            const parts = clean.split(/[/\\]/).filter(Boolean);
+            const fileName = parts[parts.length - 1];
+            if (fileName) {
+                return decodeURIComponent(fileName).replace(/\.[a-zA-Z0-9]+$/, "").trim().slice(0, 80);
+            }
+        } catch {
+            return undefined;
+        }
+    }
+    return undefined;
 }
 
 export interface SiplayerTrackerOptions {
@@ -30,6 +55,7 @@ export interface SiplayerTrackerOptions {
 export class SiplayerPlaybackTracker {
     private playingSince?: number;
     private lastSampleAt?: number;
+    private currentMediaTitle?: string;
     private readonly dayMs = new Map<string, number>();
     private readonly pendingMs = new Map<string, number>();
 
@@ -37,6 +63,10 @@ export class SiplayerPlaybackTracker {
 
     get playing(): boolean {
         return this.playingSince !== undefined;
+    }
+
+    get activeMediaTitle(): string | undefined {
+        return this.currentMediaTitle;
     }
 
     /** 该日已观察到的向下取整分钟数，含尚未结束的播放段。 */
@@ -48,7 +78,8 @@ export class SiplayerPlaybackTracker {
      * 处理一次采样。在播期间累计与上一采样的间隔（有界）；
      * 暂停/ absent 结束当前播放段；断档（间隔超 3 倍周期）丢弃该段时间并重新锚定。
      */
-    sample(playing: boolean, atMs: number): SiplayerSegment[] {
+    sample(playing: boolean, atMs: number, mediaTitle?: string): SiplayerSegment[] {
+        if (mediaTitle) this.currentMediaTitle = mediaTitle;
         const segments: SiplayerSegment[] = [];
         const inPlay = this.playingSince !== undefined;
         const previous = this.lastSampleAt;
@@ -69,6 +100,7 @@ export class SiplayerPlaybackTracker {
         if (!playing) {
             segments.push(...this.flush());
             this.playingSince = undefined;
+            this.currentMediaTitle = undefined;
         }
         return segments;
     }
@@ -82,14 +114,20 @@ export class SiplayerPlaybackTracker {
     discardInFlight(): void {
         this.playingSince = undefined;
         this.lastSampleAt = undefined;
+        this.currentMediaTitle = undefined;
         this.pendingMs.clear();
     }
 
     private flush(): SiplayerSegment[] {
         const startedAtMs = this.playingSince;
+        const mediaTitle = this.currentMediaTitle;
         if (startedAtMs === undefined) return [];
-        const segments = [...this.pendingMs].map(([localDate, ms]) => ({localDate, minutes: Math.floor(ms / 60_000), startedAtMs}))
-            .filter((segment) => segment.minutes > 0).sort((left, right) => left.localDate.localeCompare(right.localDate));
+        const segments = [...this.pendingMs].map(([localDate, ms]) => ({
+            localDate,
+            minutes: Math.floor(ms / 60_000),
+            startedAtMs,
+            ...(mediaTitle ? {mediaTitle} : {}),
+        })).filter((segment) => segment.minutes > 0).sort((left, right) => left.localDate.localeCompare(right.localDate));
         this.pendingMs.clear();
         return segments;
     }

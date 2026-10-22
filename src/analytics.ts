@@ -41,6 +41,72 @@ export interface EnergyFlowSummary {
     averageEnergy?: number;
 }
 
+export type SkipFrictionCategory = "time" | "health" | "environment" | "rest" | "reschedule" | "other";
+
+export interface SkipFrictionSummary {
+    totalSkips: number;
+    withReasonCount: number;
+    distribution: Record<SkipFrictionCategory, number>;
+    topFriction?: SkipFrictionCategory;
+}
+
+export function detectFrictionCategory(note?: string): SkipFrictionCategory {
+    if (!note || typeof note !== "string") return "other";
+    const text = note.toLowerCase();
+    if (text.includes("时间") || text.includes("太忙") || text.includes("加班") || text.includes("busy") || text.includes("time")) {
+        return "time";
+    }
+    if (text.includes("身体") || text.includes("不适") || text.includes("生病") || text.includes("头痛") || text.includes("感冒") || text.includes("难受") || text.includes("health") || text.includes("sick")) {
+        return "health";
+    }
+    if (text.includes("环境") || text.includes("天气") || text.includes("出差") || text.includes("下雨") || text.includes("场地") || text.includes("environment") || text.includes("weather")) {
+        return "environment";
+    }
+    if (text.includes("休息") || text.includes("放空") || text.includes("恢复") || text.includes("放松") || text.includes("充电") || text.includes("rest")) {
+        return "rest";
+    }
+    if (text.includes("顺延") || text.includes("调整") || text.includes("改期") || text.includes("改天") || text.includes("reschedule") || text.includes("postpone")) {
+        return "reschedule";
+    }
+    return "other";
+}
+
+export function summarizeSkipFriction(events: readonly CheckinEvent[]): SkipFrictionSummary {
+    const distribution: Record<SkipFrictionCategory, number> = {
+        time: 0,
+        health: 0,
+        environment: 0,
+        rest: 0,
+        reschedule: 0,
+        other: 0,
+    };
+    let totalSkips = 0;
+    let withReasonCount = 0;
+    for (const event of events) {
+        if (!isSkipEvent(event)) continue;
+        totalSkips += 1;
+        const note = (event.note || "").trim();
+        if (!note) continue;
+        withReasonCount += 1;
+        const category = detectFrictionCategory(note);
+        distribution[category] += 1;
+    }
+    let topFriction: SkipFrictionCategory | undefined;
+    let maxCount = 0;
+    for (const [cat, count] of Object.entries(distribution) as [SkipFrictionCategory, number][]) {
+        if (count > maxCount) {
+            maxCount = count;
+            topFriction = cat;
+        }
+    }
+    return {
+        totalSkips,
+        withReasonCount,
+        distribution,
+        topFriction: maxCount > 0 ? topFriction : undefined,
+    };
+}
+
 export function summarizeEnergyFlow(events: readonly CheckinEvent[]): EnergyFlowSummary {
     const distribution: Record<1 | 2 | 3 | 4 | 5, number> = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0};
     let totalWithEnergy = 0;
@@ -68,6 +134,7 @@ export interface SummaryContext {
     completedItems: number;
     scheduledItems: number;
     energyFlow?: EnergyFlowSummary;
+    skipFriction?: SkipFrictionSummary;
 }
 
 export function getDateRange(range: SummaryRange, date = new Date()): DateRange {
@@ -238,6 +305,7 @@ function buildSummaryForBounds(store: CheckinStore, range: SummaryRange, bounds:
         completedItems: items.filter((item) => item.completedDays > 0 || Boolean(item.quota?.completedPeriods)).length,
         scheduledItems: items.filter((item) => item.scheduledDays > 0 || Boolean(item.quota?.elapsedPeriods)).length,
         energyFlow: summarizeEnergyFlow(events),
+        skipFriction: summarizeSkipFriction(events),
     };
 }
 

@@ -267,7 +267,10 @@ export function bindItemContextMenuFor(host: TodayBindingsHost, root: HTMLElemen
             `<button type="button" role="menuitem" data-menu-action="insights">${escapeHtml(t("item.insightsTitle"))}</button>`,
             ...(scheduledToday && !completeToday ? [skippedToday
                 ? `<button type="button" role="menuitem" data-menu-action="unskip">${t("today.unskipToday")}</button>`
-                : `<button type="button" role="menuitem" data-menu-action="skip">${t("today.skipToday")}</button>`] : []),
+                : `<button type="button" role="menuitem" data-menu-action="skip">${t("today.skipToday")}</button>
+                   <button type="button" role="menuitem" data-menu-action="skip-quick" data-skip-reason="#时间冲突" class="lc-checkin__menu-quick-skip">⏰ ${escapeHtml(t("item.skipReasonMorning"))}</button>
+                   <button type="button" role="menuitem" data-menu-action="skip-quick" data-skip-reason="#身体不适" class="lc-checkin__menu-quick-skip">🤒 ${escapeHtml(t("item.skipReasonHealth"))}</button>
+                   <button type="button" role="menuitem" data-menu-action="skip-quick" data-skip-reason="#主动休息" class="lc-checkin__menu-quick-skip">🛌 ${escapeHtml(t("item.skipReasonRest"))}</button>`] : []),
             `<button type="button" role="menuitem" data-menu-action="archive">${item.archived ? t("editor.restore") : t("today.bulkArchive")}</button>`,
             `<button type="button" role="menuitem" data-menu-action="delete" class="is-danger">${t("editor.deleteItem")}</button>`,
         ];
@@ -324,7 +327,11 @@ export function bindItemContextMenuFor(host: TodayBindingsHost, root: HTMLElemen
             if (!actionButton || menu.dataset.actionBusy === "true") return;
             ev.stopPropagation();
             /* 跳过原因可选：取消 prompt 时不进入 busy、不关菜单。 */
-            const skipReason = action === "skip" ? window.prompt(t("today.skipPrompt")) : undefined;
+            const skipReason = action === "skip-quick"
+                ? (actionButton.dataset.skipReason || undefined)
+                : action === "skip"
+                    ? window.prompt(t("today.skipPrompt"))
+                    : undefined;
             if (action === "skip" && skipReason === null) return;
             const moment = captureActionMoment();
             const fingerprint = host.itemFingerprint(item);
@@ -335,7 +342,7 @@ export function bindItemContextMenuFor(host: TodayBindingsHost, root: HTMLElemen
                 ? () => host.showEditor(item, undefined, root)
                 : action === "insights"
                     ? () => host.showInsights(item, root)
-                : action === "skip"
+                : (action === "skip" || action === "skip-quick")
                     ? () => host.skipItemToday(item.id, skipReason ?? undefined)
                     : action === "unskip"
                         ? () => host.unskipItemToday(item.id)

@@ -3,7 +3,7 @@ import {t, getPluginLocale} from "../i18n";
 import {dateKey, getEventDateKey, getEventsInDateRange, getEventsForDate, getItemRevisionForDate, isSkipEvent, getItemById, isComplete, isItemAvailableOnDate, isScheduledToday} from "../model";
 import {calendarDateFromKey, escapeHtml, formatHistoryDate, formatNumber, renderRecordNote, renderIconMarkup, safeAttachmentUrl} from "../shared";
 import {filterHistoryRecords, type HistorySortOrder, type HistoryChannelFilter, type HistoryMeteringFilter} from "../features/history-filter";
-import {buildCustomSummaryContext, buildSummaryContext, summarizeEnergyFlow, type SummaryRange, type ItemSummary, type SummaryContext} from "../analytics";
+import {buildCustomSummaryContext, buildSummaryContext, summarizeEnergyFlow, summarizeSkipFriction, type SummaryRange, type ItemSummary, type SummaryContext} from "../analytics";
 import {buildReviewComparison, getPreviousReviewRange} from "../features/review-comparison";
 import {summarizeProjectDraft} from "../features/project-draft";
 import {renderReviewCompareSection, renderReviewCompareItems} from "./review-compare";
@@ -758,6 +758,38 @@ export function renderReviewView(ctx: ReviewViewContext): string {
         return `<div class="lc-checkin__energy-flow-card" data-energy-flow-card><div class="lc-checkin__energy-flow-header"><div><strong>${escapeHtml(t("review.energyAvg"))}：<em class="lc-checkin__energy-score">${flow.averageEnergy !== undefined ? flow.averageEnergy : "-"}</em> / 5.0</strong><small>${escapeHtml(t("review.energyCount"))}：${flow.totalWithEnergy}</small>${hasAnalysisFilter ? `<span class="lc-checkin__energy-flow-tag">🎯 ${escapeHtml(focusedLabel)}</span>` : ""}</div></div><div class="lc-checkin__energy-bars">${bars}</div></div>`;
     };
 
+    /* T-1881：跳过与阻力归因看板（支持多维筛选下钻） */
+    const renderSkipFriction = (): string => {
+        let friction = summary.skipFriction;
+        if (filterItemId) {
+            const itemEvents = ctx.store.events.filter(e => e.itemId === filterItemId);
+            friction = summarizeSkipFriction(itemEvents);
+        } else if (filterGroupId) {
+            const groupItemIds = new Set(candidateGroupItems.map(i => i.id));
+            const groupEvents = ctx.store.events.filter(e => groupItemIds.has(e.itemId));
+            friction = summarizeSkipFriction(groupEvents);
+        }
+        if (!friction || friction.totalSkips === 0) {
+            return `<div class="lc-checkin__energy-flow-card"><p class="review-scope-note">${hasAnalysisFilter ? escapeHtml(t("review.skipFrictionFilteredEmpty", {target: focusedLabel})) : escapeHtml(t("review.skipFrictionEmpty"))}</p></div>`;
+        }
+        const categories = [
+            {cat: "time", icon: "⏰", name: t("review.frictionTime")},
+            {cat: "health", icon: "🤒", name: t("review.frictionHealth")},
+            {cat: "environment", icon: "🌧️", name: t("review.frictionEnvironment")},
+            {cat: "rest", icon: "🛌", name: t("review.frictionRest")},
+            {cat: "reschedule", icon: "🔀", name: t("review.frictionReschedule")},
+            {cat: "other", icon: "📝", name: t("review.frictionOther")},
+        ] as const;
+        const maxCount = Math.max(1, ...Object.values(friction.distribution));
+        const bars = categories.map(({cat, icon, name}) => {
+            const count = friction.distribution[cat];
+            const pct = friction.totalSkips > 0 ? Math.round((count / friction.totalSkips) * 100) : 0;
+            const barWidth = Math.round((count / maxCount) * 100);
+            return `<div class="lc-checkin__energy-bar-row"><span class="lc-checkin__energy-bar-label">${icon} ${escapeHtml(name)}</span><div class="lc-checkin__energy-bar-track"><div class="lc-checkin__energy-bar-fill lc-checkin__friction-bar-fill" style="width: ${barWidth}%"></div></div><span class="lc-checkin__energy-bar-val">${count} <small>(${pct}%)</small></span></div>`;
+        }).join("");
+        return `<div class="lc-checkin__energy-flow-card" data-skip-friction-card><div class="lc-checkin__energy-flow-header"><div><strong>${escapeHtml(t("review.skipFrictionTitle"))}：<em class="lc-checkin__energy-score">${friction.totalSkips}</em> ${escapeHtml(t("review.skipFrictionTotal"))}</strong><small>${escapeHtml(t("review.skipFrictionCount"))}：${friction.withReasonCount}</small>${hasAnalysisFilter ? `<span class="lc-checkin__energy-flow-tag">🎯 ${escapeHtml(focusedLabel)}</span>` : ""}</div></div><div class="lc-checkin__energy-bars">${bars}</div></div>`;
+    };
+
     const content = workspace === "records" ? renderRecords() : workspace === "analysis"
         ? `<p class="review-scope-note">${t("review.analysisScope")}</p>${analysisFilterBar}<div class="lc-checkin__review-sections">
             ${fold("trend", t("review.foldTrend"), renderTrends)}
@@ -765,6 +797,7 @@ export function renderReviewView(ctx: ReviewViewContext): string {
             ${assistantEntry}
             ${fold("heatmap", t("review.heatmapTitle"), renderHeatmap)}
             ${fold("energyFlow", t("review.energyFlowTitle"), renderEnergyFlow)}
+            ${fold("skipFriction", t("review.skipFrictionTitle"), renderSkipFriction)}
             ${fold("strength", t("review.foldStrength"), renderStrength)}
             ${fold("balance", t("review.balanceTitle"), renderBalance)}
             ${fold("achievements", t("review.foldAchievements"), renderAwards)}

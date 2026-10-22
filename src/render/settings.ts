@@ -110,6 +110,8 @@ export interface SettingsViewContext {
     avatarImage?: string;
     /** T-1352 日记集成（opt-in 默认关）。 */
     diaryReport: {enabled: boolean; docId: string};
+    /** T-1884 打卡实时追加至日记 LifeLog（opt-in 默认关）。 */
+    lifelogJournal?: {enabled: boolean; includeSkip: boolean};
     /** T-1353 摘要驻留（opt-in 默认关）。 */
     summaryResident: {enabled: boolean; docId: string};
     /** T-1384 思阅联动（opt-in 默认关）。 */
@@ -630,6 +632,8 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("journal.customLabel")}</span><small>${t("journal.customHint")}</small></span></div>
                     <div class="lc-checkin__settings-row"><textarea class="lc-checkin__journal-custom" data-journal-custom rows="6" aria-label="${t("journal.customLabel")}">${escapeHtml(journalCustomText)}</textarea></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("journal.customLabel")}</span></span><button class="lc-checkin__text-button" type="button" data-action="save-journal-custom">${t("common.confirm")}</button></div>
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.lifelogJournalTitle")}</span><small>${t("set.lifelogJournalHint")}</small></span><input type="checkbox" data-setting="lifelog-journal"${ctx.lifelogJournal?.enabled ? " checked" : ""} aria-label="${t("set.lifelogJournalToggle")}" /></div>
+                    <div class="lc-checkin__settings-row"${ctx.lifelogJournal?.enabled ? "" : " hidden"} data-lifelog-journal-sub><span class="lc-checkin__settings-label"><span>${t("set.lifelogJournalSkipToggle")}</span></span><input type="checkbox" data-setting="lifelog-journal-skip"${ctx.lifelogJournal?.includeSkip ? " checked" : ""} aria-label="${t("set.lifelogJournalSkipToggle")}" /></div>
                     ${writeResultRow("journal", "journal")}
                     </details>
                     <details class="lc-checkin__source-panel" data-source-panel="summary" data-source-state="${summaryState}"${sourcePanelOpen("summary")}>

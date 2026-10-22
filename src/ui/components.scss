@@ -3564,6 +3564,9 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     border-radius: 999px;
     background: linear-gradient(90deg, var(--lc-checkin-accent), var(--lc-checkin-accent-strong));
     transition: width var(--lc-checkin-motion);
+    &.lc-checkin__friction-bar-fill {
+        background: linear-gradient(90deg, var(--lc-checkin-warm, #f59e0b), var(--lc-checkin-accent));
+    }
 }
 .lc-checkin__energy-bar-val {
     text-align: right;
@@ -10319,6 +10322,11 @@ details:not([open]) > :not(summary) { display: none !important; }
 }
 .lc-checkin__item-context-menu button.is-danger {
     color: var(--lc-checkin-danger-text);
+}
+.lc-checkin__item-context-menu button.lc-checkin__menu-quick-skip {
+    padding-left: 20px;
+    font-size: 11px;
+    opacity: 0.85;
 }
 
 /* 回顾页头部工具区与范围页签风格统一（用户反馈 2026-09-18）：
