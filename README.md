@@ -8,31 +8,31 @@
 
 把一次行动记录下来，再用同一份可追溯数据完成统计、提醒、复盘和笔记联动。
 
-**当前版本：18.19.0**
+**当前版本：18.20.0**
 
-18.19.0 达成「多桶备份版本化、写入幂等事实对账与全表面视觉系统收口」大版本；正式落地版本化多桶 BackupEnvelope 协议与原子回滚，统一 API/Agent/UI 写入幂等去重与破戒回执对账，彻底根除顶栏图标消失与后台暴力重绘痛点，全面收敛五级按钮、表单输入、长表单分节与宿主容器三档密度规范。这里介绍本次更新与已实现功能，后续开发进展见 [PROGRESS](PROGRESS.md)。
+18.20.0 达成「全生态联邦中枢互联、日记 LifeLog 闭环与长春花紫 Bento 美学」里程碑版本：全面接入 Epoch 6 跨插件联邦 SDK（`src/ecosystem-bridge-kit.ts`），实现 `siyuanCheckin`, `LvCheckin`, `lvCheckin`, `xiaolvCheckin` 四别名挂载与安全核验注销；向小驴雷切安全注册工作台小组件；正式收录全生态 `exam:`, `cards:`, `glean:`, `contacts:`, `home:` 引用前缀；打卡/跳过实时以 LifeLog 格式追加至思源当日日记，支持分节标题、图文混排、撤销删除、一键批量同步与即时预览；顶栏与侧栏升级为 32×32 单色矢量图标；全面响应思源 v3.8.8 桌面紧凑模式与生命周期加固；注入长春花紫与暖橙水波纹 Bento 美学。这里介绍本次更新与已实现功能，后续开发进展见 [PROGRESS](PROGRESS.md)。
 
 > **内测说明**：小驴考试、小驴管家、小驴闪卡和小驴常用目前仍处于内测阶段，部分功能和思源宿主兼容性正在验证中。欢迎通过交流 QQ 群 **871707735** 反馈问题、提交需求；对稳定性有较高要求时，请等待对应插件发布正式版。
 
 [![最新 Release](https://img.shields.io/github/v/release/ai68298100/siyuan-checkin?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-checkin/releases/latest) [![CI](https://github.com/ai68298100/siyuan-checkin/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-checkin/actions/workflows/ci.yml) [![License](https://img.shields.io/github/license/ai68298100/siyuan-checkin)](LICENSE)
 
-[最新 Release](https://github.com/ai68298100/siyuan-checkin/releases/latest) · [18.19.0 发布说明](docs/releases/release-notes-18.19.0.md) · [问题反馈](https://github.com/ai68298100/siyuan-checkin/issues) · [开发文档](docs/)
+[最新 Release](https://github.com/ai68298100/siyuan-checkin/releases/latest) · [18.20.0 发布说明](docs/releases/release-notes-18.20.0.md) · [问题反馈](https://github.com/ai68298100/siyuan-checkin/issues) · [开发文档](docs/)
 
 </div>
 
-### 本次更新（18.19.0）
+### 本次更新（18.20.0）
 
-本次为「多桶备份版本化、写入幂等事实对账与全表面视觉系统收口」大版本，提供版本化备份协议、事实一致性与全表面稳定渲染。
+本次为「全生态联邦中枢互联、日记 LifeLog 闭环与长春花紫 Bento 美学」里程碑版本，提供全生态兄弟插件联动、日记 LifeLog 双向闭环与官方契约深度对齐。
 
-新增：数据可靠性与版本化多桶备份
+新增：全生态跨插件联邦与日记 LifeLog 闭环
 
-- **版本化多桶 BackupEnvelope 协议（T-1787 / T-1862）**：统一预检自动识别旧版单主档与新版多桶备份；逐桶规划覆盖/合并/跳过策略，敏感桶默认遮罩跳过；支持一键导出包含全部辅助桶与脱敏审计日志的完整版本化备份。
-- **多桶全量原子回滚事务**：锁内预先快照所有辅助桶，主档严格走 mutation 调度，任何辅助桶写入异常立即触发全量原子回滚，杜绝部分迁移或内存-磁盘分叉。
-- **辅助存储桶三分类架构（T-1860 / T-1861）**：规范追加型（AI历史/审计）、覆盖型（偏好/草稿）、增删改型（模板/图标/问卷），杜绝删除复活缺陷，单桶异常快照回滚。
+- **Epoch 6 跨插件联邦 SDK（T-1897 / T-1898）**：四别名（siyuanCheckin/LvCheckin/lvCheckin/xiaolvCheckin）首实例独占与安全注销；收录 exam/cards/glean/contacts/home 全生态前缀；雷切工作台连续坚持小组件安全注册。
+- **日记 LifeLog 深度互操作（T-1884～T-1894）**：打卡/跳过实时结构化追加至当日日记并支持分节标题；照片附件智能生成 Markdown 图文混排；撤销打卡联动 deleteBlock 清理日记脏记录；设置页一键批量同步今日打卡并 SQL 去重；Today 行动轨迹抽屉与日记 0 距离直达；Review 时间轴按日卡片化分组并携带日期快速钻取定位。
 
-优化：核心事实层一致性与全表面视觉规范
+优化：视觉美学、单色图标与官方宿主契约加固
 
-- **跨入口写入幂等与破戒对账（T-1786）**：二值完成与戒除破戒在各入口同口径收敛（atMost 零破戒首破可写、多次破戒拦截，普通二值完成阻断）；携带相同 externalRef 幂等去重返回既有事实并同步更新前端回执与撤销对象。
+- **长春花紫+暖橙 Bento 美学（T-1899 / T-1900）**：顶栏与侧栏升级为 32×32 单色矢量图标；注入长春花紫（#6366F1）与暖橙水波纹底纹，按钮挂载 :active 物理微触感，统一紫底白标弹窗家族门面。
+- **思源 v3.8.8+ 官方契约加固（T-1895 / T-1896）**：自适应桌面紧凑模式（:root[data-ui-density="compact"]）；重写并对齐 onDataChanged 生命周期防暴力重载，全仓 0 引用已废弃的 updateTransaction API，5s 拆除预算严格守门。
 - **五级动作按钮语义体系（T-1817）**：落地 Primary / Secondary / Quiet / Destructive / Icon 统一类名、focus-visible 环与高对比度模式轮廓。
 - **表单输入高度与文本域 Token（T-1818）**：收敛文本域高度到单一 token，规范校验、禁用与忙碌态视觉。
 - **长表单分节与折叠系统（T-1821）**：长表单小节标题增设虚线分隔与加粗样式，收敛高级设置抽屉展开微动效，reduced-motion 平滑降级。
