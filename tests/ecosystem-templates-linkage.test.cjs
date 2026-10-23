@@ -45,4 +45,12 @@ assert.ok(srcIntegrations.includes("v: 1 as const"), "emitIntegrationEvent must 
 assert.ok(srcIntegrations.includes('source: "siyuan-checkin"'), "emitIntegrationEvent must set source to siyuan-checkin");
 assert.ok(srcIntegrations.includes("payload: safe"), "emitIntegrationEvent must wrap safe payload");
 
+// 5. 设置页一键快速创建并绑定
+const srcSettings = fs.readFileSync(path.join(root, "src", "render", "settings.ts"), "utf8");
+assert.ok(srcSettings.includes('data-action="quick-create-sireader"'), "settings.ts must provide quick-create-sireader button");
+assert.ok(srcSettings.includes('data-action="quick-create-siplayer"'), "settings.ts must provide quick-create-siplayer button");
+assert.ok(srcIndex.includes('data-action=\'quick-create-sireader\''), "index.ts must bind quick-create-sireader action");
+assert.ok(srcIndex.includes('data-action=\'quick-create-siplayer\''), "index.ts must bind quick-create-siplayer action");
+assert.ok(srcIndex.includes("quickCreateAndBindIntegrationItem"), "index.ts must implement quickCreateAndBindIntegrationItem");
+
 console.log("ecosystem-templates-linkage: all assertions passed successfully!");

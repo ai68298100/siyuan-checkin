@@ -5781,6 +5781,12 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
             showMessage(t(found ? "msg.siplayerProbeFound" : "msg.siplayerProbeMissing"));
             this.render(root);
         });
+        root.querySelector<HTMLElement>("[data-action='quick-create-sireader']")?.addEventListener("click", () => {
+            void this.quickCreateAndBindIntegrationItem("sireader", root);
+        });
+        root.querySelector<HTMLElement>("[data-action='quick-create-siplayer']")?.addEventListener("click", () => {
+            void this.quickCreateAndBindIntegrationItem("siplayer", root);
+        });
         /* T-1548：输出内容预览——零写入生成将追加的 Markdown 并就地展开；取消/重渲染即收起。 */
         root.querySelectorAll<HTMLElement>("[data-output-preview-generate]").forEach((button) => button.addEventListener("click", () => {
             const channel = button.dataset.outputPreviewGenerate as "diary" | "summary" | "lifelog";
@@ -8844,6 +8850,64 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
             return;
         }
         showMessage(t("msg.linkageApplied", {name: t("set.sireaderIntegration")}));
+    }
+
+    /* T-1908：设置页一键快速创建并绑定思阅/思播分钟打卡项 */
+    private async quickCreateAndBindIntegrationItem(type: "sireader" | "siplayer", root?: HTMLElement): Promise<void> {
+        const isSireader = type === "sireader";
+        const tplName = isSireader ? "思阅精读" : "思播精听";
+        const tpl = CHECKIN_TEMPLATES.find((t) => t.name === tplName)
+            || (isSireader ? CHECKIN_TEMPLATES.find((t) => t.name === "思阅阅读") : CHECKIN_TEMPLATES.find((t) => t.name === "思播观看"));
+        if (!tpl) return;
+        let targetItem = this.store.items.find((i) => !i.archived && i.unit === "分钟" && (i.name === tpl.name || i.templateAnchor === tpl.name));
+        if (!targetItem) {
+            const today = dateKey(currentCalendarDate());
+            const now = new Date().toISOString();
+            const created = normalizeCheckinItem({
+                id: makeId("item"),
+                name: templateName(tpl),
+                templateAnchor: tpl.name,
+                icon: tpl.icon,
+                kind: tpl.kind,
+                target: tpl.target,
+                unit: tpl.unit,
+                schedule: {...tpl.schedule, weekdays: tpl.schedule.weekdays ? [...tpl.schedule.weekdays] : undefined},
+                group: tpl.group,
+                priority: tpl.priority,
+                createdDate: today,
+                createdAt: now,
+                updatedAt: now,
+            });
+            if (created) {
+                const previous = this.store;
+                this.store = {...this.store, items: [...this.store.items, created]};
+                try {
+                    await this.persist();
+                    targetItem = created;
+                    this.broadcast({type: "item-created", item: created});
+                    this.invalidateSummary();
+                    this.advanceFirstSuccess("item-created");
+                } catch {
+                    this.store = previous;
+                    showMessage(t("msg.createCheckinFail"));
+                    return;
+                }
+            }
+        }
+        if (targetItem) {
+            this.applyPreference(() => {
+                if (isSireader) {
+                    this.sireaderIntegration.itemId = targetItem!.id;
+                    this.sireaderIntegration.enabled = true;
+                } else {
+                    this.siplayerIntegration.itemId = targetItem!.id;
+                    this.siplayerIntegration.enabled = true;
+                }
+            }, () => {
+                showMessage(t("msg.quickBound", {name: targetItem!.name}));
+                this.render(root);
+            });
+        }
     }
 
     /* T-1486：编辑器联动建议卡片的绑定状态投影（显示名，只读）。 */
