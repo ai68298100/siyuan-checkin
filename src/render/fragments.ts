@@ -708,21 +708,23 @@ export function renderTodayView(ctx: TodayViewContext): string {
         </div>`;
 }
 
-/** T-1890：Today 首页“今日行动轨迹 (LifeLog)”折叠时间轴 */
+/** T-1890 / T-1906：Today 首页“今日行动轨迹 (LifeLog)”折叠时间轴 */
 export function renderTodayLifelogTimelineView(store: CheckinStore, now: Date, open = false): string {
     const todayKey = dateKey(now);
     const itemNames = new Map(store.items.map((i) => [i.id, i.name]));
     const todayEvents = store.events.filter((e) => e.localDate === todayKey);
     const timeline = buildLifelogTimeline(todayEvents, itemNames);
-    if (!timeline.length) return "";
     const rows = timeline.map((entry) => {
         const badgeText = entry.durationLabel || `${entry.minutes} 分钟`;
         return `<li class="lc-checkin__lifelog-row" data-lifelog-color="${entry.colorIndex}"><time>${escapeHtml(entry.time)}</time><div><strong>${escapeHtml(entry.type || entry.itemName)}</strong>${entry.text ? `<span>${renderLifelogTextWithTags(entry.text)}</span>` : ""}</div><span class="lc-checkin__lifelog-duration">${escapeHtml(badgeText)}</span></li>`;
     }).join("");
+    const bodyContent = timeline.length
+        ? `<ol class="lc-checkin__lifelog-timeline" role="list">${rows}</ol>`
+        : `<p class="lc-checkin__lifelog-empty-hint">${t("today.lifelogTimelineEmpty")}</p>`;
     return `<details class="lc-checkin__today-lifelog-fold" data-today-lifelog-fold${open ? " open" : ""}>
         <summary><span>📅 ${t("today.lifelogTimelineTitle", {n: timeline.length})}</span><span class="lc-checkin__fold-chevron" aria-hidden="true">⌄</span></summary>
         <div class="lc-checkin__today-lifelog-content">
-            <ol class="lc-checkin__lifelog-timeline" role="list">${rows}</ol>
+            ${bodyContent}
             <div class="lc-checkin__today-lifelog-actions"><button type="button" class="lc-checkin__text-button" data-action="open-daily-note">${t("today.openDailyNote")}</button></div>
         </div>
     </details>`;

@@ -6408,7 +6408,7 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     .lc-checkin-dock-host .lc-checkin__calendar-day { min-height: 30px; padding: 4px 3px; }
     .lc-checkin-dock-host .lc-checkin--occasions .lc-checkin__occasion-manager-row { grid-template-columns: 34px minmax(0, 1fr) auto; gap: 7px; }
     .lc-checkin-dock-host .lc-checkin--editor .lc-checkin__templates { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; max-height: 180px; overflow: auto; }
-    .lc-checkin-dock-host .lc-checkin--editor .lc-checkin__kind-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+    
     .lc-checkin-dock-host .lc-checkin__reminder-list,
     .lc-checkin-dock-host .lc-checkin__occasion-manager-list { max-height: 52vh; overflow: auto; overscroll-behavior: contain; }
     .lc-checkin-dock-host .lc-checkin__history-events { max-height: 48vh; overflow: auto; overscroll-behavior: contain; }
@@ -6420,7 +6420,7 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     .lc-checkin-dock-host .lc-checkin__header-actions { min-width: 0; max-width: 44%; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
     .lc-checkin-dock-host .lc-checkin__header-actions > * { min-width: 0; }
     .lc-checkin-dock-host .lc-checkin__group-header { min-width: 0; gap: 6px; }
-    .lc-checkin-dock-host .lc-checkin__group-header strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    
     .lc-checkin-dock-host .lc-checkin__group-header button { flex: 0 0 auto; min-width: 30px; }
     .lc-checkin-dock-host .lc-checkin--today .lc-checkin__completed-section { max-height: 34vh; overflow: auto; overscroll-behavior: contain; }
     .lc-checkin-dock-host .lc-checkin--today .lc-checkin__completed-section .lc-checkin__group-items { gap: 6px; }
@@ -7720,7 +7720,7 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
         min-width: 0;
         padding: 3px 0;
     }
-    .lc-checkin--today .lc-checkin__priority-reminder > .lc-checkin__priority-reminder-row { display: grid; }
+    
     .lc-checkin--today .lc-checkin__priority-reminder-row.is-primary { padding: 0; }
     .lc-checkin--today .lc-checkin__priority-reminder-row-mark {
         flex-basis: 18px;
@@ -11399,6 +11399,11 @@ dialog.lc-checkin.lc-checkin__avatar-editor {
     margin-top: 8px;
     display: flex;
     justify-content: flex-end;
+}
+.lc-checkin__lifelog-empty-hint {
+    margin: 6px 0;
+    font-size: 11px;
+    color: var(--lc-checkin-muted);
 }
 .lc-checkin__lifelog-timeline-container {
     display: grid;

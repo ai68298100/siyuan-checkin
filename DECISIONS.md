@@ -1,3 +1,11 @@
+# D-557：T-1904 Epoch 6 跨插件联邦事件信封广播（2026-10-23）
+
+- **统一信封包装**：在 `emitIntegrationEvent` 中为 CustomEvent 注入 `v: 1`、`source: "siyuan-checkin"`、`eventId`、`at`、`idempotencyKey` 与 `payload` 统一信封格式，使小驴雷切等组件能直接解包消费并实时同步刷新，同时保留既有字段展开兼容。
+
+# D-558：T-1906 Today 行动轨迹抽屉空态透明度与日记直达保持（2026-10-23）
+
+- **零记录空态可发现**：重构 `renderTodayLifelogTimelineView`，今日无打卡时依然展示轻量折叠抽屉，呈现友好空态提示并保留“打开今日日记文档”直达入口，确保功能入口永久透明稳定。
+
 # D-554：T-1901 LifeLog 换行清洗与项目名冒号转义排雷（2026-10-23）
 
 - **多行换行压平**：在 `formatLifelogEntry` 中将备注中的 `\r` 和 `\n` 统一替换为空格并压缩连续空白，避免追加到日记时生成多行碎片块；

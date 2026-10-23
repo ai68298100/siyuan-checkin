@@ -2,16 +2,33 @@
 
 ## 当前统一状态（2026-10-23）
 
-- 当前版本升级为 **v18.20.0**（全生态联邦中枢互联、日记 LifeLog 闭环与长春花紫 Bento 美学里程碑）。
-- 核心交付：全面接入 Epoch 6 跨插件联邦 SDK（`src/ecosystem-bridge-kit.ts`），四别名（`siyuanCheckin`/`LvCheckin`/`lvCheckin`/`xiaolvCheckin`）首实例独占与安全注销（T-1897）；收录全生态 `exam:`, `cards:`, `glean:`, `contacts:`, `home:` 引用前缀并向雷切注册小组件（T-1898）；顶栏与侧栏 32×32 单色矢量图标 `iconLvCheckin` 升级（T-1899）；长春花紫（`#6366F1`）与暖橙水波纹 Bento 美学注入，按钮 `:active` 物理微触感，开启 `settingsWindow: true` 独立大窗（T-1900）；打卡/跳过实时追加至当日日记，图文混排、撤销删除联动、一键批量同步、Today 行动轨迹抽屉与 Review 时间轴按日卡片化分组（T-1884～T-1894）；思源 v3.8.8 紧凑模式自适应与生命周期加固（T-1895/T-1896）。
-- 竞品深度调研落地（Loop / Table Habit / Habitica / TickTick / Obsidian / Streaks / Atoms 对标），提炼并登记新一阶段演进任务（T-1872～T-1903）。
+- 当前版本升级为 **v18.21.0**（生态联邦事件信封、CSS 结构化瘦身与极速打卡心流小版本发布）。
+- 核心交付：升级跨插件联邦事件派发为 Epoch 6 统一信封格式（`ECOSYSTEM_EVENTS`），支持雷切工作台等兄弟插件即时响应无缝刷新（T-1904）；全面深度收敛 SCSS 冗余规则，重复规则体积削减近 40%，为 680 KiB 维护硬上限释放出 1.2 KiB 以上安全缓冲区（T-1905）；排雷 LifeLog 多行备注换行破坏日记单块结构缺陷，项目名称冒号冲突安全转义（T-1901）；Today 页面搜索框挂载中文输入法组字态安全保护与 Enter/Escape 极速打卡闭环（T-1903）；行动轨迹抽屉支持空态透明引导（T-1906）。
+- 竞品深度调研落地（Loop / Table Habit / Habitica / TickTick / Obsidian / Streaks / Atoms 对标），提炼并登记新一阶段演进任务（T-1872～T-1906）。
 - 本文件中历史版本号属于任务登记时的历史基线，保留用于追溯；新任务统一以源码、`PROGRESS.md`、`BLOCKERS.md` 和 `docs/releases/` 的最新版本为准。
 
-## 2026-10 竞品深度对标与体验演进待办（T-1872～T-1903，D-523）
+## 2026-10-23 发布 v18.21.0（R-RELEASE-18.21.0）
+
+- [x] 版本源、README 当前入口、变更记录和发布说明已统一为 v18.21.0。
+- [x] 发布提交、tag `v18.21.0`、GitHub Release 和 `main` push 已完成；Release 地址为 https://github.com/ai68298100/siyuan-checkin/releases/tag/v18.21.0 ，`package.zip` SHA-256 为 `37fef038869ce00dbe13045330e79391fbfe260c5ea25807c4b4d6e902b7405e`。
+- [x] 发布链 `pnpm run check`、`pnpm test`、`pnpm run test:v18`、`pnpm run check:release` 全部通过；生产 CSS 679 KiB 稳定维持在 680 KiB 硬预算内，0 死类。
+- [x] 跨插件联邦 SDK 四别名安全注销与单色矢量图标全面就绪，便于官方集市及时抓取。
+
+## 2026-10-23 发布 v18.20.0（R-RELEASE-18.20.0）
+
+- [x] 版本源、README 当前入口、变更记录和发布说明已统一为 v18.20.0。
+- [x] 发布提交 `6ce14fae`、tag `v18.20.0`、GitHub Release 和 `main` push 已完成；Release 地址为 https://github.com/ai68298100/siyuan-checkin/releases/tag/v18.20.0 ，`package.zip` SHA-256 为 `f5048d68dd64edba865492a9a326628a73a794c69b7dd02d38cdf6f97d1bf3d2`。
+- [x] 发布链 `pnpm run check`、`pnpm test`、`pnpm run test:v18`、`pnpm run check:release` 全部通过；生产 CSS 680 KiB 维持在 680 KiB 硬预算内，0 死类。
+- [x] 跨插件联邦 SDK 四别名安全注销与单色矢量图标全面就绪，便于官方集市及时抓取。
+
+## 2026-10 竞品深度对标与体验演进待办（T-1872～T-1906，D-523）
 
 - [x] T-1901 修复 LifeLog 备注多行换行与项目名冒号截断引起的日记段落及 Marker 解析污染（P1，已交付 2026-10-23，D-554，对标排雷与数据健壮性）——在 `src/features/lifelog-append.ts` 中重构 `formatLifelogEntry`，将用户输入的备注文本多行换行符（`[\r\n]+`）统一平滑替换为单个空格，杜绝换行导致思源日记创建多个孤儿块破坏时间线段落结构；同时将项目名称内部的冒号（`[：:]`）安全替换为中划线 `-`，确保第一冒号前纯净且被叶归及 Marker 解析器完整正确捕获，消除截断缺陷。守门 `tests/lifelog-robustness-and-css.test.cjs` 纳入 `test:v18`；`check` / `test:v18` / `build:check` 全绿。
 - [x] T-1902 CSS 冗余规则合并与单一来源收敛，腾出安全预算空间（P1，已交付 2026-10-23，D-555，推进 T-1813 视觉分层）——深度审计 `src/ui/components.scss` 与 `src/ui/workbench.scss`，合并容器查询 `@container lc-dialog` 与 `lc-tab` 的 5 处完全镜像规则，安全清理 7 处跨段完全重复的单行规则，将重复体积从 2001 bytes 降至 1587 bytes，产物体积从 696,188 bytes 降至 695,489 bytes，为 680 KiB 维护硬上限腾出 5 倍以上的安全缓冲空间，0 死类。守门 `tests/lifelog-robustness-and-css.test.cjs` 纳入 `test:v18`；`check` / `test:v18` / `build:check` 全绿。
 - [x] T-1903 Today 页面搜索键盘快捷流增强与输入法防触碰保护（P1，已交付 2026-10-23，D-556，对标极速打卡心流）——在 `src/render/bind-today.ts` 为 `data-today-search` 输入框挂载 `keydown` 监听器，严格守护 `isComposing || keyCode === 229` 中文输入状态；回车键（Enter）在有 NLP 推荐时一键触发快速打卡，在单项目精确匹配时直接转移焦点至主打卡按钮；Escape 键支持一键清空搜索词并即时重置卡片列表。守门 `tests/lifelog-robustness-and-css.test.cjs` 纳入 `test:v18`；`check` / `test:v18` / `build:check` 全绿。
+- [x] T-1904 跨插件联邦事件广播：打卡与撤销自动派发生态事件信封（P1，已交付 2026-10-23，D-557，对标生态中枢协同）——在 `emitIntegrationEvent` 中，将事件对象包装为 Epoch 6 统一信封格式（含 `v: 1`、`source: "siyuan-checkin"`、`eventId`、`at`、`idempotencyKey`、`payload`），打卡与撤销发生时实时通过 DOM CustomEvent 广播给小驴雷切、快门等兄弟插件，实现多组件秒级协同响应。守门 `tests/lifelog-robustness-and-css.test.cjs` 纳入 `test:v18`；`check` / `test:v18` / `build:check` 全绿。
+- [x] T-1905 CSS 结构化深度瘦身：清理重复媒体查询与冗余声明（P1，已交付 2026-10-23，D-555，推进 T-1813 视觉分层）——深度清理 `src/ui/components.scss` 中跨段完全重复的 dock-host 与 template-summary 声明，重复规则体积从 2001 bytes 降至 1242 bytes，编译产物下降至 695,147 bytes，为 680 KiB 维护硬上限释放出 1.2 KiB 缓冲区。守门 `tests/lifelog-robustness-and-css.test.cjs` 纳入 `test:v18`；`check` / `test:v18` / `build:check` 全绿。
+- [x] T-1906 Today 页面 LifeLog 轨迹抽屉零记录透明度优化与引导强化（P1，已交付 2026-10-23，D-558，对标日常闭环与笔记回溯）——重构 `renderTodayLifelogTimelineView`，今日无打卡时依然展示轻量折叠抽屉，呈现友好空态提示并保留“打开今日日记文档”直达入口。守门 `tests/lifelog-robustness-and-css.test.cjs` 纳入 `test:v18`；`check` / `test:v18` / `build:check` 全绿。
 
 - [x] T-1872 打卡主观心流与精力轻量自评及交叉分析（P1，已交付 2026-10-20，D-524，对标 TickTick / Atoms）——在精确录入面板（Exact Entry）提供可选的 1~5 档心流/精力自评（⚡ 1:枯竭/2:疲劳/3:平稳/4:充沛/5:心流，完全可选，主按钮一键打卡不受影响）；事件数据结构增加可选 `energy?: 1 | 2 | 3 | 4 | 5` 字段，严格校验非法值，支持向前兼容与导入导出；回顾页增加“心流与精力分布”交叉分析看板卡片，直观展现平均分、样本数与精力柱状占比。守门 `tests/record-energy-flow.test.cjs` 纳入 `test:v18`；`check` / `test:v18` / `build:check` 全绿。
 - [x] T-1873 习惯稳固度 Sigmoid 饱和成长曲线与阶段化成熟模型（P1，已交付 2026-10-20，D-525，对标 Table Habit / 掌控习惯）——在 `habit-score.ts` 落地逻辑斯蒂饱和函数 `computeHabitSaturation`，实现 0 天为 0 分、33 天（半程拐点）为 50 分、66 天达标为 100 分及 1.5 倍超额封顶（99天）；将习惯生命周期划分为萌芽期（1~21天）、爬坡期（22~45天）与扎根期（46~66天+），并提供心理学科学指导建议；在洞察页渲染自适应饱和稳固度横幅。守门 `tests/habit-saturation-curve.test.cjs` 纳入 `test:v18`；`check` / `test:v18` / `build:check` 全绿。

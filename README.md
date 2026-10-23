@@ -8,31 +8,32 @@
 
 把一次行动记录下来，再用同一份可追溯数据完成统计、提醒、复盘和笔记联动。
 
-**当前版本：18.20.0**
+**当前版本：18.21.0**
 
-18.20.0 达成「全生态联邦中枢互联、日记 LifeLog 闭环与长春花紫 Bento 美学」里程碑版本：全面接入 Epoch 6 跨插件联邦 SDK（`src/ecosystem-bridge-kit.ts`），实现 `siyuanCheckin`, `LvCheckin`, `lvCheckin`, `xiaolvCheckin` 四别名挂载与安全核验注销；向小驴雷切安全注册工作台小组件；正式收录全生态 `exam:`, `cards:`, `glean:`, `contacts:`, `home:` 引用前缀；打卡/跳过实时以 LifeLog 格式追加至思源当日日记，支持分节标题、图文混排、撤销删除、一键批量同步与即时预览；顶栏与侧栏升级为 32×32 单色矢量图标；全面响应思源 v3.8.8 桌面紧凑模式与生命周期加固；注入长春花紫与暖橙水波纹 Bento 美学。这里介绍本次更新与已实现功能，后续开发进展见 [PROGRESS](PROGRESS.md)。
+18.21.0 达成「生态联邦事件信封、CSS 结构化瘦身与极速打卡心流」小版本发布：升级跨插件联邦事件派发为 Epoch 6 统一信封格式（`ECOSYSTEM_EVENTS`），支持雷切工作台等兄弟插件即时响应无缝刷新；全面深度收敛 SCSS 冗余规则，重复规则体积削减近 40%，为 680 KiB 维护硬上限释放出 1.2 KiB 以上的安全缓冲空间；排雷 LifeLog 多行备注换行破坏日记单块结构缺陷，项目名称冒号冲突安全转义；Today 页面搜索框挂载中文输入法组字态安全保护与 Enter/Escape 极速打卡闭环；行动轨迹抽屉支持空态透明引导。这里介绍本次更新与已实现功能，后续开发进展见 [PROGRESS](PROGRESS.md)。
 
 > **内测说明**：小驴考试、小驴管家、小驴闪卡和小驴常用目前仍处于内测阶段，部分功能和思源宿主兼容性正在验证中。欢迎通过交流 QQ 群 **871707735** 反馈问题、提交需求；对稳定性有较高要求时，请等待对应插件发布正式版。
 
 [![最新 Release](https://img.shields.io/github/v/release/ai68298100/siyuan-checkin?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-checkin/releases/latest) [![CI](https://github.com/ai68298100/siyuan-checkin/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-checkin/actions/workflows/ci.yml) [![License](https://img.shields.io/github/license/ai68298100/siyuan-checkin)](LICENSE)
 
-[最新 Release](https://github.com/ai68298100/siyuan-checkin/releases/latest) · [18.20.0 发布说明](docs/releases/release-notes-18.20.0.md) · [问题反馈](https://github.com/ai68298100/siyuan-checkin/issues) · [开发文档](docs/)
+[最新 Release](https://github.com/ai68298100/siyuan-checkin/releases/latest) · [18.21.0 发布说明](docs/releases/release-notes-18.21.0.md) · [问题反馈](https://github.com/ai68298100/siyuan-checkin/issues) · [开发文档](docs/)
 
 </div>
 
-### 本次更新（18.20.0）
+### 本次更新（18.21.0）
 
-本次为「全生态联邦中枢互联、日记 LifeLog 闭环与长春花紫 Bento 美学」里程碑版本，提供全生态兄弟插件联动、日记 LifeLog 双向闭环与官方契约深度对齐。
+本次为「生态联邦事件信封、CSS 结构化瘦身与极速打卡心流」小版本，提供跨插件联邦统一信封广播、CSS 瘦身防线与搜索极速操作流。
 
-新增：全生态跨插件联邦与日记 LifeLog 闭环
+新增：生态联邦统一事件信封与 LifeLog 轨迹引导
 
-- **Epoch 6 跨插件联邦 SDK（T-1897 / T-1898）**：四别名（siyuanCheckin/LvCheckin/lvCheckin/xiaolvCheckin）首实例独占与安全注销；收录 exam/cards/glean/contacts/home 全生态前缀；雷切工作台连续坚持小组件安全注册。
-- **日记 LifeLog 深度互操作（T-1884～T-1894）**：打卡/跳过实时结构化追加至当日日记并支持分节标题；照片附件智能生成 Markdown 图文混排；撤销打卡联动 deleteBlock 清理日记脏记录；设置页一键批量同步今日打卡并 SQL 去重；Today 行动轨迹抽屉与日记 0 距离直达；Review 时间轴按日卡片化分组并携带日期快速钻取定位。
+- **Epoch 6 统一事件信封广播（T-1904）**：打卡与撤销事件自动包装 `EcosystemEventEnvelope` 标准格式派发，支持雷切工作台连续打卡等小组件无轮询实时刷新，保持与旧版监听方 100% 兼容。
+- **Today 行动轨迹零记录引导（T-1906）**：今日暂无打卡时依然展示轻量折叠抽屉，呈现友好空态提示并保留“打开今日日记文档”直达入口。
 
-优化：视觉美学、单色图标与官方宿主契约加固
+优化：CSS 结构化深度瘦身与数据排雷
 
-- **长春花紫+暖橙 Bento 美学（T-1899 / T-1900）**：顶栏与侧栏升级为 32×32 单色矢量图标；注入长春花紫（#6366F1）与暖橙水波纹底纹，按钮挂载 :active 物理微触感，统一紫底白标弹窗家族门面。
-- **思源 v3.8.8+ 官方契约加固（T-1895 / T-1896）**：自适应桌面紧凑模式（:root[data-ui-density="compact"]）；重写并对齐 onDataChanged 生命周期防暴力重载，全仓 0 引用已废弃的 updateTransaction API，5s 拆除预算严格守门。
+- **CSS 冗余规则合并与单一来源收敛（T-1902 / T-1905）**：合并容器查询，清理跨段完全重复规则，重复规则体积削减近 40%，为 680 KiB 维护硬上限释放出 1.2 KiB 缓冲区，保持 0 死类。
+- **LifeLog 多行换行压平与冒号转义（T-1901）**：备注文本多行换行平滑转为空格，项目名冒号转义为 `-`，杜绝破坏日记单块结构与 Marker 解析截断。
+- **Today 搜索框极速打卡流（T-1903）**：Enter 键直达 NLP 推荐或聚焦单一匹配卡片，Escape 键一键清空搜索词，严格拦截中文输入法组字态。
 - **五级动作按钮语义体系（T-1817）**：落地 Primary / Secondary / Quiet / Destructive / Icon 统一类名、focus-visible 环与高对比度模式轮廓。
 - **表单输入高度与文本域 Token（T-1818）**：收敛文本域高度到单一 token，规范校验、禁用与忙碌态视觉。
 - **长表单分节与折叠系统（T-1821）**：长表单小节标题增设虚线分隔与加粗样式，收敛高级设置抽屉展开微动效，reduced-motion 平滑降级。

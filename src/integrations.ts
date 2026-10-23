@@ -97,7 +97,25 @@ export function emitIntegrationEvent(event: CheckinIntegrationEvent): void {
     }
     const safe = cloneIntegrationEvent(event);
     if (!safe) return;
-    window.dispatchEvent(new CustomEvent(toExternalEventName(safe), {detail: safe}));
+    const eventName = toExternalEventName(safe);
+    const eventId = (safe as {event?: {id?: string}; item?: {id?: string}}).event?.id
+        || (safe as {item?: {id?: string}}).item?.id
+        || `evt-${Date.now()}`;
+    const idempotencyKey = (safe as {event?: {externalRef?: string; id?: string}}).event?.externalRef
+        || (safe as {event?: {id?: string}}).event?.id
+        || eventId;
+    /* 保持既有 safe 字段直接展开兼容，同时注入 Epoch 6 生态事件信封规范字段 */
+    const detail = {
+        ...safe,
+        v: 1 as const,
+        source: "siyuan-checkin",
+        type: safe.type,
+        eventId,
+        at: new Date().toISOString(),
+        idempotencyKey,
+        payload: safe,
+    };
+    window.dispatchEvent(new CustomEvent(eventName, {detail}));
 }
 
 export function toExternalEventName(event: CheckinIntegrationEvent): string {

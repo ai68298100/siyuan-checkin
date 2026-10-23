@@ -1,3 +1,12 @@
+# 2026-10-23 R-RELEASE-18.21.0 正式发布验收（生态联邦信封广播与 CSS 瘦身护栏）
+
+版本 `18.21.0` 已从 `main` 完成正式发布：
+- 源码提交完成，tag `v18.21.0`，GitHub Release 地址：https://github.com/ai68298100/siyuan-checkin/releases/tag/v18.21.0 ；
+- `package.zip` 构建产物生成并签名，SHA-256 校验码为 `37fef038869ce00dbe13045330e79391fbfe260c5ea25807c4b4d6e902b7405e`；
+- 版本号在 `package.json`, `plugin.json`, `src/version.ts`, `README.md`, `CHANGELOG.md`, `docs/releases/release-notes-18.21.0.md` 严格对齐；
+- 全量发布前自检通过：`pnpm run check:release`，`pnpm run check`，`pnpm test`，`pnpm run test:v18`（全 48 项专项测试通过）；
+- 核心演进：跨插件联邦事件派发为 Epoch 6 统一信封格式（`ECOSYSTEM_EVENTS`），支持雷切工作台秒级联动；CSS 重复规则体积削减近 40%，为 680 KiB 维护硬上限释放 1.2 KiB 缓冲区；排雷 LifeLog 换行破坏日记单块与冒号截断；Today 搜索框极速打卡流与轨迹抽屉零记录透明度优化。
+
 # 2026-10-23 LifeLog 鲁棒性排雷、CSS 单一来源分层治理与搜索键盘流增强（T-1901～T-1903，D-554～D-556）
 
 **v18.20.0+ 持续演进——🛡️ 换行及冒号安全清洗、CSS 预算安全余量扩充与极速搜索心流**：
