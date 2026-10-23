@@ -51,6 +51,7 @@ const HOST_API_ALLOWLIST = new Set([
     "src/dock-tomato.ts", // 番茄钟提供方桥
     "src/download.ts", // 下载通道
     "src/ecosystem.ts", // 事件订阅与 externalRef 注册表
+    "src/ecosystem-bridge-kit.ts", // Epoch 6 生态联邦 SDK
     "src/i18n.ts", // 语言探测
     "src/index.ts", // 组合根
     "src/integrations.ts", // 集成事件

@@ -7,6 +7,15 @@
 
 .lc-checkin__daily-reminder-notice,
 .lc-checkin {
+    /* ---- Epoch 6 Lv Ecosystem Tokens ---- */
+    --lv-brand: #6366F1; /* 经典长春花紫 */
+    --lv-brand-soft: color-mix(in srgb, var(--lv-brand) 12%, transparent);
+    --lv-accent-orange: #FB8C00; /* 阳光蜜桃橙跳色 */
+    --lv-r-sm: 6px;
+    --lv-r-md: 12px;
+    --lv-r-lg: 20px;
+    --lv-r-pill: 9999px;
+
     /* ---- settings typography（T-1617：设置页类型三档令牌，主题无关） ---- */
     --lc-checkin-settings-title-weight: 720;
     --lc-checkin-settings-strong-weight: 650;

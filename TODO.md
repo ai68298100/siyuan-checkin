@@ -4,10 +4,10 @@
 
 - 当前版本升级为 **v18.19.0**（多桶备份版本化、写入幂等事实对账与全表面视觉系统收口里程碑）。
 - 核心交付：多桶备份版本化 Envelope 协议与原子回滚（T-1787/T-1862）；辅助存储桶三分类架构与生命周期治理（T-1860/T-1861）；跨入口写入幂等去重与破戒事实对账收敛（T-1786）；顶栏图标消失与后台暴力重绘防御治理（D-522）；五级按钮、表单输入、长表单分节、导航溢出指引与宿主容器三档密度收口（T-1817/T-1818/T-1819/T-1820/T-1821/T-1824）。
-- 竞品深度调研落地（Loop / Table Habit / Habitica / TickTick / Obsidian / Streaks / Atoms 对标），提炼并登记新一阶段演进任务（T-1872～T-1896）。
+- 竞品深度调研落地（Loop / Table Habit / Habitica / TickTick / Obsidian / Streaks / Atoms 对标），提炼并登记新一阶段演进任务（T-1872～T-1900）。
 - 本文件中历史版本号属于任务登记时的历史基线，保留用于追溯；新任务统一以源码、`PROGRESS.md`、`BLOCKERS.md` 和 `docs/releases/` 的最新版本为准。
 
-## 2026-10 竞品深度对标与体验演进待办（T-1872～T-1896，D-523）
+## 2026-10 竞品深度对标与体验演进待办（T-1872～T-1900，D-523）
 
 - [x] T-1872 打卡主观心流与精力轻量自评及交叉分析（P1，已交付 2026-10-20，D-524，对标 TickTick / Atoms）——在精确录入面板（Exact Entry）提供可选的 1~5 档心流/精力自评（⚡ 1:枯竭/2:疲劳/3:平稳/4:充沛/5:心流，完全可选，主按钮一键打卡不受影响）；事件数据结构增加可选 `energy?: 1 | 2 | 3 | 4 | 5` 字段，严格校验非法值，支持向前兼容与导入导出；回顾页增加“心流与精力分布”交叉分析看板卡片，直观展现平均分、样本数与精力柱状占比。守门 `tests/record-energy-flow.test.cjs` 纳入 `test:v18`；`check` / `test:v18` / `build:check` 全绿。
 - [x] T-1873 习惯稳固度 Sigmoid 饱和成长曲线与阶段化成熟模型（P1，已交付 2026-10-20，D-525，对标 Table Habit / 掌控习惯）——在 `habit-score.ts` 落地逻辑斯蒂饱和函数 `computeHabitSaturation`，实现 0 天为 0 分、33 天（半程拐点）为 50 分、66 天达标为 100 分及 1.5 倍超额封顶（99天）；将习惯生命周期划分为萌芽期（1~21天）、爬坡期（22~45天）与扎根期（46~66天+），并提供心理学科学指导建议；在洞察页渲染自适应饱和稳固度横幅。守门 `tests/habit-saturation-curve.test.cjs` 纳入 `test:v18`；`check` / `test:v18` / `build:check` 全绿。
@@ -34,6 +34,10 @@
 - [x] T-1894 Review 回顾页 LifeLog 时间轴按日期分组卡片化与日历快速定位联动（P1，已交付 2026-10-22，D-546，对标 M2 证据工作台与结构化长周期复盘）——重构 `renderLifelog`，突破多天记录平铺混杂的痛点，按 `occurredAt` 自动分桶为 `.lc-checkin__lifelog-day-group` 日期卡片流，每组标注 `📅 YYYY-MM-DD (N项行动)` 与独立时间线，挂载 `data-lifelog-date` 属性无缝配合日历与热力图快速钻取定位。守门 `tests/lifelog-observability-experience.test.cjs` 纳入 `test:v18`；`check` / `test:v18` / `build:check` 全绿。
 - [x] T-1895 思源 v3.8.8+ 官方桌面紧凑模式自适应响应（P1，已交付 2026-10-22，D-547，对标宿主体验协同）——在 `components.scss` 增设对思源官方紧凑模式属性 `:root[data-ui-density="compact"]` 的自适应规则，当用户在思源“外观”中开启紧凑模式时，小驴打卡的分屏 Tab 与快速弹窗容器自动对齐缩放至紧凑密度档（scale 0.9，控件高度收窄至 30px），与思源官方原生面板几何风格严密对齐。守门 `tests/siyuan-official-alignment.test.cjs` 纳入 `test:v18`；`check` / `test:v18` / `build:check` 全绿。
 - [x] T-1896 思源官方插件生命周期（Petal Lifecycle）深度对齐与兼容加固（P1，已交付 2026-10-22，D-548，对标工程健壮性与防冲突）——全面核实思源 v3.8.8 官方生命周期与 SDK 规范；对齐 `onDataChanged(data?, reason?)` 完整参数签名；严格确认全仓 0 引用已弃用的 `Protyle.updateTransaction` API；严格校验插件 teardown 预算合规性（3.6s 写队列排空 + 900ms 补写严格控制在官方 5s 硬限内）。守门 `tests/siyuan-official-alignment.test.cjs` 纳入 `test:v18`；`check` / `test:v18` / `build:check` 全绿。
+- [x] T-1897 Epoch 6 跨插件联邦 SDK 四别名安全挂载与注销（P1，已交付 2026-10-23，D-549，对标生态中枢协同）——在 `src/integrations.ts` 导出 `CHECKIN_API_ALIASES = ["siyuanCheckin", "LvCheckin", "lvCheckin", "xiaolvCheckin"]`；在 `onload` 阶段实现首实例独占（First-Instance-Wins）安全挂载，并在 `onunload` 阶段执行身份比对安全注销，严禁误伤新实例。守门 `tests/ecosystem-integration-directive.test.cjs` 纳入 `test:v18`；`check` / `test` / `test:v18` / `build:check` 全绿。
+- [x] T-1898 兄弟插件 externalRef 全生态前缀收录与雷切小组件注册（P1，已交付 2026-10-23，D-550，对标生态中枢协同）——在 `EXTERNAL_REF_PREFIX_REGISTRY` 与 `docs/identity-and-merge.md` 中正式收录 `exam:`, `cards:`, `glean:`, `contacts:`, `home:` 五大兄弟插件前缀，统一批量幂等入账规范；在 `onLayoutReady` 阶段通过 `registerRaikiriModuleSafely` 向小驴雷切安全注册 `checkin-daily-streaks` 连续坚持小组件，无强依赖优雅降级。守门 `tests/ecosystem-integration-directive.test.cjs` 纳入 `test:v18`；`check` / `test` / `test:v18` / `build:check` 全绿。
+- [x] T-1899 顶栏与侧栏 32×32 单色矢量图标 iconLvCheckin 升级（P1，已交付 2026-10-23，D-551，对标品牌资产统一）——将 `this.addIcons` 中的 `iconLvCheckin` 替换为与新版 Logo 1:1 映射的 32×32 单色矢量图标（圆角便签卡 + 饱满对勾 + 勋章点）；在顶栏品牌头像处默认呈现紫底白标，保持根目录最新替换的 256×256 高清 `icon.png` 绝对不变。守门 `tests/ecosystem-integration-directive.test.cjs` 纳入 `test:v18`；`check` / `test` / `test:v18` / `build:check` 全绿。
+- [x] T-1900 经典长春花紫+暖橙 Bento 美学升级与工程排雷加固（P1，已交付 2026-10-23，D-552，对标设计系统升级与质量防线）——在 `tokens.scss` 注入专属品牌 Token `--lv-brand: #6366F1`、`--lv-accent-orange: #FB8C00` 与圆角阶梯；连续打卡卡片采用暖橙渐变结合同心圆水波纹底纹，按钮挂载 `:active` 物理微触感；`plugin.json` 开启 `settingsWindow: true` 并补齐前置关键词；根目录补齐 `CHANGELOG.md` 与 `.github/workflows/release.yml`；输入法 `isComposing` 与弹窗 Escape 防击穿全面加固。守门 `tests/ecosystem-integration-directive.test.cjs` 纳入 `test:v18`；`check` / `test` / `test:v18` / `build:check` 全绿。
 
 ## 2026-10-20 发布 v18.19.0（R-RELEASE-18.19.0）
 

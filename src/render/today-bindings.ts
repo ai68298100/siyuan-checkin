@@ -411,6 +411,7 @@ export function bindItemContextMenuFor(host: TodayBindingsHost, root: HTMLElemen
     root.addEventListener("keydown", (event) => {
         if (event.key === "Escape" && root.querySelector(".lc-checkin__item-context-menu")) {
             event.preventDefault();
+            event.stopPropagation();
             closeMenus(true);
         }
     });

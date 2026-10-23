@@ -95,6 +95,11 @@ export const EXTERNAL_REF_PREFIX_REGISTRY: readonly ExternalRefPrefixSpec[] = Ob
     Object.freeze({prefix: "notequery", label: "Note query", format: "notequery:<itemId>:<blockId>:<localDate>"}),
     Object.freeze({prefix: "weread", label: "WeRead", format: "weread:<itemId>:<localDate> (duration), weread:<itemId>:finish:<bookId>:<localDate> (finish), weread:<itemId>:notes:<localDate> (notes)"}),
     Object.freeze({prefix: "yeguif", label: "Yegui LifeLog", format: "yeguif:<blockId>:<localDate>"}),
+    Object.freeze({prefix: "exam", label: "小驴考试", format: "exam:<itemId>:<localDate>"}),
+    Object.freeze({prefix: "cards", label: "小驴闪卡", format: "cards:<itemId>:<localDate>"}),
+    Object.freeze({prefix: "glean", label: "小驴拾遗", format: "glean:<docId>:<localDate>"}),
+    Object.freeze({prefix: "contacts", label: "小驴人脉", format: "contacts:<personDocId>:<localDate>:<seq>"}),
+    Object.freeze({prefix: "home", label: "小驴管家", format: "home:<module>:<rowId>:<localDate>"}),
 ]);
 
 export function isRegisteredExternalRefPrefix(prefix: unknown): boolean {

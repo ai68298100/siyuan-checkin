@@ -544,6 +544,7 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
         if (typeof noteInput?.addEventListener === "function") {
             noteInput.addEventListener("input", syncChipsState);
             noteInput.addEventListener("keydown", (event) => {
+                if (event.isComposing || event.keyCode === 229) return;
                 if (event.key !== "Enter") return;
                 event.preventDefault();
                 element.querySelector<HTMLButtonElement>("[data-action='record']")?.click();

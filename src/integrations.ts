@@ -44,6 +44,7 @@ export interface SummaryProvider {
 export type CheckinEventListener = (event: CheckinIntegrationEvent) => void;
 
 export const CHECKIN_API_NAME = "siyuanCheckin";
+export const CHECKIN_API_ALIASES = ["siyuanCheckin", "LvCheckin", "lvCheckin", "xiaolvCheckin"] as const;
 
 const SUGGESTION_EVENT_ID_MAX_LENGTH = 160;
 

@@ -1,3 +1,26 @@
+# 2026-10-23 Epoch 6 全生态联邦协同与长春花紫 Bento 美学升级落地（T-1897～T-1900，D-549～D-552）
+
+**v18.20.0+ 持续演进——🌟 生态中枢统领、四别名安全挂载、单色图标与 Bento 美学注入**：
+1. **Epoch 6 跨插件联邦 SDK 四别名安全挂载与注销（T-1897，D-549）**：
+   - 四别名规范：在 `src/integrations.ts` 正式导出 `CHECKIN_API_ALIASES = ["siyuanCheckin", "LvCheckin", "lvCheckin", "xiaolvCheckin"]`；
+   - 首实例独占挂载（First-Instance-Wins）：`onload` 阶段动态检索 window，仅对未占用的别名进行赋值，并在 `this.mountedAliases` 数组中记录拥有权；
+   - 身份核验安全卸载：`onunload` 阶段仅对 `w[alias] === this.api` 的自有别名执行 delete，严防销毁旧实例时误杀并连带删除新实例，杜绝幽灵 API 断链。
+2. **全生态 externalRef 命名空间收录与雷切小组件注册（T-1898，D-550）**：
+   - 兄弟插件前缀注册：在 `src/ecosystem.ts` 的 `EXTERNAL_REF_PREFIX_REGISTRY` 与 `docs/identity-and-merge.md` 中收录 `exam:`, `cards:`, `glean:`, `contacts:`, `home:` 五大生态引用前缀，支持原子批量幂等入账；
+   - 雷切小组件接入：在 `onLayoutReady` 阶段通过 `src/ecosystem-bridge-kit.ts` 的 `registerRaikiriModuleSafely` 安全注册 `checkin-daily-streaks` 连续打卡工作台模块，展示连续天数与今日进度，并在 `onunload` 阶段优雅注销，兄弟插件未安装时自动静默降级（0 报错）。
+3. **顶栏与侧栏 32×32 单色矢量图标 iconLvCheckin 升级（T-1899，D-551）**：
+   - 统一单色矢量图标：摒弃原有的碎花边多角徽章，改用圆角便签卡 + 饱满对勾 + 勋章点的 32×32 单色矢量图标，与新版 Logo 1:1 映射；
+   - 保持根目录最新替换的 256×256 高清 `icon.png` 绝对不变；
+   - 顶栏品牌区默认呈现长春花紫底白标与版本号胶囊，与思源系统主题原生图标风格深度融合。
+4. **经典长春花紫+暖橙 Bento 美学升级与工程排雷防线（T-1900，D-552）**：
+   - 注入专属品牌 Token：`--lv-brand: #6366F1`、`--lv-accent-orange: #FB8C00` 与阶梯圆角（`--lv-r-sm: 6px`, `--lv-r-md: 12px`, `--lv-r-lg: 20px`, `--lv-r-pill: 9999px`）；
+   - 连续打卡大卡片（Streak Card）升级为暖橙渐变（`#FFA726` ➔ `#FB8C00`）并衬以半透明同心圆水波纹底纹；
+   - 按钮挂载物理按压微触感（`:active:not(:disabled) { transform: translateY(1.5px) scale(0.985); }`）；
+   - 工程排雷：`plugin.json` 开启 `settingsWindow: true` 并补齐前置关键词；补齐根目录 `CHANGELOG.md` 与 `.github/workflows/release.yml`；输入框 keydown 增加 `isComposing` 与 `keyCode === 229` 中文输入法防误触拦截；二级弹窗 Escape 阻止冒泡防击穿；`showMessage` 统一前缀 `[小驴打卡]` 且报错延时 6000ms。
+5. **守门与验证**：
+   - 新增 `tests/ecosystem-integration-directive.test.cjs` 纳入 `test:v18`（全 46 项全通）；
+   - `pnpm run check`（TypeScript 零错误）、`pnpm test`（150+ 测试全绿）、`pnpm run build:check` 全绿通过。
+
 # 2026-10-22 思源 v3.8.8 官方桌面紧凑模式自适应与 Petal 生命周期契约深度加固（T-1895, T-1896，D-547, D-548）
 
 **v18.20.0+ 持续演进——📐 宿主紧凑模式自适应与官方生命周期零冲突防御**：

@@ -4,6 +4,7 @@
     "url": "https://github.com/ai68298100/siyuan-checkin",
     "version": "18.19.0",
     "minAppVersion": "3.8.4",
+    "settingsWindow": true,
     "disabledInPublish": false,
     "backends": [
         "all"
@@ -17,7 +18,9 @@
     ],
     "displayName": {
         "default": "Lv Check-in",
-        "zh-CN": "小驴打卡"
+        "zh_CN": "小驴打卡",
+        "zh-CN": "小驴打卡",
+        "en_US": "Lv Check-in"
     },
     "description": {
         "default": "A flexible habit and check-in workspace for SiYuan.",
@@ -30,10 +33,13 @@
     "icon": "icon.png",
     "preview": "preview.png",
     "keywords": [
+        "小驴",
+        "小驴打卡",
+        "xiaolv",
+        "lv",
         "打卡",
         "习惯",
         "目标",
-        "小驴打卡",
         "check-in",
         "habit"
     ]

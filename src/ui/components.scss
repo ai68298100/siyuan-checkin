@@ -11426,4 +11426,69 @@ dialog.lc-checkin.lc-checkin__avatar-editor {
     font-size: 11px;
     color: var(--lc-checkin-muted);
 }
+/* Epoch 6: Bento 软性美学与家族门面规范 */
+.lc-checkin :is(button:not(:disabled), .b3-button:not(:disabled)) {
+    &:active {
+        transform: translateY(1.5px) scale(0.985);
+    }
+}
+.lv-dialog-title-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    vertical-align: middle;
+}
+.lv-dialog-title-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: var(--lv-r-sm, 6px);
+    background: var(--lv-brand, #6366F1);
+    color: #FFFFFF;
+    box-shadow: 0 2px 6px rgba(99, 102, 241, 0.35);
+    svg {
+        width: 14px;
+        height: 14px;
+    }
+}
+.lv-dialog-version-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 7px;
+    border-radius: var(--lv-r-pill, 9999px);
+    background: var(--lv-brand-soft, rgba(99, 102, 241, 0.12));
+    color: var(--lv-brand, #6366F1);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+.lc-checkin--today .lc-checkin__overview-streak {
+    background: linear-gradient(135deg, #FFA726, var(--lv-accent-orange, #FB8C00));
+    color: #FFFFFF;
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--lv-r-md, 12px);
+    box-shadow: 0 4px 14px rgba(251, 140, 0, 0.25);
+    &::after {
+        content: "";
+        position: absolute;
+        right: -14px;
+        bottom: -14px;
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.1) 45%, transparent 70%);
+        pointer-events: none;
+    }
+    .lc-checkin__overview-label,
+    .lc-checkin__overview-streak-name,
+    small {
+        color: rgba(255, 255, 255, 0.95);
+    }
+}
+.lc-checkin__filter-toggle {
+    border-radius: var(--lv-r-pill, 9999px);
+}
 @include meta.load-css("./reminder-density");

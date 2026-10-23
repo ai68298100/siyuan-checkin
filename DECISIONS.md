@@ -1,3 +1,23 @@
+# D-549：T-1897 Epoch 6 跨插件联邦 SDK 四别名安全挂载与注销（2026-10-23）
+
+- **四别名首实例独占（First-Instance-Wins）**：挂载 `siyuanCheckin`, `LvCheckin`, `lvCheckin`, `xiaolvCheckin` 四别名，若已有窗口或实例挂载则不覆盖，在 `this.mountedAliases` 中记录所有权；
+- **身份核验安全注销**：卸载阶段严格校验 `w[alias] === this.api` 后再执行 delete，杜绝误删新打开窗口的 API 引用。
+
+# D-550：T-1898 全生态 externalRef 前缀收录与雷切小组件注册（2026-10-23）
+
+- **全生态前缀权威收录**：在 `EXTERNAL_REF_PREFIX_REGISTRY` 正式注册 `exam:`, `cards:`, `glean:`, `contacts:`, `home:` 兄弟插件引用格式，保证同日打卡幂等去重对账的一致性；
+- **雷切小组件安全注销**：通过 `registerRaikiriModuleSafely` 注册连续坚持小组件，无雷切时静默返回，卸载时调用返回值自动注销。
+
+# D-551：T-1899 顶栏与侧栏 32×32 单色矢量图标升级（2026-10-23）
+
+- **单色高灵动设计**：将 `iconLvCheckin` 升级为 32×32 纯矢量单色（圆角便签卡 + 饱满对勾 + 勋章点），与思源系统主题图标风格严密融合；
+- **独立资产保护**：根目录 256×256 高清彩色头像 `icon.png` 保持不变，顶栏默认优先使用单色图标。
+
+# D-552：T-1900 经典长春花紫+暖橙 Bento 美学升级与工程排雷加固（2026-10-23）
+
+- **品牌美学系统**：注入 `--lv-brand: #6366F1` 经典长春花紫与 `--lv-accent-orange: #FB8C00` 暖橙跳色，连续打卡大卡片呈现水波纹同心圆底纹，按钮增加物理微触感；
+- **工程排雷落地**：`plugin.json` 启用 `settingsWindow: true` 独立大窗，输入框 keydown 拦截输入法组字态，二级弹窗 Escape 阻止冒泡防击穿；`showMessage` 统一前缀 `[小驴打卡]` 且报错延时 6000ms。
+
 # D-547：T-1895 思源 v3.8.8+ 官方桌面紧凑模式自适应（2026-10-22）
 
 - **双层紧凑机制协同**：除插件自身内部对 `.lc-checkin-dock-host` 自动紧凑外，全面响应思源官方全局紧凑选择器 `:root[data-ui-density="compact"]`，分屏 Tab 与弹窗自动同步降维缩放至 0.9，高度收窄至 30px，与思源系统视觉节奏严密对齐。

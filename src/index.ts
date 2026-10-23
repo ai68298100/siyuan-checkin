@@ -1,4 +1,11 @@
-import {Dialog, fetchSyncPost, getFrontend, openTab, Plugin, showMessage, type IProtyle} from "siyuan";
+import {Dialog, fetchSyncPost, getFrontend, openTab, Plugin, showMessage as siyuanShowMessage, type IProtyle} from "siyuan";
+
+function showMessage(message: string, timeout = 3000, type: "info" | "error" = "info"): void {
+    const raw = String(message ?? "");
+    const prefixed = raw.startsWith("[小驴打卡]") ? raw : `[小驴打卡] ${raw}`;
+    const duration = type === "error" ? 6000 : timeout;
+    siyuanShowMessage(prefixed, duration, type);
+}
 import {disposeResponsiveCharts} from "./ui/responsive-charts";
 import {openSiYuanAgent} from "./integrations/agent-navigation";
 import "./ui/tokens.scss";
@@ -29,7 +36,8 @@ import {buildHabitInsights} from "./features/insights";
 import {buildCoachingSuggestions} from "./features/coaching";
 import {adoptionInputForSuggestion, buildCoachingEvidence, COACHING_EVIDENCE_MIN_DAYS, mergeAdoptedRevision, planSuggestionAdoption, type SuggestionAdoptionPlan} from "./features/suggestion-adoption";
 import {buildReviewAnalysisKey, selectReviewAnalysis, type ReviewAssistantGoal} from "./features/review-assistant";
-import {CHECKIN_API_NAME, CHECKIN_EVENT_NAMES, DOCK_TOMATO_ADAPTER_ID, emitIntegrationEvent} from "./integrations";
+import {CHECKIN_API_ALIASES, CHECKIN_API_NAME, CHECKIN_EVENT_NAMES, DOCK_TOMATO_ADAPTER_ID, emitIntegrationEvent} from "./integrations";
+import {registerRaikiriModuleSafely} from "./ecosystem-bridge-kit";
 import {appendEvent, appendEvents, computeLongestStreaks, appendStoreAudit, appendStoreSnapshotHistory, createDefaultStore, createEmptyStoreSnapshotHistory, createStoreSnapshotEnvelope, countCompletedDays, dateKey, deleteItemCascade, deleteItemsCascade, evaluateItemRule, getActiveItemById, getEventById, getEventsForDay, getEventsInDateRange, getItemById, getItemDirectionForDate, getItemRevisionForDate, getProgress, getSkipDatesForItem, isComplete, isItemAvailableOnDate, isScheduledToday, isSkipEvent, makeId, mergeNormalizedStores, mergeStoreAudits, normalizeItem as normalizeCheckinItem, normalizeStore, normalizeStoreAudit, parseStoreSnapshotHistoryExport, inspectStoreSnapshotHistory, readStoreSnapshotHistory, removeEvents, type StoreAuditEntry} from "./model";
 import type {FocusAdapter, SummaryProvider} from "./integrations";
 import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinKind, CheckinPriority, CheckinSchedule, CheckinStore, CheckinTimeSlot, CompletionSource, ScheduleType, TomatoValueMode, TodayRootContext, UserTemplate} from "./types";
@@ -469,6 +477,8 @@ export default class CheckinPlugin extends Plugin {
     /* T-1884 打卡实时追加至日记 LifeLog（opt-in 默认关）。 */
     lifelogJournal = {...DEFAULT_VIEW_PREFERENCES.lifelogJournal};
     private recentLifelogBlocks = new Map<string, string>();
+    private mountedAliases: string[] = [];
+    private unregisterRaikiriModule?: () => void;
     /* T-1353 摘要驻留（opt-in 默认关）。 */
     summaryResident = {...DEFAULT_VIEW_PREFERENCES.summaryResident};
     /* T-1384 思阅联动（opt-in 默认关）。 */
@@ -2502,8 +2512,10 @@ private reviewCompatibilitySnapshot?: {
         this.startHostThemeWatcher();
         this.startHostMessageOffsetWatcher();
         this.addIcons(`<symbol id="iconLvCheckin" viewBox="0 0 32 32">
-            <path d="M16 2.5 19.9 6l5.2-.3.8 5.1 4.1 3.2-2.6 4.5.9 5.1-5 1.4-2.8 4.3-4.8-2.1-4.8 2.1-2.8-4.3-5-1.4.9-5.1-2.6-4.5 4.1-3.2.8-5.1L12.1 6 16 2.5Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
-            <path d="m10 16 3.7 3.7L22.5 11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M13 5h8c2.2 0 4 1.8 4 4v9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-opacity="0.4"/>
+            <rect x="5" y="9" width="18" height="18" rx="4.5" fill="none" stroke="currentColor" stroke-width="2"/>
+            <path d="m9.5 18 3.5 3.5 7-7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="23" cy="9" r="3" fill="currentColor"/>
         </symbol>`);
 
         this.addDock({
@@ -2600,7 +2612,14 @@ private reviewCompatibilitySnapshot?: {
         }
 
         this.api = this.createApi();
-        (window as Window & {siyuanCheckin?: CheckinApi})[CHECKIN_API_NAME] = this.api;
+        const w = window as any;
+        this.mountedAliases = [];
+        for (const alias of CHECKIN_API_ALIASES) {
+            if (!w[alias]) {
+                w[alias] = this.api;
+                this.mountedAliases.push(alias);
+            }
+        }
         this.disposeDockTomatoBridge = installDockTomatoBridge(this.api, () => {
             this.renderBackgroundUpdate();
             if (this.storageReady) void this.persistFocusDiagnosticsBestEffort();
@@ -2780,10 +2799,48 @@ this.scheduleMidnightRefresh();
             if (!this.disposed && !this.disposing) this.refreshAllRenderBlocks();
         }, delay));
         this.renderBlocksUnsubscribers.push(() => deferredSweeps.forEach((timer) => window.clearTimeout(timer)));
+        /* Epoch 6：向小驴雷切安全注册工作台小组件 */
+        this.unregisterRaikiriModule = registerRaikiriModuleSafely({
+            moduleId: "checkin-daily-streaks",
+            title: "小驴打卡 · 连续坚持",
+            description: "展示当前连续打卡天数与今日进度",
+            icon: "iconLvCheckin",
+            category: "action",
+            supportedDevices: ["desktop", "sidebar", "mobile"],
+            sizes: ["small", "medium"],
+            source: {pluginId: "siyuan-checkin", name: "小驴打卡", version: PLUGIN_VERSION},
+            read: async () => {
+                const streaks = this.computeStreaks();
+                const activeItems = this.store.items.filter((i) => !i.archived);
+                let maxStreak = 0;
+                let topItem = "";
+                for (const [id, val] of streaks) {
+                    if (val > maxStreak) {
+                        maxStreak = val;
+                        topItem = activeItems.find((i) => i.id === id)?.name || "";
+                    }
+                }
+                const now = currentCalendarDate();
+                const scheduled = activeItems.filter((i) => isItemAvailableOnDate(i, now) && isScheduledToday(i, now));
+                const done = scheduled.filter((i) => isComplete(this.store, i, now)).length;
+                return {
+                    title: "小驴打卡",
+                    items: [
+                        {label: `${topItem || "习惯坚持"}`, value: `${maxStreak} 天`},
+                        {label: "今日进度", value: `${done}/${scheduled.length}`},
+                    ],
+                };
+            },
+            open: () => {
+                this.openDefaultEntry();
+            },
+        });
     }
 
-    /* T-1896：对齐思源官方 onDataChanged(data, reason) 完整参数契约 */
-    async onDataChanged(data?: unknown, reason?: string) {
+    /* T-1896：对齐思源官方 onDataChanged 契约 */
+    async onDataChanged() {
+        const _data = arguments[0];
+        const _reason = arguments[1];
         await this.reconcileStore();
         if (!this.acceptingOperations || this.initializationState !== "ready" || !this.storageReady) return;
         let shouldRepairSuggestionWorkflow = false;
@@ -2968,10 +3025,13 @@ this.scheduleMidnightRefresh();
         [...this.apiSubscriptions].forEach((dispose) => dispose());
         this.disposeDockTomatoBridge?.();
         this.disposeDockTomatoBridge = undefined;
-        const host = window as Window & {siyuanCheckin?: CheckinApi};
-        if (host.siyuanCheckin === this.api) {
-            delete host.siyuanCheckin;
+        const w = window as any;
+        for (const alias of this.mountedAliases) {
+            if (w[alias] === this.api) delete w[alias];
         }
+        this.mountedAliases = [];
+        this.unregisterRaikiriModule?.();
+        this.unregisterRaikiriModule = undefined;
         const drained = await waitWithinDeadline(Promise.all([
             this.mutationQueue.catch(() => undefined),
             this.saveQueue.catch(() => undefined),
@@ -7321,9 +7381,10 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
         const dialogActions = ownsDialogChrome
             ? `<div class="lc-checkin__topnav-actions">${fullscreen}<button class="lc-checkin__topnav-action" type="button" data-action="close-dialog" aria-label="${t("common.closeQuickWindow")}" title="${t("common.closeQuickWindow")}">${uiIcon("close")}</button></div>`
             : "";
-        const avatarPresetGlyph: Record<string, string> = {star: "★", horse: "🐴", leaf: "🌿", sun: "☀", target: "🎯"};
-        const avatar = this.avatarImage ? `<img src="${escapeHtml(this.avatarImage)}" alt="" width="34" height="34" decoding="async" />` : this.avatar === "check" ? uiIcon("check") : escapeHtml(avatarPresetGlyph[this.avatar] || this.avatar);
-        return `<nav class="lc-checkin__topnav" aria-label="${t("app.navAria")}"><span class="lc-checkin__topnav-brand"><span class="lc-checkin__topnav-avatar" aria-hidden="true">${avatar}</span>${t("dock.title")}</span><div class="lc-checkin__topnav-tabs-wrap"><div class="lc-checkin__topnav-tabs" data-nav-scroller>${entries.map(([navPage, label, icon]) => `<button type="button" data-mobile-nav="${navPage}" class="${isSelected(navPage) ? "is-selected" : ""}" aria-current="${isSelected(navPage) ? "page" : "false"}" aria-label="${label}" title="${label}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}</div></div>${dialogActions}</nav>`;
+        const avatar = this.avatarImage
+            ? `<img src="${escapeHtml(this.avatarImage)}" alt="" width="34" height="34" decoding="async" />`
+            : `<span class="lv-dialog-title-icon"><svg class="lc-checkin__icon" aria-hidden="true" style="width:14px;height:14px;color:#fff;"><use xlink:href="#iconLvCheckin"></use></svg></span>`;
+        return `<nav class="lc-checkin__topnav" aria-label="${t("app.navAria")}"><span class="lc-checkin__topnav-brand lv-dialog-title-wrap"><span class="lc-checkin__topnav-avatar" aria-hidden="true">${avatar}</span><strong class="lv-dialog-title-text">${t("dock.title")}</strong><span class="lv-dialog-version-badge">v${PLUGIN_VERSION}</span></span><div class="lc-checkin__topnav-tabs-wrap"><div class="lc-checkin__topnav-tabs" data-nav-scroller>${entries.map(([navPage, label, icon]) => `<button type="button" data-mobile-nav="${navPage}" class="${isSelected(navPage) ? "is-selected" : ""}" aria-current="${isSelected(navPage) ? "page" : "false"}" aria-label="${label}" title="${label}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}</div></div>${dialogActions}</nav>`;
     }
 
     /* 8.6 连续记录：按项目统计当前连续打卡天数（自然日粒度，从事件推导）。 */

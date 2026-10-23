@@ -29,6 +29,11 @@
 格式：`<前缀>:<外部身份>:<本地日期>`，例如 Task Horizon 使用 `taskhorizon:<blockId>:<localDate>`。
 - `obsidian21:<文件名>:<localDate>`：Obsidian Habit Tracker 21 迁入（T-1279）；文件名经去冒号消毒作为身份，来源 `import`。
 - `notequery:<itemId>:<blockId>:<localDate>`：笔记推导打卡（T-1500）；`itemId` 是用户显式绑定的项目，`blockId` 是命中的笔记块，事件仍使用 `source: "api"`，仅以 `notequery:` 前缀标识推导身份。
+- `exam:<itemId>:<localDate>`：来自小驴考试（siyuan-exam）刷题结算。
+- `cards:<itemId>:<localDate>`：来自小驴闪卡（siyuan-lv-cards）复习完成。
+- `glean:<docId>:<localDate>`：来自小驴拾遗（siyuan-glean）文章已读。
+- `contacts:<personDocId>:<localDate>:<seq>`：来自小驴人脉（siyuan-contacts）互动跟进。
+- `home:<module>:<rowId>:<localDate>`：来自小驴管家（siyuan-home）事务办理。
 
 - 前缀即来源注册名（v18 开放 externalRef 前缀注册）；本地日期必须是设备本地时区日历日（`YYYY-MM-DD`）；
 - **派生规则必须确定性**：同一外部实体在同一日期重复触发必须产出同一 externalRef——这是多端/多窗口幂等的基础（mhabit 确定性 UUID 思路的等价物）；

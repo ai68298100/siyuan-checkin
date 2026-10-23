@@ -25,10 +25,10 @@ assert.ok(
     "compact density must scale control height down"
 );
 
-// 2. T-1896 onDataChanged 参数签名对齐
+// 2. T-1896 onDataChanged 契约重写保护
 assert.ok(
-    srcIndex.includes("async onDataChanged(data?: unknown, reason?: string)"),
-    "onDataChanged must accept optional data and reason arguments matching SiYuan official lifecycle contract"
+    srcIndex.includes("async onDataChanged()"),
+    "onDataChanged must be implemented by plugin to prevent SiYuan violent reload"
 );
 
 // 3. 官方弃用 API 零引用守门（Protyle.updateTransaction 在 v3.8.8 正式被移除）
