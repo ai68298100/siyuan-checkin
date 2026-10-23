@@ -1,3 +1,9 @@
+# D-553：后续按小版本（18.x.0）持续发版与集市抓取机制（2026-10-23）
+
+- **版本步进策略**：为保证思源官方集市（Bazaar）对插件新特性（尤其是跨插件联邦、图标与日记 LifeLog 联动）的即时感知与抓取，后续每个阶段或里程碑交付后，统一递增语义化小版本（如 `18.20.0` ➔ `18.21.0`）；
+- **全链路自动构建与签名**：坚持在本地运行完整构建流水线生成 `package.zip` 并计算 SHA-256 写入 release-notes，严禁未经验证空发 Release；
+- **双端同步**：推送 main 分支同时推送版本 tag（`git push origin v*`），并挂载 `package.zip`, `dist/index.js`, `dist/index.css`, `plugin.json` 四大核心产物到 GitHub Release。
+
 # D-549：T-1897 Epoch 6 跨插件联邦 SDK 四别名安全挂载与注销（2026-10-23）
 
 - **四别名首实例独占（First-Instance-Wins）**：挂载 `siyuanCheckin`, `LvCheckin`, `lvCheckin`, `xiaolvCheckin` 四别名，若已有窗口或实例挂载则不覆盖，在 `this.mountedAliases` 中记录所有权；

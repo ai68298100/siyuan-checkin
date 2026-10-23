@@ -1,3 +1,12 @@
+# 2026-10-23 R-RELEASE-18.20.0 正式发布验收（生态联邦与集市抓取通道建立）
+
+版本 `18.20.0` 已从 `main` 完成正式发布：
+- 源码提交 `6ce14fae`，tag `v18.20.0`，GitHub Release 地址：https://github.com/ai68298100/siyuan-checkin/releases/tag/v18.20.0 ；
+- `package.zip` 构建产物生成并签名，SHA-256 校验码为 `f5048d68dd64edba865492a9a326628a73a794c69b7dd02d38cdf6f97d1bf3d2`；
+- 版本号在 `package.json`, `plugin.json`, `src/version.ts`, `README.md`, `CHANGELOG.md`, `docs/releases/release-notes-18.20.0.md` 严格对齐；
+- 全量发布前自检通过：`pnpm run check:release`，`pnpm run check`，`pnpm test`，`pnpm run test:v18`（全 46 项专项测试通过）；
+- 确立后续常态化发版机制：每次完成阶段性演进或生态指令后，按语义化小版本（18.x.0）递增，统一通过 `node scripts/release.cjs` 或标准化 release 链路生成 `package.zip`、打标 tag 并发布 GitHub Release，保证思源官方集市无缝及时抓取。
+
 # 2026-10-23 Epoch 6 全生态联邦协同与长春花紫 Bento 美学升级落地（T-1897～T-1900，D-549～D-552）
 
 **v18.20.0+ 持续演进——🌟 生态中枢统领、四别名安全挂载、单色图标与 Bento 美学注入**：

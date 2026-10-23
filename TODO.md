@@ -10,7 +10,7 @@
 ## 2026-10-23 发布 v18.20.0（R-RELEASE-18.20.0）
 
 - [x] 版本源、README 当前入口、变更记录和发布说明已统一为 v18.20.0。
-- [x] 发布提交、tag `v18.20.0`、GitHub Release 和 `main` push 已完成。
+- [x] 发布提交 `6ce14fae`、tag `v18.20.0`、GitHub Release 和 `main` push 已完成；Release 地址为 https://github.com/ai68298100/siyuan-checkin/releases/tag/v18.20.0 ，`package.zip` SHA-256 为 `f5048d68dd64edba865492a9a326628a73a794c69b7dd02d38cdf6f97d1bf3d2`。
 - [x] 发布链 `pnpm run check`、`pnpm test`、`pnpm run test:v18`、`pnpm run check:release` 全部通过；生产 CSS 680 KiB 维持在 680 KiB 硬预算内，0 死类。
 - [x] 跨插件联邦 SDK 四别名安全注销与单色矢量图标全面就绪，便于官方集市及时抓取。
 
