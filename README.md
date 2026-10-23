@@ -8,31 +8,31 @@
 
 把一次行动记录下来，再用同一份可追溯数据完成统计、提醒、复盘和笔记联动。
 
-**当前版本：18.21.0**
+**当前版本：18.22.0**
 
-18.21.0 达成「生态联邦事件信封、CSS 结构化瘦身与极速打卡心流」小版本发布：升级跨插件联邦事件派发为 Epoch 6 统一信封格式（`ECOSYSTEM_EVENTS`），支持雷切工作台等兄弟插件即时响应无缝刷新；全面深度收敛 SCSS 冗余规则，重复规则体积削减近 40%，为 680 KiB 维护硬上限释放出 1.2 KiB 以上的安全缓冲空间；排雷 LifeLog 多行备注换行破坏日记单块结构缺陷，项目名称冒号冲突安全转义；Today 页面搜索框挂载中文输入法组字态安全保护与 Enter/Escape 极速打卡闭环；行动轨迹抽屉支持空态透明引导。这里介绍本次更新与已实现功能，后续开发进展见 [PROGRESS](PROGRESS.md)。
+18.22.0 达成「全生态联动模板组、思播 v1 播放事件驱动与设置页一键创建」小版本发布：新增 7 款开箱即用的生态联动打卡模板（思阅精读、思播精听、闪卡复习、考证刷题、拾遗精读、人脉关怀、管家事务）与【小驴生态联动】专属场景组合包；深入贯彻思播 Issue #180 上游 Integration API v1 契约规范，全面监听 `siplayer:play/pause/ended` 实现暂停/结束时毫秒级即时结算；设置页新增“快速创建并绑定”按钮，0 摩擦一键生成对应分钟打卡项并启用绑定。这里介绍本次更新与已实现功能，后续开发进展见 [PROGRESS](PROGRESS.md)。
 
 > **内测说明**：小驴考试、小驴管家、小驴闪卡和小驴常用目前仍处于内测阶段，部分功能和思源宿主兼容性正在验证中。欢迎通过交流 QQ 群 **871707735** 反馈问题、提交需求；对稳定性有较高要求时，请等待对应插件发布正式版。
 
 [![最新 Release](https://img.shields.io/github/v/release/ai68298100/siyuan-checkin?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-checkin/releases/latest) [![CI](https://github.com/ai68298100/siyuan-checkin/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-checkin/actions/workflows/ci.yml) [![License](https://img.shields.io/github/license/ai68298100/siyuan-checkin)](LICENSE)
 
-[最新 Release](https://github.com/ai68298100/siyuan-checkin/releases/latest) · [18.21.0 发布说明](docs/releases/release-notes-18.21.0.md) · [问题反馈](https://github.com/ai68298100/siyuan-checkin/issues) · [开发文档](docs/)
+[最新 Release](https://github.com/ai68298100/siyuan-checkin/releases/latest) · [18.22.0 发布说明](docs/releases/release-notes-18.22.0.md) · [问题反馈](https://github.com/ai68298100/siyuan-checkin/issues) · [开发文档](docs/)
 
 </div>
 
-### 本次更新（18.21.0）
+### 本次更新（18.22.0）
 
-本次为「生态联邦事件信封、CSS 结构化瘦身与极速打卡心流」小版本，提供跨插件联邦统一信封广播、CSS 瘦身防线与搜索极速操作流。
+本次为「全生态联动模板组、思播 v1 播放事件驱动与设置页一键创建」小版本，提供开箱即用生态模板与零阻力绑定流。
 
-新增：生态联邦统一事件信封与 LifeLog 轨迹引导
+新增：全生态联动开箱即用模板组与场景组合包
 
-- **Epoch 6 统一事件信封广播（T-1904）**：打卡与撤销事件自动包装 `EcosystemEventEnvelope` 标准格式派发，支持雷切工作台连续打卡等小组件无轮询实时刷新，保持与旧版监听方 100% 兼容。
-- **Today 行动轨迹零记录引导（T-1906）**：今日暂无打卡时依然展示轻量折叠抽屉，呈现友好空态提示并保留“打开今日日记文档”直达入口。
+- **7 款专属联动打卡模板（T-1907）**：思阅精读（45分钟）、思播精听（30分钟）、闪卡复习（30张）、考证刷题（20题）、拾遗精读（2篇）、人脉关怀（1人）、管家事务（1次），科学设定目标与单位。
+- **【小驴生态联动】组合包（T-1907）**：新建面板可一键预览并创建全生态联动习惯，双语 100% 覆盖。
+- **设置页一键创建并绑定（T-1908）**：在思阅和思播项目行提供“快速创建并绑定”按钮，0 摩擦自动创建并绑定分钟打卡项。
 
-优化：CSS 结构化深度瘦身与数据排雷
+优化：思播上游 Issue #180 官方播放事件即时结算
 
-- **CSS 冗余规则合并与单一来源收敛（T-1902 / T-1905）**：合并容器查询，清理跨段完全重复规则，重复规则体积削减近 40%，为 680 KiB 维护硬上限释放出 1.2 KiB 缓冲区，保持 0 死类。
-- **LifeLog 多行换行压平与冒号转义（T-1901）**：备注文本多行换行平滑转为空格，项目名冒号转义为 `-`，杜绝破坏日记单块结构与 Marker 解析截断。
+- **事件驱动即时结算（T-1907）**：全面监听 `siplayer:play/pause/ended`，用户暂停或媒体播放结束时立即结算，消灭 15 秒定时器轮询延迟。
 - **Today 搜索框极速打卡流（T-1903）**：Enter 键直达 NLP 推荐或聚焦单一匹配卡片，Escape 键一键清空搜索词，严格拦截中文输入法组字态。
 - **五级动作按钮语义体系（T-1817）**：落地 Primary / Secondary / Quiet / Destructive / Icon 统一类名、focus-visible 环与高对比度模式轮廓。
 - **表单输入高度与文本域 Token（T-1818）**：收敛文本域高度到单一 token，规范校验、禁用与忙碌态视觉。

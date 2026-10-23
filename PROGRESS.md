@@ -1,3 +1,12 @@
+# 2026-10-23 R-RELEASE-18.22.0 正式发布验收（生态联动模板与思播 v1 事件驱动）
+
+版本 `18.22.0` 已从 `main` 完成正式发布：
+- 源码提交完成，tag `v18.22.0`，GitHub Release 地址：https://github.com/ai68298100/siyuan-checkin/releases/tag/v18.22.0 ；
+- `package.zip` 构建产物生成并签名，SHA-256 校验码为 `3d620e10029b43e168033336f6bc12c178ad107183c85a03230c94b4d830616f`；
+- 版本号在 `package.json`, `plugin.json`, `src/version.ts`, `README.md`, `CHANGELOG.md`, `docs/releases/release-notes-18.22.0.md` 严格对齐；
+- 全量发布前自检通过：`pnpm run check:release`，`pnpm run check`，`pnpm test`，`pnpm run test:v18`（全 49 项专项测试通过）；
+- 核心演进：新增 7 款开箱即用生态联动打卡模板与专属场景组合包；深入贯彻思播 Issue #180 上游 Integration API v1 契约规范，全面监听 `siplayer:play/pause/ended` 实现暂停/结束时毫秒级即时结算；设置页新增“快速创建并绑定”按钮，0 摩擦一键生成对应分钟打卡项并启用绑定。
+
 # 2026-10-23 设置页一键快速创建绑定与全生态联动体验深化（T-1908，D-560）
 
 **v18.21.0+ 持续演进——⚡ 设置页一键创建绑定与 0 阻力联动闭环**：

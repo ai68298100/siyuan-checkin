@@ -2,10 +2,17 @@
 
 ## 当前统一状态（2026-10-23）
 
-- 当前版本升级为 **v18.21.0**（生态联邦事件信封、CSS 结构化瘦身与极速打卡心流小版本发布）。
-- 核心交付：升级跨插件联邦事件派发为 Epoch 6 统一信封格式（`ECOSYSTEM_EVENTS`），支持雷切工作台等兄弟插件即时响应无缝刷新（T-1904）；全面深度收敛 SCSS 冗余规则，重复规则体积削减近 40%，为 680 KiB 维护硬上限释放出 1.2 KiB 以上安全缓冲区（T-1905）；排雷 LifeLog 多行备注换行破坏日记单块结构缺陷，项目名称冒号冲突安全转义（T-1901）；Today 页面搜索框挂载中文输入法组字态安全保护与 Enter/Escape 极速打卡闭环（T-1903）；行动轨迹抽屉支持空态透明引导（T-1906）。
-- 竞品深度调研落地（Loop / Table Habit / Habitica / TickTick / Obsidian / Streaks / Atoms 对标），提炼并登记新一阶段演进任务（T-1872～T-1906）。
+- 当前版本升级为 **v18.22.0**（全生态联动模板组、思播 v1 播放事件驱动与设置页一键创建小版本发布）。
+- 核心交付：新增 7 款开箱即用的生态联动打卡模板（思阅精读、思播精听、闪卡复习、考证刷题、拾遗精读、人脉关怀、管家事务）与【小驴生态联动】专属场景组合包（T-1907）；深入贯彻思播 Issue #180 上游 Integration API v1 契约规范，全面监听 `siplayer:play/pause/ended` 实现暂停/结束时毫秒级即时结算（T-1907）；设置页新增“快速创建并绑定”按钮，0 摩擦一键生成对应分钟打卡项并启用绑定（T-1908）。
+- 竞品深度调研落地（Loop / Table Habit / Habitica / TickTick / Obsidian / Streaks / Atoms 对标），提炼并登记新一阶段演进任务（T-1872～T-1908）。
 - 本文件中历史版本号属于任务登记时的历史基线，保留用于追溯；新任务统一以源码、`PROGRESS.md`、`BLOCKERS.md` 和 `docs/releases/` 的最新版本为准。
+
+## 2026-10-23 发布 v18.22.0（R-RELEASE-18.22.0）
+
+- [x] 版本源、README 当前入口、变更记录和发布说明已统一为 v18.22.0。
+- [x] 发布提交、tag `v18.22.0`、GitHub Release 和 `main` push 已完成；Release 地址为 https://github.com/ai68298100/siyuan-checkin/releases/tag/v18.22.0 ，`package.zip` SHA-256 为 `3d620e10029b43e168033336f6bc12c178ad107183c85a03230c94b4d830616f`。
+- [x] 发布链 `pnpm run check`、`pnpm test`、`pnpm run test:v18`、`pnpm run check:release` 全部通过；生产 CSS 679 KiB 稳定维持在 680 KiB 硬预算内，0 死类。
+- [x] 全生态开箱即用模板与思播 v1 播放事件即时结算就绪，便于官方集市及时抓取。
 
 ## 2026-10-23 发布 v18.21.0（R-RELEASE-18.21.0）
 
