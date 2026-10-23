@@ -1,3 +1,8 @@
+# D-559：T-1907 思播上游事件驱动加固与全生态联动内置模板组（2026-10-23）
+
+- **思播 v1 播放事件监听**：除旧版 `mediaChanged`、`playerDestroy` 外，在 `startSiplayerSampler` 中全面监听思播 Issue #180 官方定义的 `siplayer:play/pause/ended`，暂停或结束时毫秒级立即结算，消除 15s 轮询等待延迟；
+- **全生态开箱即用模板**：在 `CHECKIN_TEMPLATES` 新增思阅精读、思播精听、闪卡复习、考证刷题、拾遗精读、人脉关怀、管家事务 7 款联动模板，并在 `TEMPLATE_PACKS` 增设 `ecosystem` 专属组合包，极大降低用户跨插件联动的使用门槛。
+
 # D-557：T-1904 Epoch 6 跨插件联邦事件信封广播（2026-10-23）
 
 - **统一信封包装**：在 `emitIntegrationEvent` 中为 CustomEvent 注入 `v: 1`、`source: "siyuan-checkin"`、`eventId`、`at`、`idempotencyKey` 与 `payload` 统一信封格式，使小驴雷切等组件能直接解包消费并实时同步刷新，同时保留既有字段展开兼容。

@@ -537,6 +537,12 @@ export default class CheckinPlugin extends Plugin {
             this.tickSiplayerSampler();
         }
     };
+    /* Issue #180：思播官方 Integration API v1 播放事件 (siplayer:play/pause/ended) 即时驱动结算 */
+    private readonly handleSiplayerV1Event = () => {
+        if (!this.disposed && !this.disposing && this.siplayerIntegration.enabled) {
+            this.tickSiplayerSampler();
+        }
+    };
     private readonly handleSireaderLifecycle = (event: Event) => {
         /* 支持 reader:open/focus/blur/close 及移动端 reader:mobile-open/mobile-close */
         const raw = (event as CustomEvent).type;
@@ -1229,18 +1235,24 @@ export default class CheckinPlugin extends Plugin {
         }
     }
 
-    /* T-1385 / T-1883 思播联动：事件驱动 + 有界采样器（实验路径，opt-in 默认关）。
-       监听 mediaChanged 与 playerDestroy 事件，支持获取当前播放媒体标题。 */
+    /* T-1385 / T-1883 / T-1907 思播联动：事件驱动 + 有界采样器（实验路径，opt-in 默认关）。
+       监听 mediaChanged、playerDestroy 及上游 v1 官方 siplayer:play/pause/ended 事件。 */
     private startSiplayerSampler(): void {
-        window.addEventListener("mediaChanged", this.handleSiplayerMediaChanged);
-        window.addEventListener("playerDestroy", this.handleSiplayerPlayerDestroy);
+        window.addEventListener("mediaChanged", this.handleSiplayerV1Event);
+        window.addEventListener("playerDestroy", this.handleSiplayerV1Event);
+        for (const evt of ["siplayer:play", "siplayer:pause", "siplayer:ended"]) {
+            window.addEventListener(evt, this.handleSiplayerV1Event);
+        }
         if (this.siplayerTimer !== undefined) return;
         this.siplayerTimer = window.setInterval(() => this.tickSiplayerSampler(), 15_000);
     }
 
     private stopSiplayerSampler(): void {
-        window.removeEventListener("mediaChanged", this.handleSiplayerMediaChanged);
+        window.removeEventListener("mediaChanged", this.handleSiplayerV1Event);
         window.removeEventListener("playerDestroy", this.handleSiplayerPlayerDestroy);
+        for (const evt of ["siplayer:play", "siplayer:pause", "siplayer:ended"]) {
+            window.removeEventListener(evt, this.handleSiplayerV1Event);
+        }
         if (this.siplayerTimer !== undefined) {
             window.clearInterval(this.siplayerTimer);
             this.siplayerTimer = undefined;

@@ -261,6 +261,13 @@ export const CHECKIN_TEMPLATES: readonly CheckinTemplate[] = [
     {name: "思阅阅读", icon: "📕", kind: "duration", target: 30, unit: "分钟", schedule: daily, group: "联动", priority: "medium", timeSlot: "any", note: "配合思阅插件使用：在设置 → 连接与能力中开启思阅联动后自动累计有效阅读时长。"},
     {name: "思播观看", icon: "▶", kind: "duration", target: 30, unit: "分钟", schedule: daily, group: "联动", priority: "low", timeSlot: "any", note: "配合思播插件使用（实验）：在设置 → 连接与能力中开启思播联动后自动累计有效观看时长。"},
     {name: "健康步数", icon: "👟", kind: "quantity", target: 6000, unit: "步", schedule: daily, group: "联动", priority: "low", timeSlot: "any", note: "配合健康收件箱使用：在设置 → 连接与能力中绑定步数项目和收件箱文档。"},
+    {name: "思阅精读", icon: "📚", kind: "duration", target: 45, unit: "分钟", schedule: daily, group: "联动", priority: "high", timeSlot: "any", note: "配合思阅插件使用：在设置中开启思阅联动后自动累计有效精读时长。"},
+    {name: "思播精听", icon: "🎧", kind: "duration", target: 30, unit: "分钟", schedule: daily, group: "联动", priority: "medium", timeSlot: "any", note: "配合思播播放器使用：在设置中开启思播联动后自动累计有效音频/视频精听时长。"},
+    {name: "闪卡复习", icon: "🎴", kind: "count", target: 30, unit: "张", schedule: daily, group: "联动", priority: "high", timeSlot: "any", note: "配合小驴闪卡使用：自动接收 cards: 间隔复习完成事实，坚持艾宾浩斯记忆曲线。"},
+    {name: "考证刷题", icon: "📝", kind: "count", target: 20, unit: "题", schedule: daily, group: "联动", priority: "high", timeSlot: "evening", note: "配合小驴考试使用：自动接收 exam: 刷题完成事实，错题重做与知识点巩固。"},
+    {name: "拾遗精读", icon: "📰", kind: "count", target: 2, unit: "篇", schedule: daily, group: "联动", priority: "medium", timeSlot: "any", note: "配合小驴拾遗使用：自动接收 glean: 剪藏文章已读状态，知识萃取不积压。"},
+    {name: "人脉关怀", icon: "🤝", kind: "count", target: 1, unit: "人", schedule: daily, group: "联动", priority: "low", timeSlot: "any", note: "配合小驴人脉使用：自动接收 contacts: 互动跟进事实，维护深度人际连接。"},
+    {name: "管家事务", icon: "📋", kind: "binary", target: 1, unit: "次", schedule: daily, group: "联动", priority: "low", timeSlot: "any", note: "配合小驴管家使用：自动接收 home: 事务归档办理事实，重要日程按时销项。"},
     /* 循证模板批次（D-294）：源自习惯方法论书评（《掌控习惯》《福格行为模型》）与
        HowToLiveBetter 循证生活指南，只收与既有目录不重叠、证据较强的条目。 */
     {name: "读一页书", icon: "📄", kind: "binary", target: 1, unit: "次", schedule: daily, group: "学习", priority: "low", timeSlot: "evening", note: "两分钟法则：只要求读一页，翻开之后自然会继续。"},
@@ -291,6 +298,7 @@ export const TEMPLATE_PACKS: readonly CheckinTemplatePack[] = Object.freeze([
     Object.freeze({id: "winddown", icon: "🌙", nameKey: "pack.winddown", templates: ["早睡", "泡脚", "不刷手机", "情绪记录", "感恩记录"]}),
     Object.freeze({id: "awakening", icon: "🌅", nameKey: "pack.awakening", templates: ["早睡早起", "冥想", "阅读", "每日反思", "跑步"]}),
     Object.freeze({id: "creative", icon: "✒", nameKey: "pack.creative", templates: ["写作", "绘画练习", "拍照记录", "练习乐器"]}),
+    Object.freeze({id: "ecosystem", icon: "🌟", nameKey: "pack.ecosystem", templates: ["思阅精读", "思播精听", "闪卡复习", "考证刷题", "拾遗精读"]}),
 ]);
 
 export function templatePackName(pack: CheckinTemplatePack): string {
@@ -366,6 +374,13 @@ const TEMPLATE_NAME_KEYS: Record<string, string> = {
     "思阅阅读": "tpl.sireader",
     "思播观看": "tpl.siplayer",
     "健康步数": "tpl.healthSteps",
+    "思阅精读": "tpl.sireaderDeep",
+    "思播精听": "tpl.siplayerListen",
+    "闪卡复习": "tpl.cardsReview",
+    "考证刷题": "tpl.examPractice",
+    "拾遗精读": "tpl.gleanArticle",
+    "人脉关怀": "tpl.contactsCare",
+    "管家事务": "tpl.homeTask",
     "读一页书": "tpl.onePage",
     "按时服药": "tpl.medication",
     "定时起身": "tpl.standUp",

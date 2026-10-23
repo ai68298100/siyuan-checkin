@@ -18,7 +18,7 @@ const viewPrefs = fs.readFileSync("src/view-preferences.ts", "utf8");
 /* 目录映射完整性：72 个内置模板的名称键与分组键不允许回退到中文原文。 */
 const templateBlock = catalog.slice(catalog.indexOf("CHECKIN_TEMPLATES"), catalog.indexOf("TEMPLATE_NAME_KEYS"));
 const templateNames = [...templateBlock.matchAll(/\{name: "([^"]+)"/g)].map((match) => match[1]);
-assert.ok(templateNames.length >= 55 && templateNames.length <= 75, `template catalog stays curated (got ${templateNames.length})`);
+assert.ok(templateNames.length >= 55 && templateNames.length <= 85, `template catalog stays curated (got ${templateNames.length})`);
 /* D-294 循证模板批次：书评（《掌控习惯》两分钟法则）+ HowToLiveBetter 循证指南
    来源的 5 个模板必须存在且映射完整（上方映射断言已覆盖键存在性）。 */
 const evidenceBatch = ["读一页书", "按时服药", "定时起身", "联系亲友", "分散复习"];
