@@ -337,23 +337,8 @@
         .lc-checkin__group-items:not([hidden]) { grid-template-columns: minmax(0, 1fr); }
     }
 }
-@container lc-dialog (max-width: 719px) {
-    .lc-checkin-dialog-host:not(.lc-checkin-dialog-host--mobile) > .lc-checkin__topnav {
-        min-height: 46px;
-        height: auto;
-        padding: 4px 12px;
-        gap: 12px;
-    }
-    .lc-checkin__topnav-brand { gap: 6px; font-size: 14px; }
-    .lc-checkin__topnav-avatar { width: 28px; height: 28px; flex: 0 0 28px; font-size: 16px; }
-    .lc-checkin__topnav-tabs button { min-height: 32px; padding-inline: 8px; font-size: 12px; gap: 4px; }
-    .lc-checkin.lc-checkin--today { padding-inline: 0; }
-}
-@container lc-dialog (max-width: 440px) {
-    .lc-checkin__topnav-brand > span:not(.lc-checkin__topnav-avatar) { display: none; }
-}
-@container lc-tab (max-width: 719px) {
-    .lc-checkin-tab-host > .lc-checkin__topnav {
+@container lc-dialog (max-width: 719px), lc-tab (max-width: 719px) {
+    :is(.lc-checkin-dialog-host:not(.lc-checkin-dialog-host--mobile), .lc-checkin-tab-host) > .lc-checkin__topnav {
         display: flex;
         min-height: 46px;
         height: auto;
@@ -364,6 +349,9 @@
     .lc-checkin__topnav-avatar { width: 28px; height: 28px; flex: 0 0 28px; font-size: 16px; }
     .lc-checkin__topnav-tabs button { min-height: 32px; padding-inline: 8px; font-size: 12px; gap: 4px; }
     .lc-checkin.lc-checkin--today { padding-inline: 0; }
+}
+@container lc-dialog (max-width: 440px), lc-tab (max-width: 440px) {
+    .lc-checkin__topnav-brand > span:not(.lc-checkin__topnav-avatar) { display: none; }
 }
 
 /* The real mobile host already supplies the page title and completion count.

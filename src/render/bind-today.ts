@@ -250,6 +250,32 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
         if (composing || (event as InputEvent).isComposing) cancelSearch();
         else applySearch();
     });
+    search?.addEventListener("keydown", (event) => {
+        if (event.isComposing || event.keyCode === 229) return;
+        if (event.key === "Enter") {
+            const quickRecordBtn = root.querySelector<HTMLButtonElement>("[data-action='quick-entry-record']");
+            if (quickRecordBtn && !quickRecordBtn.hidden && !quickRecordBtn.disabled) {
+                event.preventDefault();
+                quickRecordBtn.click();
+                return;
+            }
+            const visibleCards = [...root.querySelectorAll<HTMLElement>(".lc-checkin__item[data-item-id]")];
+            if (visibleCards.length === 1) {
+                event.preventDefault();
+                const primaryBtn = visibleCards[0].querySelector<HTMLButtonElement>("button[data-action='record'], button[data-action='quick-record'], button[data-action='toggle']");
+                primaryBtn?.focus();
+            }
+        } else if (event.key === "Escape") {
+            if (search.value) {
+                event.preventDefault();
+                event.stopPropagation();
+                search.value = "";
+                writeTodayQuery("");
+                host.render(root);
+                root.querySelector<HTMLInputElement>("[data-today-search]")?.focus();
+            }
+        }
+    });
     root.querySelectorAll<HTMLElement>("[data-action='cancel-quick-entry']").forEach((button) => button.addEventListener("click", () => {
         const token = button.dataset.quickEntryToken;
         if (!token) return;

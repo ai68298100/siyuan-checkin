@@ -25,7 +25,11 @@ export function formatLifelogEntry(input: LifelogFormatInput): string {
     const valuePart = !isSkip && input.value !== undefined && input.value > 0 && input.unit && input.unit !== "次"
         ? `${input.value}${input.unit}`
         : "";
-    const noteClean = (input.note || "").trim();
+    /* 清洗备注文本：换行符转为空格，压缩连续空白，防止破坏日记段落块结构与时间戳行首契约 */
+    const noteClean = (input.note || "")
+        .replace(/[\r\n]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
     const parts: string[] = [];
     if (isSkip) {
         parts.push("(跳过)");
@@ -43,7 +47,12 @@ export function formatLifelogEntry(input: LifelogFormatInput): string {
         ? ` ⚡${input.energy}`
         : "";
     const content = parts.join(" ");
-    return `${input.timeStr} ${input.itemName}：${content}${energyPart}`;
+    /* 清洗项目名称：冒号替换为中划线，防止叶归/Marker 解析器提前截断项目名称 */
+    const safeItemName = (input.itemName || "习惯")
+        .replace(/[\r\n]+/g, " ")
+        .replace(/[：:]/g, "-")
+        .trim();
+    return `${input.timeStr} ${safeItemName}：${content}${energyPart}`;
 }
 
 /** 生成写入思源块的完整 Markdown，若包含合法图片附件则追加 Markdown 图片语法 */
