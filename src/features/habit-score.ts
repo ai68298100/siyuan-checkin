@@ -58,8 +58,9 @@ export function computeHabitSaturation(
     completedDays: number,
     targetDays = 66
 ): HabitSaturationResult {
-    const validTarget = Math.max(7, targetDays);
-    const cappedDays = Math.min(validTarget * 1.5, Math.max(0, completedDays));
+    const safeCompleted = Number.isFinite(completedDays) ? Math.max(0, completedDays) : 0;
+    const validTarget = Number.isFinite(targetDays) ? Math.max(7, targetDays) : 66;
+    const cappedDays = Math.min(validTarget * 1.5, safeCompleted);
     const ratio = cappedDays / validTarget;
 
     const sigmoid = (t: number) => 1 / (1 + Math.exp(-t));
@@ -73,17 +74,18 @@ export function computeHabitSaturation(
     let stageProgress = 0;
     let stageHintKey = "habit.stageSeedHint";
 
-    if (completedDays >= 46 || ratio >= 0.68) {
+    if (safeCompleted >= 46 || ratio >= 0.68) {
         stage = "root";
-        stageProgress = Math.min(100, Math.round(((completedDays - 46) / (validTarget - 46)) * 100));
+        const rootSpan = Math.max(1, validTarget - 46);
+        stageProgress = Math.min(100, Math.round(((safeCompleted - 46) / rootSpan) * 100));
         stageHintKey = "habit.stageRootHint";
-    } else if (completedDays >= 22 || ratio >= 0.33) {
+    } else if (safeCompleted >= 22 || ratio >= 0.33) {
         stage = "climb";
-        stageProgress = Math.min(100, Math.round(((completedDays - 22) / 24) * 100));
+        stageProgress = Math.min(100, Math.round(((safeCompleted - 22) / 24) * 100));
         stageHintKey = "habit.stageClimbHint";
     } else {
         stage = "seed";
-        stageProgress = Math.min(100, Math.round((completedDays / 21) * 100));
+        stageProgress = Math.min(100, Math.round((safeCompleted / 21) * 100));
         stageHintKey = "habit.stageSeedHint";
     }
 

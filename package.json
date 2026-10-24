@@ -1,6 +1,6 @@
 {
     "name": "siyuan-checkin",
-    "version": "18.25.0",
+    "version": "18.26.0",
     "description": "SiYuan plugin: 小驴打卡",
     "main": "index.js",
     "scripts": {

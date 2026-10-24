@@ -1,3 +1,12 @@
+# 2026-10-24 R-RELEASE-18.26.0 正式发布验收（习惯稳固度除零排雷与全集成闭环）
+
+版本 `18.26.0` 已从 `main` 完成正式发布：
+- 源码提交完成，tag `v18.26.0`，GitHub Release 地址：https://github.com/ai68298100/siyuan-checkin/releases/tag/v18.26.0 ；
+- `package.zip` 构建产物生成并签名，SHA-256 校验码为 `dcfc9c02fe14b5f34b4903d8bab87f91c25fc3169a43784185f2209eb8914371`；
+- 版本号在 `package.json`, `plugin.json`, `src/version.ts`, `README.md`, `CHANGELOG.md`, `docs/releases/release-notes-18.26.0.md` 严格对齐；
+- 全量发布前自检通过：`pnpm run check:release`，`pnpm run check`，`pnpm test`，`pnpm run test:v18`（全 52 项专项测试通过）；
+- 核心演进：排查并修复 `computeHabitSaturation` 习惯稳固度饱和曲线在非有限数值与基准天数 46 天时的除零与边界计算缺陷；设置页“连接与能力”笔记推导（Note Query）补齐“快速创建并绑定”按钮，至此思阅、思播、微信读书、健康收件箱、笔记推导五大外部集成 100% 达成 0 阻力一键创建绑定大圆满；排雷跨午夜（Midnight Boundary）生命周期，跨日自动清理残留回执、旧日段落映射与在飞临时变量，彻底杜绝跨天内存残留与误撤销隔夜日记风险。
+
 # 2026-10-24 R-RELEASE-18.25.0 正式发布验收（五大集成一键绑定大圆满与跨午夜排雷）
 
 版本 `18.25.0` 已从 `main` 完成正式发布：
