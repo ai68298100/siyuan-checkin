@@ -49,8 +49,10 @@ assert.ok(srcIntegrations.includes("payload: safe"), "emitIntegrationEvent must 
 const srcSettings = fs.readFileSync(path.join(root, "src", "render", "settings.ts"), "utf8");
 assert.ok(srcSettings.includes('data-action="quick-create-sireader"'), "settings.ts must provide quick-create-sireader button");
 assert.ok(srcSettings.includes('data-action="quick-create-siplayer"'), "settings.ts must provide quick-create-siplayer button");
+assert.ok(srcSettings.includes('data-action="quick-create-weread"'), "settings.ts must provide quick-create-weread button");
 assert.ok(srcIndex.includes('data-action=\'quick-create-sireader\''), "index.ts must bind quick-create-sireader action");
 assert.ok(srcIndex.includes('data-action=\'quick-create-siplayer\''), "index.ts must bind quick-create-siplayer action");
+assert.ok(srcIndex.includes('data-action=\'quick-create-weread\''), "index.ts must bind quick-create-weread action");
 assert.ok(srcIndex.includes("quickCreateAndBindIntegrationItem"), "index.ts must implement quickCreateAndBindIntegrationItem");
 
 console.log("ecosystem-templates-linkage: all assertions passed successfully!");

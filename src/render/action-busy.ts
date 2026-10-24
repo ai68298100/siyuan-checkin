@@ -8,6 +8,8 @@ type ActionLock = {
 };
 
 const activeActionKeys = new Map<string, ActionLock>();
+const lastSettledKeys = new Map<string, number>();
+const ACTION_DEBOUNCE_MS = 250;
 
 function attachActionSurface(lock: ActionLock, button: HTMLElement, boundary: HTMLElement | null, controlsSelector: string): void {
     lock.buttons.add(button);
@@ -45,6 +47,10 @@ export function runExclusiveAction(
         return;
     }
     if (boundary?.dataset.actionBusy === "true") return;
+    if (resolvedKey) {
+        const last = lastSettledKeys.get(resolvedKey);
+        if (last && Date.now() - last < ACTION_DEBOUNCE_MS) return;
+    }
     const lock: ActionLock = {buttons: new Set(), boundaries: new Set(), controls: new Map()};
     attachActionSurface(lock, button, boundary, controlsSelector);
     if (resolvedKey) activeActionKeys.set(resolvedKey, lock);
@@ -66,7 +72,10 @@ export function runExclusiveAction(
             delete activeBoundary.dataset.actionBusy;
             activeBoundary.removeAttribute("aria-busy");
         }
-        if (resolvedKey && activeActionKeys.get(resolvedKey) === lock) activeActionKeys.delete(resolvedKey);
+        if (resolvedKey && activeActionKeys.get(resolvedKey) === lock) {
+            activeActionKeys.delete(resolvedKey);
+            lastSettledKeys.set(resolvedKey, Date.now());
+        }
         for (const [control, disabled] of lock.controls) if (control.isConnected) control.disabled = disabled;
     });
 }

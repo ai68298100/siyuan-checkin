@@ -5787,6 +5787,9 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
         root.querySelector<HTMLElement>("[data-action='quick-create-siplayer']")?.addEventListener("click", () => {
             void this.quickCreateAndBindIntegrationItem("siplayer", root);
         });
+        root.querySelector<HTMLElement>("[data-action='quick-create-weread']")?.addEventListener("click", () => {
+            void this.quickCreateAndBindIntegrationItem("weread", root);
+        });
         /* T-1548：输出内容预览——零写入生成将追加的 Markdown 并就地展开；取消/重渲染即收起。 */
         root.querySelectorAll<HTMLElement>("[data-output-preview-generate]").forEach((button) => button.addEventListener("click", () => {
             const channel = button.dataset.outputPreviewGenerate as "diary" | "summary" | "lifelog";
@@ -8852,8 +8855,66 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
         showMessage(t("msg.linkageApplied", {name: t("set.sireaderIntegration")}));
     }
 
-    /* T-1908：设置页一键快速创建并绑定思阅/思播分钟打卡项 */
-    private async quickCreateAndBindIntegrationItem(type: "sireader" | "siplayer", root?: HTMLElement): Promise<void> {
+    /* T-1908 / T-1910：设置页一键快速创建并绑定思阅/思播/微信读书打卡项 */
+    private async quickCreateAndBindIntegrationItem(type: "sireader" | "siplayer" | "weread", root?: HTMLElement): Promise<void> {
+        if (type === "weread") {
+            const today = dateKey(currentCalendarDate());
+            const now = new Date().toISOString();
+            const defs = [
+                {key: "duration", name: "微信读书", kind: "duration" as const, unit: "分钟", target: 45, icon: "📖"},
+                {key: "finish", name: "微信读书完本", kind: "binary" as const, unit: "本", target: 1, icon: "📕"},
+                {key: "notes", name: "微信读书笔记", kind: "count" as const, unit: "条", target: 10, icon: "📝"},
+            ];
+            const createdItems: CheckinItem[] = [];
+            const ids: Record<string, string> = {};
+            for (const def of defs) {
+                let item = this.store.items.find((i) => !i.archived && i.name === def.name && i.unit === def.unit);
+                if (!item) {
+                    const created = normalizeCheckinItem({
+                        id: makeId("item"),
+                        name: def.name,
+                        icon: def.icon,
+                        kind: def.kind,
+                        target: def.target,
+                        unit: def.unit,
+                        schedule: {type: "daily"},
+                        group: "联动",
+                        priority: "medium",
+                        createdDate: today,
+                        createdAt: now,
+                        updatedAt: now,
+                    });
+                    if (created) {
+                        createdItems.push(created);
+                        item = created;
+                    }
+                }
+                if (item) ids[def.key] = item.id;
+            }
+            if (createdItems.length) {
+                const previous = this.store;
+                this.store = {...this.store, items: [...this.store.items, ...createdItems]};
+                try {
+                    await this.persist();
+                    for (const item of createdItems) this.broadcast({type: "item-created", item});
+                    this.invalidateSummary();
+                    this.advanceFirstSuccess("item-created");
+                } catch {
+                    this.store = previous;
+                    showMessage(t("msg.createCheckinFail"));
+                    return;
+                }
+            }
+            this.applyPreference(() => {
+                if (ids.duration) this.wereadIntegration.itemId = ids.duration;
+                if (ids.finish) this.wereadIntegration.finishItemId = ids.finish;
+                if (ids.notes) this.wereadIntegration.notesItemId = ids.notes;
+            }, () => {
+                showMessage(t("msg.quickBound", {name: t("set.wereadIntegration")}));
+                this.render(root);
+            });
+            return;
+        }
         const isSireader = type === "sireader";
         const tplName = isSireader ? "思阅精读" : "思播精听";
         const tpl = CHECKIN_TEMPLATES.find((t) => t.name === tplName)

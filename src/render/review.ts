@@ -1,7 +1,7 @@
 /* 回顾页视图：从 index.ts 外置；依赖以 ReviewViewContext 显式传入。 */
 import {t, getPluginLocale} from "../i18n";
 import {dateKey, getEventDateKey, getEventsInDateRange, getEventsForDate, getItemRevisionForDate, isSkipEvent, getItemById, isComplete, isItemAvailableOnDate, isScheduledToday} from "../model";
-import {calendarDateFromKey, escapeHtml, formatHistoryDate, formatNumber, renderRecordNote, renderIconMarkup, safeAttachmentUrl} from "../shared";
+import {calendarDateFromKey, currentCalendarDate, escapeHtml, formatHistoryDate, formatNumber, renderRecordNote, renderIconMarkup, safeAttachmentUrl} from "../shared";
 import {filterHistoryRecords, type HistorySortOrder, type HistoryChannelFilter, type HistoryMeteringFilter} from "../features/history-filter";
 import {buildCustomSummaryContext, buildSummaryContext, summarizeEnergyFlow, summarizeSkipFriction, type SummaryRange, type ItemSummary, type SummaryContext} from "../analytics";
 import {buildReviewComparison, getPreviousReviewRange} from "../features/review-comparison";
@@ -361,13 +361,18 @@ export function renderReviewView(ctx: ReviewViewContext): string {
     const historyTools = `<section class="review-record-tools" role="search" aria-label="${t("review.searchAria")}"><label class="lc-checkin__history-search lc-checkin__search-field"><span class="lc-checkin__search-symbol" aria-hidden="true">⌕</span><input data-history-search type="search" value="${escapeHtml(ctx.historyQuery)}" placeholder="${t("review.searchAria")}" aria-label="${t("review.searchAria")}" enterkeyhint="search" />${ctx.historyQuery ? `<button type="button" data-action="clear-history-query" aria-label="${t("review.clearSearch")}" title="${t("review.clearSearchTitle")}">×</button>` : ""}</label><details class="lc-checkin__history-filter-disclosure review-more-filters"${hasAdvancedHistoryFilter ? " open" : ""}><summary>${hasAdvancedHistoryFilter ? t("review.moreFiltersOn") : t("review.moreFilters")}</summary><div class="lc-checkin__history-filter-row"><label><span>${t("review.recordItem")}</span><select data-history-item aria-label="${t("review.recordItem")}"><option value="">${t("review.allItems")}</option>${itemOptions}</select></label><label><span>${t("review.sourceLabel")}</span><select data-history-source aria-label="${t("review.sourceAria")}">${historySourceOptions}</select></label>${historyMeteringSelect}<label><span>${t("review.orderLabel")}</span><select data-history-order aria-label="${t("review.orderAria")}">${historyOrderOptions.map(([value, label]) => `<option value="${value}" ${ctx.historyOrder === value ? "selected" : ""}>${t(label)}</option>`).join("")}</select></label></div></details></section>`;
 
 
-    return `<div class="review-record-scopes" role="group" aria-label="${t("review.recordScope")}">
+        const todayDate = currentCalendarDate();
+        const isCurrentMonth = year === todayDate.getFullYear() && month === todayDate.getMonth();
+        const todayMonthBtn = isCurrentMonth
+            ? ""
+            : `<button type="button" class="lc-checkin__text-button lc-checkin__month-today" data-history-month="0" aria-label="${t("review.backToToday")}">${t("review.today")}</button>`;
+        return `<div class="review-record-scopes" role="group" aria-label="${t("review.recordScope")}">
         <button type="button" data-history-scope="period" aria-pressed="${ctx.historyScope !== "day"}">${t("review.scopePeriod")}</button>
         <button type="button" data-history-scope="day" aria-pressed="${ctx.historyScope === "day"}">${t("review.scopeDay")}</button>
     </div><p class="review-scope-note">${escapeHtml(ctx.historyScope === "day" ? t("review.dayScopeHint", {date: ctx.selectedHistoryDate}) : t("review.periodScopeHint", {start: summary.startDate, end: summary.endDate}))}</p>
     <div class="lc-checkin__review-layout ${ctx.historyScope === "day" ? "" : "is-period"}">
         ${ctx.historyScope === "day" ? `<div class="lc-checkin__review-calendar">
-        <div class="lc-checkin__month-nav"><button type="button" data-history-month="-1" aria-label="${t("review.prevMonth")}">‹</button><strong>${t("date.monthYear", {year, month: month + 1})}</strong><button type="button" data-history-month="1" aria-label="${t("review.nextMonth")}" ${nextDisabled ? "disabled" : ""}>›</button></div>
+        <div class="lc-checkin__month-nav"><button type="button" data-history-month="-1" aria-label="${t("review.prevMonth")}">‹</button><strong>${t("date.monthYear", {year, month: month + 1})}</strong>${todayMonthBtn}<button type="button" data-history-month="1" aria-label="${t("review.nextMonth")}" ${nextDisabled ? "disabled" : ""}>›</button></div>
         <div class="lc-checkin__calendar-weekdays">${calendarWeekdays().map(day => `<span>${day}</span>`).join("")}</div><div class="lc-checkin__calendar">${calendarCells}</div>${renderMatrixBackfill()}</div>` : ""}
         <div class="lc-checkin__review-detail">
             ${historyTools}${hasHistoryFilter ? `<div class="lc-checkin__history-result" role="status" aria-live="polite"><span>${resultLabel}</span><button class="lc-checkin__text-button" type="button" data-action="clear-history-filters">${t("review.clearFilters")}</button></div>` : ""}

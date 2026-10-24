@@ -1,3 +1,12 @@
+# 2026-10-24 R-RELEASE-18.23.0 正式发布验收（月份快速穿梭与微信读书一键绑定）
+
+版本 `18.23.0` 已从 `main` 完成正式发布：
+- 源码提交完成，tag `v18.23.0`，GitHub Release 地址：https://github.com/ai68298100/siyuan-checkin/releases/tag/v18.23.0 ；
+- `package.zip` 构建产物生成并签名，SHA-256 校验码为 `f8d929c0307affd7c14f2cac4fe306c2d0bb420cd8579a9ee94f871e0437aac3`；
+- 版本号在 `package.json`, `plugin.json`, `src/version.ts`, `README.md`, `CHANGELOG.md`, `docs/releases/release-notes-18.23.0.md` 严格对齐；
+- 全量发布前自检通过：`pnpm run check:release`，`pnpm run check`，`pnpm test`，`pnpm run test:v18`（全 50 项专项测试通过）；
+- 核心演进：回顾页历史记录月份导航新增一键回到本月今日（Today Anchor）快捷按钮；设置页微信读书联动新增一键创建并绑定三维度打卡项（阅读时长/完本书籍/划线笔记）；卡片主打卡按钮增加 250ms 物理连击防抖，彻底杜绝手抖快速双击导致的重复提交。
+
 # 2026-10-23 R-RELEASE-18.22.0 正式发布验收（生态联动模板与思播 v1 事件驱动）
 
 版本 `18.22.0` 已从 `main` 完成正式发布：

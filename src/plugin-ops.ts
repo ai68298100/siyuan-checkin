@@ -203,13 +203,13 @@ export function bindNavOverflowHintFor(root: HTMLElement): void {
 }
 
 export function changeHistoryMonthFor(host: PluginOpsHost, offset: number, root?: HTMLElement): void {
-    if (!Number.isInteger(offset) || !offset) {
+    if (!Number.isInteger(offset)) {
         return;
     }
+    const currentMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
     const review = root ? host.reviewStateForRoot?.(root) : undefined;
     const historyMonth = review?.historyMonth ?? host.historyMonth;
-    const candidate = new Date(historyMonth.getFullYear(), historyMonth.getMonth() + offset, 1);
-    const currentMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    const candidate = offset === 0 ? currentMonth : new Date(historyMonth.getFullYear(), historyMonth.getMonth() + offset, 1);
     if (candidate > currentMonth) {
         return;
     }

@@ -8,31 +8,30 @@
 
 把一次行动记录下来，再用同一份可追溯数据完成统计、提醒、复盘和笔记联动。
 
-**当前版本：18.22.0**
+**当前版本：18.23.0**
 
-18.22.0 达成「全生态联动模板组、思播 v1 播放事件驱动与设置页一键创建」小版本发布：新增 7 款开箱即用的生态联动打卡模板（思阅精读、思播精听、闪卡复习、考证刷题、拾遗精读、人脉关怀、管家事务）与【小驴生态联动】专属场景组合包；深入贯彻思播 Issue #180 上游 Integration API v1 契约规范，全面监听 `siplayer:play/pause/ended` 实现暂停/结束时毫秒级即时结算；设置页新增“快速创建并绑定”按钮，0 摩擦一键生成对应分钟打卡项并启用绑定。这里介绍本次更新与已实现功能，后续开发进展见 [PROGRESS](PROGRESS.md)。
+18.23.0 达成「月份快速穿梭、微信读书一键绑定与物理按压防抖」小版本发布：回顾页历史记录月份导航新增一键回到本月今日（Today Anchor）快捷按钮，长周期复盘翻越历史后秒级穿梭回当天；设置页微信读书联动新增一键创建并绑定三维度打卡项（阅读时长/完本书籍/划线笔记）；卡片主打卡按钮增加 250ms 物理连击防抖，彻底杜绝手抖快速双击导致的重复提交。这里介绍本次更新与已实现功能，后续开发进展见 [PROGRESS](PROGRESS.md)。
 
 > **内测说明**：小驴考试、小驴管家、小驴闪卡和小驴常用目前仍处于内测阶段，部分功能和思源宿主兼容性正在验证中。欢迎通过交流 QQ 群 **871707735** 反馈问题、提交需求；对稳定性有较高要求时，请等待对应插件发布正式版。
 
 [![最新 Release](https://img.shields.io/github/v/release/ai68298100/siyuan-checkin?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-checkin/releases/latest) [![CI](https://github.com/ai68298100/siyuan-checkin/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-checkin/actions/workflows/ci.yml) [![License](https://img.shields.io/github/license/ai68298100/siyuan-checkin)](LICENSE)
 
-[最新 Release](https://github.com/ai68298100/siyuan-checkin/releases/latest) · [18.22.0 发布说明](docs/releases/release-notes-18.22.0.md) · [问题反馈](https://github.com/ai68298100/siyuan-checkin/issues) · [开发文档](docs/)
+[最新 Release](https://github.com/ai68298100/siyuan-checkin/releases/latest) · [18.23.0 发布说明](docs/releases/release-notes-18.23.0.md) · [问题反馈](https://github.com/ai68298100/siyuan-checkin/issues) · [开发文档](docs/)
 
 </div>
 
-### 本次更新（18.22.0）
+### 本次更新（18.23.0）
 
-本次为「全生态联动模板组、思播 v1 播放事件驱动与设置页一键创建」小版本，提供开箱即用生态模板与零阻力绑定流。
+本次为「月份快速穿梭、微信读书一键绑定与物理按压防抖」小版本，提供历史月份快速穿梭锚点与防抖稳定性加固。
 
-新增：全生态联动开箱即用模板组与场景组合包
+新增：月份导航 Today Anchor 与微信读书一键绑定
 
-- **7 款专属联动打卡模板（T-1907）**：思阅精读（45分钟）、思播精听（30分钟）、闪卡复习（30张）、考证刷题（20题）、拾遗精读（2篇）、人脉关怀（1人）、管家事务（1次），科学设定目标与单位。
-- **【小驴生态联动】组合包（T-1907）**：新建面板可一键预览并创建全生态联动习惯，双语 100% 覆盖。
-- **设置页一键创建并绑定（T-1908）**：在思阅和思播项目行提供“快速创建并绑定”按钮，0 摩擦自动创建并绑定分钟打卡项。
+- **回顾页 Today Anchor 月份快速穿梭（T-1909）**：月份导航栏非当前月时动态显示 `[今天]` 快捷按钮，点击一键平滑飞回当月与今日选中项。
+- **微信读书三维一键创建并绑定（T-1910）**：设置页微信读书行提供“快速创建并绑定”按钮，自动生成阅读时长（分钟）、完本书籍（本）与划线笔记（条）并完成绑定。
 
-优化：思播上游 Issue #180 官方播放事件即时结算
+优化：打卡交互物理防抖
 
-- **事件驱动即时结算（T-1907）**：全面监听 `siplayer:play/pause/ended`，用户暂停或媒体播放结束时立即结算，消灭 15 秒定时器轮询延迟。
+- **卡片打卡动作 250ms 物理连击防抖（T-1911）**：`runExclusiveAction` 核心调度引入时间戳防抖记忆，彻底杜绝手抖快速双击导致的重复提交。
 - **Today 搜索框极速打卡流（T-1903）**：Enter 键直达 NLP 推荐或聚焦单一匹配卡片，Escape 键一键清空搜索词，严格拦截中文输入法组字态。
 - **五级动作按钮语义体系（T-1817）**：落地 Primary / Secondary / Quiet / Destructive / Icon 统一类名、focus-visible 环与高对比度模式轮廓。
 - **表单输入高度与文本域 Token（T-1818）**：收敛文本域高度到单一 token，规范校验、禁用与忙碌态视觉。

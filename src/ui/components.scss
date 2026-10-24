@@ -4005,6 +4005,16 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 }
 .lc-checkin__month-nav button:hover:not(:disabled) { color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); }
 .lc-checkin__month-nav button:disabled { opacity: .35; cursor: default; }
+.lc-checkin__month-nav .lc-checkin__month-today {
+    width: auto;
+    height: auto;
+    min-height: 24px;
+    padding: 2px 8px;
+    border-radius: var(--lv-r-pill, 9999px);
+    font-size: 11px;
+    color: var(--lc-checkin-accent-text);
+    background: var(--lc-checkin-accent-soft);
+}
 
 .lc-checkin__calendar-weekdays { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; padding: 0 2px; }
 .lc-checkin__calendar-weekdays span { color: var(--lc-checkin-muted); font-size: 10px; font-weight: 620; text-align: center; }
