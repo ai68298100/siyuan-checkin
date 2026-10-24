@@ -1591,7 +1591,7 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
     /* T-1217 报告：当前范围摘要 + 可选上一周期基线；标题与区块开关走偏好与字典。 */
     const buildCurrentReport = (): string => {
         /* T-1343：来源筛选作用于当前与基线两个口径，保证偏差可比。 */
-        const sourceOptions = host.reportSource ? {source: host.reportSource as "manual" | "tomato" | "api" | "import" | "sireader" | "siplayer"} : undefined;
+        const sourceOptions = host.reportSource ? {source: host.reportSource as import("../types").CheckinEvent["source"]} : undefined;
         const summaryCustomRange = reviewValue("summaryCustomRange", host.summaryCustomRange);
         const summaryRange = reviewValue("summaryRange", host.summaryRange);
         const summary = summaryCustomRange ? buildCustomSummaryContext(host.store, summaryCustomRange, undefined, sourceOptions) : buildSummaryContext(host.store, summaryRange, undefined, sourceOptions);

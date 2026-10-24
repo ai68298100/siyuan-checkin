@@ -16,7 +16,7 @@ import type {CorrelationInsight} from "./correlation-insights";
 
 export {DEFAULT_REPORT_SECTIONS};
 
-const REPORT_SOURCES = new Set(["manual", "tomato", "api", "import"]);
+const REPORT_SOURCES = new Set(["manual", "tomato", "api", "import", "sireader", "siplayer", "weread", "yeguif"]);
 
 function signed(value: number): string {
     if (value > 0) return `+${value}`;

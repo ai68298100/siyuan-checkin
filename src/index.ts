@@ -726,7 +726,7 @@ export default class CheckinPlugin extends Plugin {
 
     /* T-1352：构建当前周期报告（与回顾页导出口径一致：来源筛选 + 区块开关 + 偏差/基线）。 */
     private buildCurrentReportMarkdown(): string {
-        const sourceOptions = this.reportSource ? {source: this.reportSource as "manual" | "tomato" | "api" | "import" | "sireader" | "siplayer" | "weread"} : undefined;
+        const sourceOptions = this.reportSource ? {source: this.reportSource as CheckinEvent["source"]} : undefined;
         /* T-1425 · R-A8：报告显式回显统计范围——来源/过滤器/缺失条件/截断，不静默改变口径。 */
         const scopeNormalization = normalizeViewScope({version: 1, range: {kind: "all"}, itemIds: [], groups: [], sources: this.reportSource ? [this.reportSource] : [], status: "all"});
         const scopeResolution = resolveViewScope(scopeNormalization.scope, {

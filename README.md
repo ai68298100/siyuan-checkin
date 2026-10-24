@@ -8,27 +8,26 @@
 
 把一次行动记录下来，再用同一份可追溯数据完成统计、提醒、复盘和笔记联动。
 
-**当前版本：18.26.0**
+**当前版本：18.27.0**
 
-18.26.0 达成「习惯成熟度算法除零排雷与全生态五大集成大圆满」小版本发布：排查并修复 `computeHabitSaturation` 习惯稳固度饱和曲线在非有限数值与基准天数 46 天时的除零与边界计算缺陷；设置页“连接与能力”笔记推导（Note Query）补齐“快速创建并绑定”按钮，至此思阅、思播、微信读书、健康收件箱、笔记推导五大外部集成 100% 达成 0 阻力一键创建绑定大圆满；排雷跨午夜（Midnight Boundary）生命周期，跨日自动清理残留回执、旧日段落映射与在飞临时变量，彻底杜绝跨天内存残留与误撤销隔夜日记风险。这里介绍本次更新与已实现功能，后续开发进展见 [PROGRESS](PROGRESS.md)。
+18.27.0 达成「报告导出全来源筛选支持与趋势比对算法性能优化」小版本发布：深度重构并补齐 Review 回顾报告导出（Report Markdown）对外部联动来源（思阅、思播、微信读书、叶归 LifeLog）的完整声明展示支持，收敛来源类型转换与断言契约；项目趋势比对（Item Trend Compare）重构为哈希桶预索引算法，消除 31 日循环内部全量过滤 `store.events` 的高频计算损耗，大幅降低长周期历史数据下的 CPU 占用。这里介绍本次更新与已实现功能，后续开发进展见 [PROGRESS](PROGRESS.md)。
 
 > **内测说明**：小驴考试、小驴管家、小驴闪卡和小驴常用目前仍处于内测阶段，部分功能和思源宿主兼容性正在验证中。欢迎通过交流 QQ 群 **871707735** 反馈问题、提交需求；对稳定性有较高要求时，请等待对应插件发布正式版。
 
 [![最新 Release](https://img.shields.io/github/v/release/ai68298100/siyuan-checkin?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-checkin/releases/latest) [![CI](https://github.com/ai68298100/siyuan-checkin/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-checkin/actions/workflows/ci.yml) [![License](https://img.shields.io/github/license/ai68298100/siyuan-checkin)](LICENSE)
 
-[最新 Release](https://github.com/ai68298100/siyuan-checkin/releases/latest) · [18.26.0 发布说明](docs/releases/release-notes-18.26.0.md) · [问题反馈](https://github.com/ai68298100/siyuan-checkin/issues) · [开发文档](docs/)
+[最新 Release](https://github.com/ai68298100/siyuan-checkin/releases/latest) · [18.27.0 发布说明](docs/releases/release-notes-18.27.0.md) · [问题反馈](https://github.com/ai68298100/siyuan-checkin/issues) · [开发文档](docs/)
 
 </div>
 
-### 本次更新（18.26.0）
+### 本次更新（18.27.0）
 
-本次为「习惯成熟度算法除零排雷与全生态五大集成大圆满」小版本，提供稳固度算法边界加固与全集成极简创建流。
+本次为「报告导出全来源筛选支持与趋势比对算法性能优化」小版本，提供导出回显全面对齐与算法哈希分桶优化。
 
-优化：习惯稳固度算法除零排雷与跨日治理
+优化：报告导出全来源支持与趋势性能提升
 
-- **习惯饱和曲线除零防御（T-1918）**：修复 `computeHabitSaturation` 在非有限数值输入与基准天数 46 天时的除以零隐患，确保阶段进度绝对有界稳定。
-- **五大外部集成 100% 闭环（T-1915）**：设置页笔记推导提供“快速创建并绑定”按钮，自动生成标准二值笔记打卡项并完成绑定。
-- **跨午夜残留清理（T-1916）**：跨日自动清空 `recentLifelogBlocks`、`recentRecord` 与 `pendingLocalItem*` 变量，消除内存累积与误撤销隔夜日记风险。
+- **报告全生态来源筛选支持（T-1919）**：`buildWeeklyReportMarkdown` 扩展 `REPORT_SOURCES` 支持思阅/思播/微信读书/叶归等全部外部来源筛选，回显声明行准确无遗漏。
+- **趋势比对事件哈希分桶优化（T-1920）**：重构 `buildItemTrendSeries` 算法，在 31 天循环前一次性对项目事件建立日期哈希桶，彻底消除内循环全量遍历，时间复杂度降至 O(N)。
 - **Today 搜索框极速打卡流（T-1903）**：Enter 键直达 NLP 推荐或聚焦单一匹配卡片，Escape 键一键清空搜索词，严格拦截中文输入法组字态。
 - **五级动作按钮语义体系（T-1817）**：落地 Primary / Secondary / Quiet / Destructive / Icon 统一类名、focus-visible 环与高对比度模式轮廓。
 - **表单输入高度与文本域 Token（T-1818）**：收敛文本域高度到单一 token，规范校验、禁用与忙碌态视觉。

@@ -1,3 +1,12 @@
+# 2026-10-24 R-RELEASE-18.27.0 正式发布验收（全来源报告导出与趋势比对性能重构）
+
+版本 `18.27.0` 已从 `main` 完成正式发布：
+- 源码提交完成，tag `v18.27.0`，GitHub Release 地址：https://github.com/ai68298100/siyuan-checkin/releases/tag/v18.27.0 ；
+- `package.zip` 构建产物生成并签名，SHA-256 校验码为 `fc9879a1d28a47a86f089afa16bc8062a686329ce2952432c4f52fcab1df59bc`；
+- 版本号在 `package.json`, `plugin.json`, `src/version.ts`, `README.md`, `CHANGELOG.md`, `docs/releases/release-notes-18.27.0.md` 严格对齐；
+- 全量发布前自检通过：`pnpm run check:release`，`pnpm run check`，`pnpm test`，`pnpm run test:v18`（全 53 项专项测试通过）；
+- 核心演进：深度重构并补齐 Review 回顾报告导出（Report Markdown）对外部联动来源（思阅、思播、微信读书、叶归 LifeLog）的完整声明展示支持，收敛来源类型转换与断言契约；项目趋势比对（Item Trend Compare）重构为哈希桶预索引算法，消除 31 日循环内部全量过滤 `store.events` 的高频计算损耗，大幅降低长周期历史数据下的 CPU 占用。
+
 # 2026-10-24 R-RELEASE-18.26.0 正式发布验收（习惯稳固度除零排雷与全集成闭环）
 
 版本 `18.26.0` 已从 `main` 完成正式发布：

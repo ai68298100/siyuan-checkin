@@ -2,10 +2,17 @@
 
 ## 当前统一状态（2026-10-24）
 
-- 当前版本升级为 **v18.26.0**（习惯成熟度算法除零排雷与全生态五大集成大圆满小版本发布）。
-- 核心交付：排查并修复 `computeHabitSaturation` 习惯稳固度饱和曲线在非有限数值与基准天数 46 天时的除零与边界计算缺陷（T-1918）；设置页“连接与能力”笔记推导（Note Query）补齐“快速创建并绑定”按钮，至此思阅、思播、微信读书、健康收件箱、笔记推导五大外部集成 100% 达成 0 阻力一键创建绑定大圆满（T-1915）；排雷跨午夜（Midnight Boundary）生命周期，跨日自动清理残留回执、旧日段落映射与在飞临时变量，彻底杜绝跨天内存残留与误撤销隔夜日记风险（T-1916）。
-- 竞品深度调研落地（Loop / Table Habit / Habitica / TickTick / Obsidian / Streaks / Atoms 对标），提炼并登记新一阶段演进任务（T-1872～T-1918）。
+- 当前版本升级为 **v18.27.0**（报告导出全来源筛选支持与趋势比对算法性能优化小版本发布）。
+- 核心交付：深度重构并补齐 Review 回顾报告导出（Report Markdown）对外部联动来源（思阅、思播、微信读书、叶归 LifeLog）的完整声明展示支持，收敛来源类型转换与断言契约（T-1919）；项目趋势比对（Item Trend Compare）重构为哈希桶预索引算法，消除 31 日循环内部全量过滤 `store.events` 的高频计算损耗，大幅降低长周期历史数据下的 CPU 占用（T-1920）。
+- 竞品深度调研落地（Loop / Table Habit / Habitica / TickTick / Obsidian / Streaks / Atoms 对标），提炼并登记新一阶段演进任务（T-1872～T-1920）。
 - 本文件中历史版本号属于任务登记时的历史基线，保留用于追溯；新任务统一以源码、`PROGRESS.md`、`BLOCKERS.md` 和 `docs/releases/` 的最新版本为准。
+
+## 2026-10-24 发布 v18.27.0（R-RELEASE-18.27.0）
+
+- [x] 版本源、README 当前入口、变更记录和发布说明已统一为 v18.27.0。
+- [x] 发布提交、tag `v18.27.0`、GitHub Release 和 `main` push 已完成；Release 地址为 https://github.com/ai68298100/siyuan-checkin/releases/tag/v18.27.0 ，`package.zip` SHA-256 为 `fc9879a1d28a47a86f089afa16bc8062a686329ce2952432c4f52fcab1df59bc`。
+- [x] 发布链 `pnpm run check`、`pnpm test`、`pnpm run test:v18`、`pnpm run check:release` 全部通过；生产 CSS 679 KiB 稳定维持在 680 KiB 硬预算内，0 死类。
+- [x] 报告导出全来源回显与趋势比对 O(N) 算法优化就绪，便于官方集市及时抓取。
 
 ## 2026-10-24 发布 v18.26.0（R-RELEASE-18.26.0）
 
@@ -76,6 +83,8 @@
 - [x] T-1916 跨午夜（Midnight Boundary）生命周期排雷与旧日映射内存清理（P1，已交付 2026-10-24，D-568，对标生命周期与数据纯净性）——在 `refreshDateBoundary` 中重构跨午夜清理逻辑，跨日时自动清空 `recentLifelogBlocks`、残留 `recentRecord` 回执与 `pendingLocalItem*` 变量，消除内存累积与误撤销昨日日记段落隐患。守门 `tests/integration-quickcreate-and-midnight.test.cjs` 纳入 `test:v18`；`check` / `test:v18` / `build:check` 全绿。
 - [x] T-1917 验证并固化 Today 进度环硬件加速与全量测试套件 (52项) 门禁通过（P1，已交付 2026-10-24，D-566，对标质量工程门禁）——全量运行 52 项专项测试与 CSS 卫生门禁（0 死类，679 KiB 体积完全处于 680 KiB 硬预算内）。守门 `tests/integration-quickcreate-and-midnight.test.cjs` 纳入 `test:v18`；`check` / `test:v18` / `build:check` 全绿。
 - [x] T-1918 习惯成熟度饱和成长曲线非有限数值与 46 天除零边界排雷（P1，已交付 2026-10-24，D-569，对标算法健壮性）——在 `computeHabitSaturation` 中增加 `Number.isFinite` 校验与非负截断，为扎根期计算引入 `rootSpan = Math.max(1, validTarget - 46)` 除零防御，确保成熟度与饱和得分在极端输入下有界稳定。守门 `tests/habit-saturation-curve.test.cjs` 纳入 `test:v18`；`check` / `test:v18` / `build:check` 全绿。
+- [x] T-1919 报告导出与周报生成（Report Markdown）支持全来源过滤展示（P1，已交付 2026-10-24，D-570，对标报告导出严谨性）——`buildWeeklyReportMarkdown` 扩展 `REPORT_SOURCES` 白名单支持 `sireader`、`siplayer`、`weread` 与 `yeguif`，确保外部来源筛选准确回显声明；类型断言统一收敛为 `CheckinEvent["source"]`。守门 `tests/report-sources-and-trend-perf.test.cjs` 纳入 `test:v18`；`check` / `test:v18` / `build:check` 全绿。
+- [x] T-1920 项目趋势比对（Item Trend Compare）多日序列计算算法性能优化与事件哈希预索引（P1，已交付 2026-10-24，D-571，对标算法性能治理）——重构 `buildItemTrendSeries` 算法，在 31 天循环前一次性对项目事件建立日期哈希桶，彻底消除内循环全量遍历，时间复杂度降至 O(N)。守门 `tests/report-sources-and-trend-perf.test.cjs` 纳入 `test:v18`；`check` / `test:v18` / `build:check` 全绿。
 
 - [x] T-1872 打卡主观心流与精力轻量自评及交叉分析（P1，已交付 2026-10-20，D-524，对标 TickTick / Atoms）——在精确录入面板（Exact Entry）提供可选的 1~5 档心流/精力自评（⚡ 1:枯竭/2:疲劳/3:平稳/4:充沛/5:心流，完全可选，主按钮一键打卡不受影响）；事件数据结构增加可选 `energy?: 1 | 2 | 3 | 4 | 5` 字段，严格校验非法值，支持向前兼容与导入导出；回顾页增加“心流与精力分布”交叉分析看板卡片，直观展现平均分、样本数与精力柱状占比。守门 `tests/record-energy-flow.test.cjs` 纳入 `test:v18`；`check` / `test:v18` / `build:check` 全绿。
 - [x] T-1873 习惯稳固度 Sigmoid 饱和成长曲线与阶段化成熟模型（P1，已交付 2026-10-20，D-525，对标 Table Habit / 掌控习惯）——在 `habit-score.ts` 落地逻辑斯蒂饱和函数 `computeHabitSaturation`，实现 0 天为 0 分、33 天（半程拐点）为 50 分、66 天达标为 100 分及 1.5 倍超额封顶（99天）；将习惯生命周期划分为萌芽期（1~21天）、爬坡期（22~45天）与扎根期（46~66天+），并提供心理学科学指导建议；在洞察页渲染自适应饱和稳固度横幅。守门 `tests/habit-saturation-curve.test.cjs` 纳入 `test:v18`；`check` / `test:v18` / `build:check` 全绿。

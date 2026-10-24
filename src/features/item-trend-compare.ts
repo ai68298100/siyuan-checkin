@@ -4,7 +4,7 @@
    - 完成率仅在适用口径下比较：配额项目不产出日级完成率（单列提示）；
    - 数据不足明确提示（sparse），渲染按选择顺序呈现，不排名、不施压；
    - 只读：不修改事件，历史修订按当日生效修订取单位（与 evaluateRule 同口径）。 */
-import type {CheckinItem, CheckinKind, CheckinStore, QuotaPeriod} from "../types";
+import type {CheckinEvent, CheckinItem, CheckinKind, CheckinStore, QuotaPeriod} from "../types";
 import {getItemRevisionForDate, isComplete, isItemAvailableOnDate, isScheduledToday} from "../model";
 
 export interface ItemTrendSeries {
@@ -50,12 +50,14 @@ export function buildItemTrendSeries(store: CheckinStore, itemId: string, startD
     if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate)) return undefined;
     const boundedDays = Math.max(1, Math.min(MAX_TREND_DAYS, Math.floor(days) || 1));
     const base = new Date(Number(startDate.slice(0, 4)), Number(startDate.slice(5, 7)) - 1, Number(startDate.slice(8, 10)));
-    const eventsByDay = new Map<string, number>();
+    const eventsByDay = new Map<string, CheckinEvent[]>();
     for (const event of store.events) {
         if (event.itemId !== itemId) continue;
         const key = typeof event.localDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(event.localDate) ? event.localDate : "";
         if (!key) continue;
-        eventsByDay.set(key, (eventsByDay.get(key) || 0) + event.value);
+        const list = eventsByDay.get(key);
+        if (list) list.push(event);
+        else eventsByDay.set(key, [event]);
     }
     const labels: string[] = [];
     const values: number[] = [];
@@ -72,7 +74,7 @@ export function buildItemTrendSeries(store: CheckinStore, itemId: string, startD
         if (revision.schedule.type === "quota" && revision.schedule.quota) {
             quota = {period: revision.schedule.quota.period, amount: revision.schedule.quota.amount, countMode: revision.schedule.quota.countMode};
         }
-        const events = store.events.filter((event) => event.itemId === itemId && event.localDate === key);
+        const events = eventsByDay.get(key) || [];
         for (const event of events) {
             if (event.unit === revision.unit) dayValue += event.value;
         }

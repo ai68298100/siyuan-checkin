@@ -4,6 +4,14 @@
 
 ---
 
+## [v18.27.0] - 2026-10-24
+
+### 优化 (Optimized)
+- **报告导出全来源筛选回显支持**：`buildWeeklyReportMarkdown` 扩展 `REPORT_SOURCES` 支持思阅/思播/微信读书/叶归等全部外部来源筛选；
+- **趋势比对事件哈希预索引性能提升**：重构 `buildItemTrendSeries` 算法，消除内循环全量遍历，时间复杂度降至 O(N)。
+
+---
+
 ## [v18.26.0] - 2026-10-24
 
 ### 优化 (Optimized)
