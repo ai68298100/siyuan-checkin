@@ -1,3 +1,12 @@
+# 2026-10-24 R-RELEASE-18.25.0 正式发布验收（五大集成一键绑定大圆满与跨午夜排雷）
+
+版本 `18.25.0` 已从 `main` 完成正式发布：
+- 源码提交完成，tag `v18.25.0`，GitHub Release 地址：https://github.com/ai68298100/siyuan-checkin/releases/tag/v18.25.0 ；
+- `package.zip` 构建产物生成并签名，SHA-256 校验码为 `24042c501950a22aab71cf66a2a3680674e884518c0428801c5f8a4f6955ea8b`；
+- 版本号在 `package.json`, `plugin.json`, `src/version.ts`, `README.md`, `CHANGELOG.md`, `docs/releases/release-notes-18.25.0.md` 严格对齐；
+- 全量发布前自检通过：`pnpm run check:release`，`pnpm run check`，`pnpm test`，`pnpm run test:v18`（全 52 项专项测试通过）；
+- 核心演进：设置页“笔记推导”行增设“快速创建并绑定”按钮，至此思阅、思播、微信读书、健康收件箱、笔记推导五大外部集成 100% 达成 0 阻力一键创建绑定大圆满；排雷跨午夜（Midnight Boundary）生命周期，跨日自动清理残留回执、旧日段落映射与在飞临时变量，彻底杜绝跨天内存残留与误撤销隔夜日记风险。
+
 # 2026-10-24 R-RELEASE-18.24.0 正式发布验收（健康一键绑定、精力区间对账与进度环加速）
 
 版本 `18.24.0` 已从 `main` 完成正式发布：

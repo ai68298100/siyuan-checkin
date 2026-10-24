@@ -8,30 +8,29 @@
 
 把一次行动记录下来，再用同一份可追溯数据完成统计、提醒、复盘和笔记联动。
 
-**当前版本：18.24.0**
+**当前版本：18.25.0**
 
-18.24.0 达成「健康收件箱一键创建绑定、精力心流区间对账与进度环硬件加速」小版本发布：设置页健康收件箱支持一键快速创建步数与体重打卡项并自动完成映射绑定，实现四大第三方外部联动全量具备零摩擦极简闭环；彻底排查并根治 Review 回顾页精力心流与跳过阻力看板多维筛选下全历史越界统计缺陷，严格对齐当前复盘时间范围契约；Today 仪表盘环形进度条挂载独立合成层与平滑贝塞尔微动效加速。这里介绍本次更新与已实现功能，后续开发进展见 [PROGRESS](PROGRESS.md)。
+18.25.0 达成「全外部集成一键创建大圆满与跨午夜生命周期排雷」小版本发布：设置页“连接与能力”笔记推导（Note Query）补齐“快速创建并绑定”按钮，至此思阅、思播、微信读书、健康收件箱、笔记推导五大外部集成 100% 达成 0 阻力一键创建绑定大圆满；排雷跨午夜（Midnight Boundary）生命周期，跨日自动清理残留回执、旧日段落映射与在飞临时变量，彻底杜绝跨天内存残留与误撤销隔夜日记风险。这里介绍本次更新与已实现功能，后续开发进展见 [PROGRESS](PROGRESS.md)。
 
 > **内测说明**：小驴考试、小驴管家、小驴闪卡和小驴常用目前仍处于内测阶段，部分功能和思源宿主兼容性正在验证中。欢迎通过交流 QQ 群 **871707735** 反馈问题、提交需求；对稳定性有较高要求时，请等待对应插件发布正式版。
 
 [![最新 Release](https://img.shields.io/github/v/release/ai68298100/siyuan-checkin?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-checkin/releases/latest) [![CI](https://github.com/ai68298100/siyuan-checkin/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-checkin/actions/workflows/ci.yml) [![License](https://img.shields.io/github/license/ai68298100/siyuan-checkin)](LICENSE)
 
-[最新 Release](https://github.com/ai68298100/siyuan-checkin/releases/latest) · [18.24.0 发布说明](docs/releases/release-notes-18.24.0.md) · [问题反馈](https://github.com/ai68298100/siyuan-checkin/issues) · [开发文档](docs/)
+[最新 Release](https://github.com/ai68298100/siyuan-checkin/releases/latest) · [18.25.0 发布说明](docs/releases/release-notes-18.25.0.md) · [问题反馈](https://github.com/ai68298100/siyuan-checkin/issues) · [开发文档](docs/)
 
 </div>
 
-### 本次更新（18.24.0）
+### 本次更新（18.25.0）
 
-本次为「健康收件箱一键创建绑定、精力心流区间对账与进度环硬件加速」小版本，提供健康项目极简闭环与分析范围契约守卫。
+本次为「全外部集成一键创建大圆满与跨午夜生命周期排雷」小版本，提供全集成开箱即用与跨日内存纯净治理。
 
-新增：健康收件箱一键创建并绑定
+新增：笔记推导一键创建绑定
 
-- **健康收件箱一键创建并绑定（T-1912）**：设置页健康收件箱行增设“快速创建并绑定”按钮，自动生成步数（6000步）与体重（70千克）项目并完成双向映射，消除逐项配置摩擦。
+- **笔记推导一键创建并绑定（T-1915）**：设置页笔记推导行提供“快速创建并绑定”按钮，自动生成标准二值笔记打卡项并完成绑定，实现五大外部集成 100% 极简闭环。
 
-优化：统计契约范围越界修复与进度环性能
+优化：跨午夜残留清理与生命周期排雷
 
-- **精力与阻力分析严格限定当前区间（T-1913）**：修复回顾分析看板在多维筛选下钻时越界读取全历史事件缺陷，严格限定在当前复盘日期范围（`summary.startDate` ~ `summary.endDate`）内。
-- **Today 环形进度条 GPU 硬件加速（T-1914）**：为 `.lc-checkin__overview-ring` 注入独立合成层（`translateZ(0)`）与平滑贝塞尔微动效。
+- **跨午夜残留清理（T-1916）**：跨日自动清空 `recentLifelogBlocks`、`recentRecord` 与 `pendingLocalItem*` 变量，消除内存累积与误撤销隔夜日记风险。
 - **Today 搜索框极速打卡流（T-1903）**：Enter 键直达 NLP 推荐或聚焦单一匹配卡片，Escape 键一键清空搜索词，严格拦截中文输入法组字态。
 - **五级动作按钮语义体系（T-1817）**：落地 Primary / Secondary / Quiet / Destructive / Icon 统一类名、focus-visible 环与高对比度模式轮廓。
 - **表单输入高度与文本域 Token（T-1818）**：收敛文本域高度到单一 token，规范校验、禁用与忙碌态视觉。

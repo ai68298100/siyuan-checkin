@@ -5793,6 +5793,9 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
         root.querySelector<HTMLElement>("[data-action='quick-create-health']")?.addEventListener("click", () => {
             void this.quickCreateAndBindIntegrationItem("health", root);
         });
+        root.querySelector<HTMLElement>("[data-action='quick-create-notequery']")?.addEventListener("click", () => {
+            void this.quickCreateAndBindIntegrationItem("notequery", root);
+        });
         /* T-1548：输出内容预览——零写入生成将追加的 Markdown 并就地展开；取消/重渲染即收起。 */
         root.querySelectorAll<HTMLElement>("[data-output-preview-generate]").forEach((button) => button.addEventListener("click", () => {
             const channel = button.dataset.outputPreviewGenerate as "diary" | "summary" | "lifelog";
@@ -8858,8 +8861,53 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
         showMessage(t("msg.linkageApplied", {name: t("set.sireaderIntegration")}));
     }
 
-    /* T-1908 / T-1910 / T-1912：设置页一键快速创建并绑定思阅/思播/微信读书/健康打卡项 */
-    private async quickCreateAndBindIntegrationItem(type: "sireader" | "siplayer" | "weread" | "health", root?: HTMLElement): Promise<void> {
+    /* T-1908 / T-1910 / T-1912 / T-1915：设置页一键快速创建并绑定外部集成打卡项 */
+    private async quickCreateAndBindIntegrationItem(type: "sireader" | "siplayer" | "weread" | "health" | "notequery", root?: HTMLElement): Promise<void> {
+        if (type === "notequery") {
+            const today = dateKey(currentCalendarDate());
+            const now = new Date().toISOString();
+            let item = this.store.items.find((i) => !i.archived && (i.name === "笔记打卡" || i.name === "写日记"));
+            if (!item) {
+                const created = normalizeCheckinItem({
+                    id: makeId("item"),
+                    name: "笔记打卡",
+                    icon: "✍",
+                    kind: "binary",
+                    target: 1,
+                    unit: "次",
+                    schedule: {type: "daily"},
+                    group: "联动",
+                    priority: "medium",
+                    createdDate: today,
+                    createdAt: now,
+                    updatedAt: now,
+                });
+                if (created) {
+                    const previous = this.store;
+                    this.store = {...this.store, items: [...this.store.items, created]};
+                    try {
+                        await this.persist();
+                        this.broadcast({type: "item-created", item: created});
+                        this.invalidateSummary();
+                        this.advanceFirstSuccess("item-created");
+                        item = created;
+                    } catch {
+                        this.store = previous;
+                        showMessage(t("msg.createCheckinFail"));
+                        return;
+                    }
+                }
+            }
+            if (item) {
+                this.applyPreference(() => {
+                    this.noteQuery.itemId = item!.id;
+                }, () => {
+                    showMessage(t("msg.quickBound", {name: item!.name}));
+                    this.render(root);
+                });
+            }
+            return;
+        }
         if (type === "health") {
             const today = dateKey(currentCalendarDate());
             const now = new Date().toISOString();
@@ -10578,6 +10626,15 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
             this.suggestionWorkflow = undefined;
             this.summaryRefreshing = false;
             this.summaryRequestId += 1;
+            /* T-1916：跨午夜排雷——清理跨日失效的回执、待处理临时项与旧日日记段落映射，防止长驻进程内存泄漏或误撤销隔夜日记 */
+            this.recentRecord = undefined;
+            if (this.recentRecordTimer !== undefined) {
+                window.clearTimeout(this.recentRecordTimer);
+                this.recentRecordTimer = undefined;
+            }
+            this.recentLifelogBlocks.clear();
+            this.pendingLocalItemId = undefined;
+            this.pendingLocalItemDate = undefined;
             this.renderBackgroundUpdate();
         }
         this.scheduleMidnightRefresh();
