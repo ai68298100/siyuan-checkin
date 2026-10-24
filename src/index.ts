@@ -5790,6 +5790,9 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
         root.querySelector<HTMLElement>("[data-action='quick-create-weread']")?.addEventListener("click", () => {
             void this.quickCreateAndBindIntegrationItem("weread", root);
         });
+        root.querySelector<HTMLElement>("[data-action='quick-create-health']")?.addEventListener("click", () => {
+            void this.quickCreateAndBindIntegrationItem("health", root);
+        });
         /* T-1548：输出内容预览——零写入生成将追加的 Markdown 并就地展开；取消/重渲染即收起。 */
         root.querySelectorAll<HTMLElement>("[data-output-preview-generate]").forEach((button) => button.addEventListener("click", () => {
             const channel = button.dataset.outputPreviewGenerate as "diary" | "summary" | "lifelog";
@@ -8855,8 +8858,65 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
         showMessage(t("msg.linkageApplied", {name: t("set.sireaderIntegration")}));
     }
 
-    /* T-1908 / T-1910：设置页一键快速创建并绑定思阅/思播/微信读书打卡项 */
-    private async quickCreateAndBindIntegrationItem(type: "sireader" | "siplayer" | "weread", root?: HTMLElement): Promise<void> {
+    /* T-1908 / T-1910 / T-1912：设置页一键快速创建并绑定思阅/思播/微信读书/健康打卡项 */
+    private async quickCreateAndBindIntegrationItem(type: "sireader" | "siplayer" | "weread" | "health", root?: HTMLElement): Promise<void> {
+        if (type === "health") {
+            const today = dateKey(currentCalendarDate());
+            const now = new Date().toISOString();
+            const defs = [
+                {metric: "steps" as const, name: "健康步数", kind: "quantity" as const, unit: "步", target: 6000, icon: "👟"},
+                {metric: "weight" as const, name: "健康体重", kind: "quantity" as const, unit: "千克", target: 70, icon: "⚖"},
+            ];
+            const createdItems: CheckinItem[] = [];
+            const bindings: Array<{metric: "steps" | "weight"; itemId: string}> = [...this.healthInbox.metricBindings];
+            for (const def of defs) {
+                let item = this.store.items.find((i) => !i.archived && i.name === def.name && i.unit === def.unit);
+                if (!item) {
+                    const created = normalizeCheckinItem({
+                        id: makeId("item"),
+                        name: def.name,
+                        icon: def.icon,
+                        kind: def.kind,
+                        target: def.target,
+                        unit: def.unit,
+                        schedule: {type: "daily"},
+                        group: "联动",
+                        priority: "low",
+                        createdDate: today,
+                        createdAt: now,
+                        updatedAt: now,
+                    });
+                    if (created) {
+                        createdItems.push(created);
+                        item = created;
+                    }
+                }
+                if (item && !bindings.some((b) => b.metric === def.metric)) {
+                    bindings.push({metric: def.metric, itemId: item.id});
+                }
+            }
+            if (createdItems.length) {
+                const previous = this.store;
+                this.store = {...this.store, items: [...this.store.items, ...createdItems]};
+                try {
+                    await this.persist();
+                    for (const item of createdItems) this.broadcast({type: "item-created", item});
+                    this.invalidateSummary();
+                    this.advanceFirstSuccess("item-created");
+                } catch {
+                    this.store = previous;
+                    showMessage(t("msg.createCheckinFail"));
+                    return;
+                }
+            }
+            this.applyPreference(() => {
+                this.healthInbox.metricBindings = bindings;
+            }, () => {
+                showMessage(t("msg.quickBound", {name: t("set.healthIntegration")}));
+                this.render(root);
+            });
+            return;
+        }
         if (type === "weread") {
             const today = dateKey(currentCalendarDate());
             const now = new Date().toISOString();

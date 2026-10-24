@@ -751,15 +751,16 @@ export function renderReviewView(ctx: ReviewViewContext): string {
         ${hasAnalysisFilter ? `<button type="button" class="lc-checkin__text-button" data-action="clear-analysis-filter">${t("review.analysisFilterReset")}</button><span class="lc-checkin__analysis-filter-badge">${t("review.analysisFilteredNote", {target: focusedLabel})}</span>` : ""}
     </div>`;
 
-    /* T-1872 / T-1879：心流与精力自评分布看板（支持多维筛选下钻） */
+    /* T-1872 / T-1879 / T-1913：心流与精力自评分布看板（按区间与多维筛选下钻） */
     const renderEnergyFlow = (): string => {
         let flow = summary.energyFlow;
+        const inScopeEvents = ctx.store.events.filter(e => e.localDate >= summary.startDate && e.localDate <= summary.endDate);
         if (filterItemId) {
-            const itemEvents = ctx.store.events.filter(e => e.itemId === filterItemId);
+            const itemEvents = inScopeEvents.filter(e => e.itemId === filterItemId);
             flow = summarizeEnergyFlow(itemEvents);
         } else if (filterGroupId) {
             const groupItemIds = new Set(candidateGroupItems.map(i => i.id));
-            const groupEvents = ctx.store.events.filter(e => groupItemIds.has(e.itemId));
+            const groupEvents = inScopeEvents.filter(e => groupItemIds.has(e.itemId));
             flow = summarizeEnergyFlow(groupEvents);
         }
         if (!flow || flow.totalWithEnergy === 0) {
@@ -782,15 +783,16 @@ export function renderReviewView(ctx: ReviewViewContext): string {
         return `<div class="lc-checkin__energy-flow-card" data-energy-flow-card><div class="lc-checkin__energy-flow-header"><div><strong>${escapeHtml(t("review.energyAvg"))}：<em class="lc-checkin__energy-score">${flow.averageEnergy !== undefined ? flow.averageEnergy : "-"}</em> / 5.0</strong><small>${escapeHtml(t("review.energyCount"))}：${flow.totalWithEnergy}</small>${hasAnalysisFilter ? `<span class="lc-checkin__energy-flow-tag">🎯 ${escapeHtml(focusedLabel)}</span>` : ""}</div></div><div class="lc-checkin__energy-bars">${bars}</div></div>`;
     };
 
-    /* T-1881：跳过与阻力归因看板（支持多维筛选下钻） */
+    /* T-1881 / T-1913：跳过与阻力归因看板（按区间与多维筛选下钻） */
     const renderSkipFriction = (): string => {
         let friction = summary.skipFriction;
+        const inScopeEvents = ctx.store.events.filter(e => e.localDate >= summary.startDate && e.localDate <= summary.endDate);
         if (filterItemId) {
-            const itemEvents = ctx.store.events.filter(e => e.itemId === filterItemId);
+            const itemEvents = inScopeEvents.filter(e => e.itemId === filterItemId);
             friction = summarizeSkipFriction(itemEvents);
         } else if (filterGroupId) {
             const groupItemIds = new Set(candidateGroupItems.map(i => i.id));
-            const groupEvents = ctx.store.events.filter(e => groupItemIds.has(e.itemId));
+            const groupEvents = inScopeEvents.filter(e => groupItemIds.has(e.itemId));
             friction = summarizeSkipFriction(groupEvents);
         }
         if (!friction || friction.totalSkips === 0) {

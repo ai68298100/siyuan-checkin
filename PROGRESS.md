@@ -1,3 +1,12 @@
+# 2026-10-24 R-RELEASE-18.24.0 正式发布验收（健康一键绑定、精力区间对账与进度环加速）
+
+版本 `18.24.0` 已从 `main` 完成正式发布：
+- 源码提交完成，tag `v18.24.0`，GitHub Release 地址：https://github.com/ai68298100/siyuan-checkin/releases/tag/v18.24.0 ；
+- `package.zip` 构建产物生成并签名，SHA-256 校验码为 `4d1897387dfb55c515b6c6b9c542f37a66834c22eefe1267c12e4600227620ae`；
+- 版本号在 `package.json`, `plugin.json`, `src/version.ts`, `README.md`, `CHANGELOG.md`, `docs/releases/release-notes-18.24.0.md` 严格对齐；
+- 全量发布前自检通过：`pnpm run check:release`，`pnpm run check`，`pnpm test`，`pnpm run test:v18`（全 51 项专项测试通过）；
+- 核心演进：设置页健康收件箱增设“快速创建并绑定”按钮，自动生成步数与体重打卡项并完成双向映射，实现四大第三方外部联动全量具备零摩擦极简闭环；彻底排查并根治 Review 回顾页精力心流与跳过阻力看板多维筛选下全历史越界统计缺陷，严格对齐当前复盘时间范围契约；Today 仪表盘环形进度条挂载独立合成层与平滑贝塞尔微动效加速。
+
 # 2026-10-24 R-RELEASE-18.23.0 正式发布验收（月份快速穿梭与微信读书一键绑定）
 
 版本 `18.23.0` 已从 `main` 完成正式发布：

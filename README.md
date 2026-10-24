@@ -8,30 +8,30 @@
 
 把一次行动记录下来，再用同一份可追溯数据完成统计、提醒、复盘和笔记联动。
 
-**当前版本：18.23.0**
+**当前版本：18.24.0**
 
-18.23.0 达成「月份快速穿梭、微信读书一键绑定与物理按压防抖」小版本发布：回顾页历史记录月份导航新增一键回到本月今日（Today Anchor）快捷按钮，长周期复盘翻越历史后秒级穿梭回当天；设置页微信读书联动新增一键创建并绑定三维度打卡项（阅读时长/完本书籍/划线笔记）；卡片主打卡按钮增加 250ms 物理连击防抖，彻底杜绝手抖快速双击导致的重复提交。这里介绍本次更新与已实现功能，后续开发进展见 [PROGRESS](PROGRESS.md)。
+18.24.0 达成「健康收件箱一键创建绑定、精力心流区间对账与进度环硬件加速」小版本发布：设置页健康收件箱支持一键快速创建步数与体重打卡项并自动完成映射绑定，实现四大第三方外部联动全量具备零摩擦极简闭环；彻底排查并根治 Review 回顾页精力心流与跳过阻力看板多维筛选下全历史越界统计缺陷，严格对齐当前复盘时间范围契约；Today 仪表盘环形进度条挂载独立合成层与平滑贝塞尔微动效加速。这里介绍本次更新与已实现功能，后续开发进展见 [PROGRESS](PROGRESS.md)。
 
 > **内测说明**：小驴考试、小驴管家、小驴闪卡和小驴常用目前仍处于内测阶段，部分功能和思源宿主兼容性正在验证中。欢迎通过交流 QQ 群 **871707735** 反馈问题、提交需求；对稳定性有较高要求时，请等待对应插件发布正式版。
 
 [![最新 Release](https://img.shields.io/github/v/release/ai68298100/siyuan-checkin?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-checkin/releases/latest) [![CI](https://github.com/ai68298100/siyuan-checkin/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-checkin/actions/workflows/ci.yml) [![License](https://img.shields.io/github/license/ai68298100/siyuan-checkin)](LICENSE)
 
-[最新 Release](https://github.com/ai68298100/siyuan-checkin/releases/latest) · [18.23.0 发布说明](docs/releases/release-notes-18.23.0.md) · [问题反馈](https://github.com/ai68298100/siyuan-checkin/issues) · [开发文档](docs/)
+[最新 Release](https://github.com/ai68298100/siyuan-checkin/releases/latest) · [18.24.0 发布说明](docs/releases/release-notes-18.24.0.md) · [问题反馈](https://github.com/ai68298100/siyuan-checkin/issues) · [开发文档](docs/)
 
 </div>
 
-### 本次更新（18.23.0）
+### 本次更新（18.24.0）
 
-本次为「月份快速穿梭、微信读书一键绑定与物理按压防抖」小版本，提供历史月份快速穿梭锚点与防抖稳定性加固。
+本次为「健康收件箱一键创建绑定、精力心流区间对账与进度环硬件加速」小版本，提供健康项目极简闭环与分析范围契约守卫。
 
-新增：月份导航 Today Anchor 与微信读书一键绑定
+新增：健康收件箱一键创建并绑定
 
-- **回顾页 Today Anchor 月份快速穿梭（T-1909）**：月份导航栏非当前月时动态显示 `[今天]` 快捷按钮，点击一键平滑飞回当月与今日选中项。
-- **微信读书三维一键创建并绑定（T-1910）**：设置页微信读书行提供“快速创建并绑定”按钮，自动生成阅读时长（分钟）、完本书籍（本）与划线笔记（条）并完成绑定。
+- **健康收件箱一键创建并绑定（T-1912）**：设置页健康收件箱行增设“快速创建并绑定”按钮，自动生成步数（6000步）与体重（70千克）项目并完成双向映射，消除逐项配置摩擦。
 
-优化：打卡交互物理防抖
+优化：统计契约范围越界修复与进度环性能
 
-- **卡片打卡动作 250ms 物理连击防抖（T-1911）**：`runExclusiveAction` 核心调度引入时间戳防抖记忆，彻底杜绝手抖快速双击导致的重复提交。
+- **精力与阻力分析严格限定当前区间（T-1913）**：修复回顾分析看板在多维筛选下钻时越界读取全历史事件缺陷，严格限定在当前复盘日期范围（`summary.startDate` ~ `summary.endDate`）内。
+- **Today 环形进度条 GPU 硬件加速（T-1914）**：为 `.lc-checkin__overview-ring` 注入独立合成层（`translateZ(0)`）与平滑贝塞尔微动效。
 - **Today 搜索框极速打卡流（T-1903）**：Enter 键直达 NLP 推荐或聚焦单一匹配卡片，Escape 键一键清空搜索词，严格拦截中文输入法组字态。
 - **五级动作按钮语义体系（T-1817）**：落地 Primary / Secondary / Quiet / Destructive / Icon 统一类名、focus-visible 环与高对比度模式轮廓。
 - **表单输入高度与文本域 Token（T-1818）**：收敛文本域高度到单一 token，规范校验、禁用与忙碌态视觉。
